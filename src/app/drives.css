@@ -1,0 +1,365 @@
+.campus-options {
+  display: grid;
+  gap: 12px;
+}
+.campus-options button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  padding: 20px;
+  border: 1px solid #d2d2c9;
+  border-radius: 16px;
+  background: #fffdf6;
+  color: #222;
+}
+.campus-options button.selected {
+  border: 2px solid #292729;
+  background: #eeebfc;
+}
+.campus-options button div {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+}
+.campus-options small,
+.campus-options span {
+  font-size: 12px;
+  color: #666;
+}
+.drive-form {
+  max-width: 1050px;
+}
+.drive-card {
+  display: flex;
+  flex-direction: column;
+}
+.drive-card .button {
+  margin-top: auto;
+}
+.drive-card .detail-list {
+  margin-bottom: 20px;
+}
+.round-editor {
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  gap: 14px;
+  border: 1px solid #dfded6;
+  padding: 20px;
+  border-radius: 16px;
+}
+.round-editor > div {
+  display: grid;
+  gap: 12px;
+}
+.round-editor > b {
+  padding-top: 10px;
+}
+.wizard-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-top: 1px solid #deddd4;
+  padding-top: 24px;
+}
+.drive-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.drive-summary h3 {
+  margin: 14px 0 10px;
+}
+.drive-summary p {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.drive-summary > div {
+  min-width: 0;
+}
+.drive-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr);
+  gap: 24px;
+}
+.drive-detail-layout > div,
+.drive-detail-layout > aside {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  min-width: 0;
+}
+.drive-detail-layout .button {
+  white-space: normal;
+}
+.drive-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  margin: 0 0 28px;
+}
+.drive-lifecycle > div {
+  display: grid;
+  gap: 10px;
+  position: relative;
+}
+.drive-lifecycle > div::before {
+  content: '';
+  height: 2px;
+  position: absolute;
+  top: 15px;
+  left: 30px;
+  right: -10px;
+  background: #deddd6;
+}
+.drive-lifecycle > div:last-child::before {
+  display: none;
+}
+.drive-lifecycle > div.reached::before {
+  background: #69715a;
+}
+.drive-lifecycle span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: #e9e7df;
+  border-radius: 50%;
+  position: relative;
+}
+.drive-lifecycle .reached span {
+  background: #d3deb8;
+  border: 1px solid #626b4f;
+}
+.drive-lifecycle small {
+  font-size: 10px;
+  max-width: 100px;
+  line-height: 1.4;
+}
+.drive-status-note {
+  line-height: 1.7;
+}
+.review-note {
+  background: #ffffff75;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.drive-audit {
+  padding-left: 20px;
+  font-size: 12px;
+  display: grid;
+  gap: 18px;
+}
+.drive-audit p {
+  margin: 6px 0;
+}
+.drive-audit small {
+  color: #73716a;
+}
+.schedule-proposal {
+  margin-top: 24px;
+}
+.live-count {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  margin: 20px 0;
+}
+.live-count label {
+  flex: 1;
+}
+.live-count .button {
+  margin-bottom: 1px;
+}
+.live-round {
+  border-top: 1px solid #e0ded7;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.campus-operation {
+  padding: 90px 0;
+}
+.role-journey {
+  position: relative;
+  width: min(100%, 470px);
+  margin: 30px auto;
+  display: grid;
+  gap: 25px;
+  padding: 20px 8px;
+}
+.role-journey svg {
+  position: absolute;
+  width: 90%;
+  height: 100%;
+  left: 5%;
+  top: 0;
+}
+.role-journey-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid #272625;
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 #272625;
+  padding: 22px;
+  width: 90%;
+}
+.role-journey-card:nth-child(odd) {
+  margin-left: auto;
+}
+.role-journey-card > svg {
+  position: static;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.role-journey-card > div {
+  display: grid;
+  gap: 5px;
+  flex: 1;
+}
+.role-journey-card b {
+  font-size: 14px;
+}
+.role-journey-card small {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.role-journey-card > span {
+  font-size: 11px;
+}
+.auth-illustration .role-journey {
+  flex-shrink: 0;
+}
+@media (min-width: 769px) and (max-width: 1150px) {
+  .glass-header .public-links {
+    display: none;
+  }
+  .glass-header .mobile-toggle {
+    display: flex;
+  }
+  .glass-header .public-links.opened {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 82px;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background: #fffdf5;
+    border: 1px solid #dddace;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px #0002;
+  }
+  .glass-header .public-links.opened > a:nth-child(n) {
+    display: block;
+    font-size: 14px;
+  }
+}
+.operation-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-top: 36px;
+}
+.operation-cards article {
+  border: 1px solid #222;
+  box-shadow: 4px 4px 0 #222;
+  border-radius: 20px;
+  padding: 28px;
+}
+.operation-cards article > span {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #222;
+  border-radius: 50%;
+  margin-bottom: 32px;
+}
+.operation-cards h3 {
+  font-size: 22px;
+  line-height: 1.15;
+  margin-bottom: 15px;
+}
+.operation-cards p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.campus-hero h1.campus-placement-heading {
+  font-size: clamp(42px, 4.8vw, 76px);
+  letter-spacing: -0.065em;
+}
+.campus-placement-heading em {
+  color: #405141;
+  font-style: normal;
+}
+.hero-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 24px;
+  max-width: 520px;
+}
+.hero-flow span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f7f3e5;
+  border: 1px solid #282829;
+  border-radius: 9px;
+  font-size: 10px;
+}
+@media (max-width: 1100px) {
+  .drive-detail-layout {
+    grid-template-columns: 1fr;
+  }
+  .drive-detail-layout > aside {
+    grid-template-columns: 1fr 1fr;
+  }
+  .operation-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .drive-summary,
+  .drive-detail-layout > aside,
+  .operation-cards {
+    grid-template-columns: 1fr;
+  }
+  .drive-lifecycle {
+    grid-template-columns: repeat(4, 1fr);
+    row-gap: 18px;
+  }
+  .drive-lifecycle > div:nth-child(4)::before {
+    display: none;
+  }
+  .round-editor {
+    padding: 14px;
+    grid-template-columns: 20px 1fr 25px;
+    gap: 8px;
+  }
+  .live-count {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .wizard-actions .button {
+    flex: 1;
+  }
+  .campus-operation {
+    padding: 60px 0;
+  }
+  .calendar-controls h2 {
+    font-size: 17px;
+  }
+  .calendar-grid span {
+    font-size: 8px;
+  }
+}

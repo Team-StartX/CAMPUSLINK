@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["esnext", "dom"],
+    "incremental": false,
+    "plugins": [],
+    "types": ["node"]
+  },
+  "include": [
+    "./**/*.ts",
+    "../src/types/**/*.ts",
+    "../src/services/**/*.ts",
+    "../src/mocks/**/*.ts",
+    "../src/utils/**/*.ts"
+  ],
+  "exclude": ["../node_modules"]
+}

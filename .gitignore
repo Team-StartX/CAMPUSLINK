@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env.local
+.env
+.env.*
+!.env.example
+!server/.env.example
+server/data/
+server/models/*.json
+server/dist/
+*.tsbuildinfo
+.npm-cache/
+tmp/

@@ -1,0 +1,546 @@
+.university-loop-label {
+  margin-top: 38px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  color: #828877;
+}
+.university-loop-group {
+  display: flex;
+  align-items: center;
+  gap: 65px;
+  padding-right: 65px;
+  flex-shrink: 0;
+}
+.university-wordmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 235px;
+  height: 64px;
+}
+.university-wordmark img {
+  width: 130px;
+  height: 53px;
+  object-fit: contain;
+}
+.university-wordmark > span {
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 90px;
+  text-align: left;
+  line-height: 1.4;
+}
+.university-loop-track {
+  animation-direction: reverse;
+  animation-duration: 42s;
+}
+.university-loop-window {
+  margin-top: 21px;
+}
+.procedure-section {
+  background: #eef0e5;
+  padding: 100px 0;
+  margin: 10px 0 80px;
+}
+.procedure-layout {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 80px;
+  align-items: start;
+}
+.procedure-intro {
+  position: sticky;
+  top: 145px;
+}
+.procedure-intro h2 {
+  font-size: 43px;
+  letter-spacing: -0.06em;
+  margin: 20px 0;
+  line-height: 1.08;
+}
+.procedure-intro h2 em {
+  color: #234dd5;
+  font-style: normal;
+}
+.procedure-intro > p {
+  font-size: 12px;
+  max-width: 310px;
+}
+.procedure-map {
+  display: grid;
+  gap: 14px;
+  margin: 30px 0 33px;
+}
+.procedure-map > a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 11px;
+  color: #888e7e;
+  transition: color 0.2s;
+}
+.procedure-map > a > span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  border: 1px solid #ced5bf;
+  background: #f7f8ed;
+  font-size: 8px;
+  transition: background 0.2s;
+}
+.procedure-map > a.current {
+  color: #234dd5;
+  font-weight: 650;
+}
+.procedure-map > a.current > span {
+  background: #234dd5;
+  color: white;
+  border-color: #234dd5;
+  box-shadow: 0 0 0 5px #234dd514;
+}
+.procedure-map > a.complete > span {
+  background: #e0e9c6;
+  color: #5d763a;
+}
+.procedure-timeline {
+  position: relative;
+  padding-left: 57px;
+}
+.procedure-line {
+  position: absolute;
+  top: 17px;
+  bottom: 17px;
+  left: 16px;
+  width: 2px;
+  background: #d3d9c6;
+}
+.procedure-line > div {
+  height: 100%;
+  width: 100%;
+  background: #234dd5;
+  transform-origin: top;
+}
+.procedure-step {
+  position: relative;
+  padding: 0 0 64px;
+  scroll-margin-top: 130px;
+}
+.procedure-step:last-child {
+  padding-bottom: 0;
+}
+.procedure-node {
+  position: absolute;
+  top: 5px;
+  left: -56px;
+  border: 1.5px solid #c5cfb3;
+  background: #eef0e5;
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 600;
+  transition:
+    background 0.3s,
+    border-color 0.3s;
+}
+.step-current .procedure-node {
+  color: white;
+  background: #234dd5;
+  border-color: #234dd5;
+  box-shadow: 0 0 0 6px #eef0e5;
+}
+.procedure-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.procedure-step-heading .campus-kicker {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.procedure-icon {
+  background: #dce5f8;
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border-radius: 12px;
+  color: #345bc4;
+}
+.step-green .procedure-icon {
+  background: #e1e8ce;
+  color: #6d813e;
+}
+.step-yellow .procedure-icon {
+  background: #eee8ba;
+  color: #9f8433;
+}
+.step-pink .procedure-icon {
+  background: #efdae1;
+  color: #a4677a;
+}
+.procedure-step h3 {
+  font-size: 27px;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+.procedure-step > p {
+  font-size: 11px;
+  max-width: 410px;
+  line-height: 1.8;
+}
+.procedure-demo {
+  background: #fcfcf7;
+  border: 1px solid #bac4ab;
+  border-radius: 13px;
+  padding: 18px 20px;
+  margin-top: 23px;
+  box-shadow: 4px 5px 0 #ced4c2;
+}
+.procedure-demo-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #e3e8d7;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+.procedure-demo-top > span {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #828b74;
+  margin-right: auto;
+}
+.procedure-demo-top > i {
+  width: 4px;
+  height: 4px;
+  background: #c9d0bf;
+  border-radius: 50%;
+}
+.procedure-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.procedure-profile > span {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e0e7d2;
+  color: #758455;
+  font-size: 14px;
+}
+.procedure-profile > div {
+  flex: 1;
+}
+.procedure-profile b {
+  font-size: 12px;
+  display: block;
+}
+.procedure-profile small {
+  font-size: 8px;
+  color: #899078;
+  display: block;
+}
+.procedure-profile > svg {
+  color: #b0bd96;
+}
+.procedure-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 17px;
+}
+.procedure-chips > span {
+  font-size: 8px;
+  padding: 4px 8px;
+  border: 1px solid #dce2cf;
+  border-radius: 20px;
+  background: #f2f5e9;
+}
+.procedure-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  font-size: 8px;
+  color: #808b73;
+}
+.procedure-progress > span {
+  flex: 1;
+}
+.procedure-progress > div {
+  width: 100%;
+  height: 4px;
+  background: #e3e9d8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.procedure-progress i {
+  width: 82%;
+  height: 100%;
+  display: block;
+  background: #809d4b;
+  transform-origin: left;
+}
+.procedure-result {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.procedure-result > svg {
+  color: #809e4a;
+}
+.procedure-result > div {
+  flex: 1;
+}
+.procedure-result small {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  display: block;
+  color: #879176;
+}
+.procedure-result b {
+  font-size: 34px;
+  letter-spacing: -2px;
+  line-height: 1.2;
+}
+.procedure-result b span {
+  font-size: 11px;
+  letter-spacing: 0;
+  margin-left: 5px;
+  color: #8b957e;
+}
+.procedure-verified {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: #e1edc7;
+  border-radius: 20px;
+  font-size: 8px;
+  color: #5e7739;
+}
+.procedure-demo > p {
+  font-size: 9px;
+  margin-top: 14px;
+}
+.procedure-job {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+}
+.procedure-job > span {
+  width: 45px;
+  height: 45px;
+  border-radius: 10px;
+  background: #dce4fa;
+  color: #234dd5;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+}
+.procedure-job > div {
+  flex: 1;
+}
+.procedure-job small {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #8a947b;
+}
+.procedure-job b {
+  display: block;
+  font-size: 13px;
+}
+.procedure-job p {
+  font-size: 8px;
+}
+.procedure-job > svg {
+  color: #8e9b7a;
+}
+.procedure-application {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid #e3e8d7;
+  font-size: 8px;
+  color: #7c8b68;
+}
+.procedure-application > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.procedure-application i {
+  width: 5px;
+  height: 5px;
+  background: #809e4a;
+  border-radius: 50%;
+}
+.procedure-application b {
+  font-weight: 500;
+}
+.procedure-interview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0 10px;
+}
+.procedure-wave {
+  height: 55px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.procedure-wave i {
+  display: block;
+  width: 4px;
+  border-radius: 4px;
+  background: #7890cf;
+}
+.procedure-interview b {
+  font-size: 17px;
+  letter-spacing: -0.5px;
+}
+.procedure-interview small {
+  font-size: 8px;
+  color: #8c967e;
+  margin-top: 4px;
+}
+.workspace-page {
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .procedure-layout {
+    gap: 40px;
+  }
+  .procedure-intro h2 {
+    font-size: 35px;
+  }
+  .university-wordmark {
+    min-width: 225px;
+  }
+  .procedure-timeline {
+    padding-left: 45px;
+  }
+  .procedure-node {
+    left: -44px;
+  }
+  .procedure-line {
+    left: 16px;
+  }
+}
+@media (max-width: 700px) {
+  .procedure-section {
+    padding: 65px 0;
+    margin-bottom: 65px;
+  }
+  .procedure-layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 0 24px;
+  }
+  .procedure-intro {
+    position: static;
+  }
+  .procedure-intro h2 {
+    font-size: 35px;
+  }
+  .procedure-intro > p {
+    max-width: 350px;
+  }
+  .procedure-map {
+    grid-template-columns: 1fr 1fr;
+    gap: 13px;
+    margin: 24px 0;
+  }
+  .procedure-map > a {
+    font-size: 9px;
+    gap: 8px;
+  }
+  .procedure-map > a > span {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .procedure-step h3 {
+    font-size: 23px;
+  }
+  .procedure-demo {
+    padding: 16px 14px;
+  }
+  .procedure-timeline {
+    padding-left: 43px;
+  }
+  .procedure-node {
+    left: -42px;
+    width: 29px;
+    height: 29px;
+  }
+  .procedure-line {
+    left: 14px;
+  }
+  .procedure-step-heading {
+    gap: 8px;
+  }
+  .procedure-step-heading .campus-kicker {
+    font-size: 6px;
+  }
+  .procedure-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 9px;
+    flex-shrink: 0;
+  }
+  .university-loop-group {
+    gap: 35px;
+    padding-right: 35px;
+  }
+  .university-wordmark {
+    min-width: 220px;
+    gap: 10px;
+  }
+  .university-wordmark img {
+    width: 110px;
+    height: 48px;
+  }
+  .university-wordmark > span {
+    font-size: 10px;
+  }
+  .procedure-result {
+    gap: 9px;
+  }
+  .procedure-result b {
+    font-size: 30px;
+  }
+  .procedure-verified {
+    font-size: 7px;
+    padding: 5px 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .university-loop-track {
+    animation: none;
+  }
+  .university-loop-group:nth-child(2) {
+    display: none;
+  }
+  .procedure-step {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

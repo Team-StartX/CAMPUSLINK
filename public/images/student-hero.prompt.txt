@@ -1,0 +1,4 @@
+Create a premium editorial photographic cutout for a university career platform website. A confident Indian female university student aged 22 wearing an oversized cobalt blue knit sweater, charcoal straight jeans, a slim black backpack over one shoulder, holding a closed silver laptop tucked in her left arm. Three quarter body from head to mid thigh, relaxed leaning stance, natural understated smile looking slightly left toward the website headline, candid believable youthful personality. Crisp studio photography with direct soft daylight, realistic skin texture and fabric detail, fashion campaign art direction, no artificial beauty retouching. Isolated clean transparent background, entire head hair arms laptop included with generous margin, no shadow backdrop, no text, no logos, no decorations. Portrait aspect ratio. Subject fills 85 percent of canvas.
+
+Generation: built-in imagegen, transparent_background=true.
+Asset: student-hero.png.

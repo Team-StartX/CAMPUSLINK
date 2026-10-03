@@ -1,0 +1,924 @@
+.glass-header.public-header {
+  position: sticky;
+  top: 18px;
+  margin: 18px auto 0;
+  width: calc(100% - 64px);
+  max-width: 1200px;
+  border: 1px solid #ffffffb0;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow:
+    0 8px 32px #232d4210,
+    inset 0 1px 0 #fff;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    width 0.3s;
+}
+.glass-header.is-scrolled {
+  background: rgba(255, 255, 255, 0.83);
+  width: calc(100% - 100px);
+  box-shadow: 0 10px 35px #232d4220;
+}
+.glass-header .public-nav {
+  min-height: 72px;
+  padding: 0 22px;
+  gap: 18px;
+}
+.glass-header .public-links {
+  gap: 3px;
+}
+.glass-header .public-links > a {
+  position: relative;
+  padding: 11px 12px;
+  border-radius: 30px;
+  font-size: 11px;
+  color: #303534;
+}
+.glass-header .public-links > a > span:not(.nav-hover-pill) {
+  position: relative;
+  z-index: 1;
+}
+.nav-hover-pill {
+  position: absolute;
+  inset: 0;
+  background: #e9eddf;
+  border-radius: 30px;
+}
+.glass-header .nav-actions {
+  gap: 18px;
+}
+.glass-header .nav-join {
+  border-radius: 40px;
+  background: #234dd5;
+  border-color: #234dd5;
+  padding: 12px 18px;
+  box-shadow: 0 3px 0 #152a76;
+}
+.glass-header .logo {
+  font-size: 23px;
+}
+.campus-landing {
+  overflow: clip;
+}
+.campus-hero {
+  position: relative;
+  padding-top: 32px;
+  background: radial-gradient(ellipse at 74% 46%, #e7ebde66, transparent 60%);
+}
+.campus-hero-grid {
+  display: grid;
+  grid-template-columns: 1.08fr 1fr;
+  gap: 28px;
+  align-items: center;
+}
+.campus-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 1.65px;
+  color: #50584f;
+}
+.campus-kicker > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2854dc;
+  box-shadow: 0 0 0 4px #2854dc12;
+}
+.campus-hero h1 {
+  font-size: clamp(52px, 6.2vw, 86px);
+  letter-spacing: -0.072em;
+  line-height: 1.01;
+  font-weight: 700;
+  margin: 26px 0 25px;
+}
+.campus-hero h1 > span {
+  display: block;
+}
+.kinetic-line {
+  color: #234dd5;
+  height: 1.13em;
+  overflow: hidden;
+  position: relative;
+}
+.kinetic-line > span {
+  display: block;
+  transform-origin: left bottom;
+  white-space: nowrap;
+  font-style: italic;
+}
+.campus-hero-copy > p {
+  max-width: 450px;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #676c66;
+}
+.campus-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-top: 30px;
+}
+.campus-button {
+  background: #234dd5;
+  color: white;
+  border: 1.5px solid #182b6e;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 #182b6e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 17px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+.campus-button:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #182b6e;
+}
+.campus-secondary {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.campus-secondary svg {
+  transition: transform 0.2s;
+}
+.campus-secondary:hover svg {
+  transform: translate(3px, -3px);
+}
+.campus-hero-note {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: #74786d;
+  margin-top: 29px;
+}
+.student-collage {
+  height: 540px;
+  position: relative;
+  isolation: isolate;
+}
+.collage-disc {
+  position: absolute;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: #e7ed88;
+  left: 24px;
+  top: 57px;
+  z-index: -3;
+}
+.collage-grid {
+  position: absolute;
+  inset: 15px -30px 25px 25px;
+  z-index: -4;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(#a8ad9c 1px, transparent 1px),
+    linear-gradient(90deg, #a8ad9c 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse, #000, transparent 70%);
+}
+.collage-outline {
+  position: absolute;
+  top: 9px;
+  right: 0;
+  font-size: 118px;
+  line-height: 0.83;
+  font-weight: 700;
+  letter-spacing: -0.09em;
+  color: transparent;
+  -webkit-text-stroke: 1px #a7ad93;
+  transform: rotate(8deg);
+  z-index: -2;
+}
+.student-cutout {
+  position: absolute;
+  inset: -15px 18px 0 48px;
+  z-index: -1;
+  overflow: hidden;
+  mask-image: linear-gradient(#000 92%, transparent 100%);
+}
+.student-cutout img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(8px 8px 0 #22274814);
+}
+.collage-sticker {
+  position: absolute;
+  left: 10px;
+  top: 50px;
+  width: 105px;
+  height: 105px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: #234dd5;
+  color: white;
+  border: 2px solid #192963;
+  box-shadow: 3px 4px 0 #182b6e;
+}
+.collage-sticker span {
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+}
+.collage-skill {
+  position: absolute;
+  bottom: 106px;
+  left: -12px;
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 17px 20px;
+  background: #fffef9;
+  border: 1.5px solid #242b37;
+  box-shadow: 5px 5px 0 #242b37;
+  border-radius: 13px;
+  transform: rotate(-4deg);
+}
+.collage-check {
+  display: grid;
+  place-items: center;
+  background: #e7ed88;
+  width: 37px;
+  height: 37px;
+  border: 1px solid #788446;
+  border-radius: 50%;
+}
+.collage-skill small {
+  font-size: 8px;
+  letter-spacing: 1px;
+  display: block;
+  color: #72776a;
+}
+.collage-skill b {
+  display: block;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+}
+.collage-skill div > span {
+  font-size: 9px;
+  color: #777d70;
+  display: block;
+}
+.collage-caption {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  text-align: right;
+}
+.collage-caption span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.8px;
+}
+.collage-caption b {
+  font-size: 14px;
+  letter-spacing: -0.4px;
+}
+.collage-tape {
+  position: absolute;
+  right: -17px;
+  bottom: 102px;
+  transform: rotate(90deg);
+  transform-origin: right center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  background: #f3f0dd;
+  padding: 6px 16px;
+}
+.campus-hero-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 24px;
+  padding-bottom: 18px;
+  margin-top: 8px;
+  font-size: 8px;
+  letter-spacing: 1.1px;
+  color: #828677;
+}
+.campus-hero-footer a {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #414a3c;
+  font-weight: 600;
+}
+.career-marquee {
+  border-top: 1px solid #1b2634;
+  border-bottom: 1px solid #1b2634;
+  background: #e7ed88;
+  padding: 19px 0;
+  transform: rotate(-1.3deg);
+  margin: 14px -10px 0;
+  overflow: hidden;
+}
+.career-marquee > div {
+  display: flex;
+  width: max-content;
+  animation: career-marquee 32s linear infinite;
+}
+.marquee-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.marquee-group > span {
+  display: flex;
+  align-items: center;
+  gap: 42px;
+  margin-right: 42px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.marquee-star {
+  font-size: 27px;
+  line-height: 1;
+}
+.career-marquee:hover > div {
+  animation-play-state: paused;
+}
+@keyframes career-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.career-playground {
+  padding-top: 100px;
+  padding-bottom: 32px;
+  scroll-margin-top: 130px;
+}
+.career-playground-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 25px;
+  margin-bottom: 35px;
+}
+.career-playground h2 {
+  font-size: 46px;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+  margin-top: 18px;
+}
+.career-playground-heading > p {
+  font-size: 12px;
+}
+.pathway-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.pathway-tabs button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border: 1px solid #d9ddcd;
+  background: transparent;
+  border-radius: 40px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pathway-tabs button > *:not(.pathway-active) {
+  position: relative;
+  z-index: 1;
+}
+.pathway-active {
+  position: absolute;
+  inset: -1px;
+  background: #e7ed88;
+  border: 1px solid #1b2634;
+  border-radius: 40px;
+  box-shadow: 0 3px 0 #1b2634;
+}
+.pathway-panel {
+  border: 1px solid #d9ddcd;
+  border-radius: 22px;
+  background: #eef0e5;
+  overflow: hidden;
+}
+.pathway-panel-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 70px;
+  padding: 43px 48px;
+  align-items: center;
+  min-height: 285px;
+}
+.pathway-panel h3 {
+  font-size: 28px;
+  margin: 15px 0 14px;
+  max-width: 380px;
+}
+.pathway-panel p {
+  font-size: 12px;
+  max-width: 390px;
+  margin-bottom: 23px;
+}
+.pathway-feed {
+  background: #fffef9;
+  border: 1.5px solid #242b37;
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 #242b37;
+}
+.feed-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e7e9dc;
+  padding: 15px 20px;
+}
+.feed-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+}
+.feed-heading i {
+  width: 6px;
+  height: 6px;
+  background: #87a341;
+  border-radius: 50%;
+  animation: feed-pulse 2s infinite;
+}
+.feed-heading small {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #7f8575;
+}
+.feed-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid #e7e9dc;
+}
+.feed-row:last-child {
+  border: 0;
+}
+.feed-row > span {
+  font-size: 9px;
+  color: #8a907c;
+}
+.feed-row b {
+  font-size: 11px;
+  font-weight: 500;
+  flex: 1;
+}
+.feed-row svg {
+  color: #536725;
+}
+@keyframes feed-pulse {
+  50% {
+    box-shadow: 0 0 0 4px #87a34120;
+  }
+}
+.campus-landing .perspectives {
+  padding-top: 85px;
+}
+.campus-landing .perspective-card {
+  border-radius: 18px;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
+}
+.campus-landing .perspective-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 0 #242b3709;
+}
+.campus-landing .steps-section {
+  background: #edf0e1;
+}
+.campus-landing .cta-section {
+  background: #e7ed88;
+  border-radius: 24px;
+}
+.campus-landing .cta-section .highlight,
+.campus-landing .cta-section h2 > span {
+  color: #234dd5;
+}
+@media (min-width: 1440px) {
+  .campus-hero h1 {
+    font-size: 86px;
+  }
+  .campus-hero {
+    padding-top: 48px;
+  }
+}
+@media (max-width: 1100px) {
+  .glass-header .public-links > a {
+    padding: 10px 8px;
+    font-size: 10px;
+  }
+  .glass-header .public-links > a:nth-child(n + 4) {
+    display: flex;
+  }
+  .glass-header .public-nav {
+    gap: 10px;
+  }
+  .glass-header .nav-actions {
+    gap: 10px;
+  }
+  .glass-header .sign-in {
+    display: none;
+  }
+  .student-collage {
+    height: 480px;
+  }
+  .collage-disc {
+    width: 350px;
+    height: 350px;
+    top: 80px;
+  }
+  .collage-outline {
+    font-size: 100px;
+  }
+  .collage-skill {
+    left: -15px;
+    padding: 13px;
+  }
+  .campus-hero-actions {
+    gap: 19px;
+  }
+  .campus-button {
+    gap: 16px;
+    padding: 16px;
+  }
+  .campus-hero-grid {
+    gap: 12px;
+  }
+  .pathway-panel-content {
+    gap: 35px;
+    padding: 35px;
+  }
+}
+@media (max-width: 800px) {
+  .glass-header.public-header,
+  .glass-header.is-scrolled {
+    width: calc(100% - 32px);
+    top: 12px;
+    margin-top: 12px;
+  }
+  .glass-header .public-nav {
+    min-height: 64px;
+    padding: 0 17px;
+  }
+  .glass-header .public-links {
+    display: none;
+  }
+  .glass-header .mobile-toggle {
+    display: flex;
+  }
+  .glass-header .public-links.opened {
+    display: flex;
+    position: absolute;
+    top: 77px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    background: #fffffff2;
+    backdrop-filter: blur(24px);
+    padding: 16px;
+    border-radius: 22px;
+    border: 1px solid #fff;
+    box-shadow: 0 18px 35px #20283818;
+    margin: 0;
+    gap: 5px;
+  }
+  .glass-header .public-links.opened > a {
+    display: flex;
+    font-size: 13px;
+    padding: 13px 18px;
+  }
+  .campus-hero {
+    padding-top: 24px;
+  }
+  .campus-hero-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .campus-hero h1 {
+    font-size: clamp(38px, 6.2vw, 60px);
+  }
+  .campus-hero-copy > p {
+    font-size: 12px;
+  }
+  .campus-hero-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .campus-hero-note {
+    font-size: 8px;
+  }
+  .student-collage {
+    height: 420px;
+    margin-right: 0;
+  }
+  .student-cutout {
+    inset: 0 0 0 0;
+  }
+  .collage-disc {
+    width: 280px;
+    height: 280px;
+    left: 0;
+    top: 75px;
+  }
+  .collage-sticker {
+    width: 78px;
+    height: 78px;
+    left: -5px;
+    top: 45px;
+  }
+  .collage-sticker svg {
+    width: 24px;
+  }
+  .collage-sticker span {
+    font-size: 8px;
+  }
+  .collage-skill {
+    left: -10px;
+    bottom: 76px;
+    padding: 10px;
+    gap: 8px;
+  }
+  .collage-skill b {
+    font-size: 11px;
+  }
+  .collage-skill div > span {
+    font-size: 7px;
+  }
+  .collage-check {
+    width: 29px;
+    height: 29px;
+  }
+  .collage-caption {
+    right: 0;
+    bottom: 20px;
+  }
+  .collage-caption b {
+    font-size: 11px;
+  }
+  .collage-outline {
+    font-size: 80px;
+  }
+  .collage-tape {
+    display: none;
+  }
+  .campus-hero-footer {
+    font-size: 7px;
+    gap: 20px;
+  }
+  .campus-hero-footer > span:last-child {
+    display: none;
+  }
+  .career-playground {
+    padding-top: 75px;
+  }
+  .career-playground h2 {
+    font-size: 38px;
+  }
+  .career-playground-heading > p {
+    font-size: 10px;
+  }
+  .pathway-tabs {
+    gap: 9px;
+  }
+  .pathway-tabs button {
+    padding: 12px 14px;
+    font-size: 10px;
+    gap: 8px;
+  }
+  .pathway-panel-content {
+    gap: 20px;
+    padding: 30px;
+  }
+  .pathway-panel h3 {
+    font-size: 24px;
+  }
+  .pathway-panel .campus-kicker {
+    font-size: 8px;
+  }
+  .feed-heading {
+    padding: 12px;
+  }
+  .feed-row {
+    margin: 0 12px;
+  }
+  .feed-row b {
+    font-size: 9px;
+  }
+}
+@media (max-width: 600px) {
+  .glass-header .logo {
+    font-size: 20px;
+  }
+  .glass-header .logo-mark {
+    width: 24px;
+    height: 24px;
+  }
+  .glass-header .nav-join {
+    font-size: 10px;
+    padding: 10px 13px;
+  }
+  .glass-header .public-nav {
+    padding: 0 13px;
+  }
+  .campus-hero-grid {
+    display: flex;
+    flex-direction: column;
+    padding-left: 24px;
+    padding-right: 24px;
+    align-items: stretch;
+  }
+  .campus-hero-copy {
+    position: relative;
+    z-index: 2;
+  }
+  .campus-hero h1 {
+    font-size: clamp(42px, 11.8vw, 66px);
+    margin: 22px 0 19px;
+  }
+  .campus-kicker {
+    font-size: 8px;
+    letter-spacing: 1.4px;
+  }
+  .campus-hero-copy > p {
+    max-width: 350px;
+    font-size: 12px;
+  }
+  .campus-hero-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 22px;
+    margin-top: 24px;
+  }
+  .campus-button {
+    font-size: 11px;
+    padding: 14px 16px;
+    gap: 16px;
+  }
+  .campus-secondary {
+    font-size: 10px;
+    gap: 6px;
+  }
+  .campus-hero-note {
+    margin-top: 21px;
+    font-size: 8px;
+  }
+  .student-collage {
+    height: 420px;
+    max-width: 360px;
+    width: 100%;
+    align-self: center;
+    margin-top: 22px;
+  }
+  .student-cutout {
+    inset: -12px 10px 0 20px;
+  }
+  .collage-disc {
+    width: 310px;
+    height: 310px;
+    left: 22px;
+    top: 50px;
+  }
+  .collage-sticker {
+    left: 14px;
+    top: 15px;
+  }
+  .collage-outline {
+    font-size: 100px;
+    right: 0;
+    top: 0;
+  }
+  .collage-skill {
+    left: 0;
+    bottom: 76px;
+    padding: 13px;
+  }
+  .collage-skill b {
+    font-size: 13px;
+  }
+  .collage-skill div > span {
+    font-size: 8px;
+  }
+  .collage-caption {
+    bottom: 3px;
+    right: 10px;
+  }
+  .campus-hero-footer {
+    padding-top: 16px;
+    padding-bottom: 14px;
+    margin: 0;
+    font-size: 6px;
+  }
+  .campus-hero-footer a {
+    font-size: 6px;
+    gap: 7px;
+  }
+  .career-marquee {
+    padding: 15px 0;
+    margin-top: 8px;
+  }
+  .marquee-group > span {
+    font-size: 11px;
+    gap: 25px;
+    margin-right: 25px;
+  }
+  .marquee-star {
+    font-size: 22px;
+  }
+  .career-playground {
+    padding: 65px 24px 20px;
+  }
+  .career-playground-heading {
+    display: block;
+    margin-bottom: 25px;
+  }
+  .career-playground-heading > p {
+    font-size: 11px;
+    margin-top: 19px;
+  }
+  .career-playground h2 {
+    font-size: 36px;
+  }
+  .pathway-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+  .pathway-tabs button {
+    justify-content: flex-start;
+    padding: 13px 18px;
+    font-size: 11px;
+  }
+  .pathway-tabs button > svg:last-child {
+    margin-left: auto;
+  }
+  .pathway-panel-content {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 27px 22px;
+    min-height: 430px;
+  }
+  .pathway-panel h3 {
+    font-size: 25px;
+  }
+  .pathway-panel p {
+    font-size: 11px;
+  }
+  .feed-heading {
+    padding: 14px;
+  }
+  .feed-row {
+    margin: 0 15px;
+  }
+  .feed-row b {
+    font-size: 10px;
+  }
+  .campus-landing .perspectives {
+    padding-top: 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .career-marquee > div,
+  .feed-heading i {
+    animation: none;
+  }
+  .glass-header,
+  .campus-button,
+  .campus-secondary svg,
+  .campus-landing .perspective-card {
+    transition: none;
+  }
+}
