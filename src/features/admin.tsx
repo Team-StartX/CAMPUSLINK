@@ -632,7 +632,9 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
                         setBusy(true);
                         setFailure('');
                         try {
-                          setMlCheck((await apiClient.get('/admin/ml-status')).data);
+                          setMlCheck(
+                            (await apiClient.get('/admin/ml-status', { timeout: 75000 })).data,
+                          );
                         } catch (e) {
                           setFailure((e as Error).message);
                         } finally {
@@ -640,12 +642,13 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
                         }
                       }}
                     >
-                      {busy ? 'Checking…' : 'Check ML connection'}
+                      {busy ? 'Checking · allow up to 65 seconds…' : 'Check ML connection'}
                     </Button>
                   </div>
                   <p className="muted">
                     Tests the private API connection using generic sample data. Student records are
-                    not sent by this check.
+                    not sent by this check. The ML service may need about a minute to wake after
+                    inactivity.
                   </p>
                   {mlCheck && (
                     <p role="status">

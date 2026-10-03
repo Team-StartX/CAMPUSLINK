@@ -67,6 +67,8 @@ The connection adapter uses `Authorization: Bearer <ML_API_TOKEN>`, fixed `/v1/m
 
 External resume extraction supplies suggestions for review without changing verified skills. Job keyword relevance supplements the existing eligibility and fit calculation. Interview rubric feedback is preparation guidance. Historical-model estimates use the six current readiness scores; the training rubrics must be checked against these scores before interpreting the probabilities. ML responses never approve accounts or make hiring decisions.
 
+Admin connection checks allow 65 seconds for the ML service to wake after inactivity; their browser request allows 75 seconds. Student analysis keeps a seven-second timeout and local fallback. Timeout, network failure, non-JSON response, invalid response contract, and rejected token produce distinct messages. If a check still fails, open the ML service's `/health` page, wait for `status: ready`, then retry the admin check. A ready health page does not verify the private token or individual model contracts.
+
 The template uses the existing local AI/NLP implementation. To enable the optional OpenAI provider, configure `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and `OPENAI_MODEL` on Render. To use a real trained placement model, include its validated artifact in the deployment and set `ML_MODEL_PATH` to its path. The ignored local model files are not uploaded automatically; synthetic demo models are not production models.
 
 ## Check the deployment

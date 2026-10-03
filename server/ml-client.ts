@@ -70,6 +70,7 @@ export async function requestMl<T>(
   payload: unknown,
   schema: z.ZodType<T>,
   consent: boolean,
+  timeoutMs = 7000,
 ): Promise<MlResult<T>> {
   const fail = (status: MlStatus, message: string): MlResult<T> => ({
     data: null,
@@ -101,7 +102,7 @@ export async function requestMl<T>(
       redirect: 'error',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.mlApiToken}` },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(7000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (response.status === 401 || response.status === 403)
       return fail(
@@ -134,10 +135,20 @@ export async function requestMl<T>(
         'The deployed placement artifact is an unverified demo. Local preparation guidance is being used.',
       );
     return { data: parsed.data, status: 'remote', message: 'Connected ML service response.' };
-  } catch {
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      return fail(
+        'invalid-response',
+        'ML service returned non-JSON data. It may still be starting; retry the connection check. Local analysis is being used.',
+      );
+    if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))
+      return fail(
+        'unavailable',
+        'ML service did not respond before the timeout. It may be starting after inactivity; retry the connection check. Local analysis is being used.',
+      );
     return fail(
       'unavailable',
-      'ML service timed out or could not be reached. Local analysis is being used.',
+      'The backend could not reach the ML service. Check the ML service status and backend network settings. Local analysis is being used.',
     );
   }
 }
@@ -159,7 +170,8 @@ export async function checkMlConnection(allModels = false) {
     payload: unknown,
     schema: z.ZodType<T>,
   ) {
-    const result = await requestMl(operation, payload, schema, true);
+    // Admin diagnostics allow a sleeping service time to start. Student requests stay fast.
+    const result = await requestMl(operation, payload, schema, true, 65000);
     return { name, ...mlIntegration(result), ready: result.status === 'remote' };
   }
   const pending = [

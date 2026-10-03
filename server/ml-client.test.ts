@@ -13,11 +13,37 @@ const fixture = {
   trained: false,
 };
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   config.mlApiToken = 'test-only-token';
   config.mlApiUrl = 'https://campuslink-ml-demo.onrender.com';
 });
 describe('ML connection boundary', () => {
+  it('allows admin cold starts while keeping student requests at seven seconds', async () => {
+    const timer = vi.spyOn(AbortSignal, 'timeout');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify(fixture))),
+    );
+    await requestMl('jobs', {}, jobResponse, true);
+    expect(timer).toHaveBeenLastCalledWith(7000);
+    await checkMlConnection();
+    expect(timer).toHaveBeenLastCalledWith(65000);
+  });
+  it('distinguishes timeouts from non-JSON responses and network errors', async () => {
+    const timeout = new Error('private upstream details');
+    timeout.name = 'TimeoutError';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeout));
+    expect((await requestMl('jobs', {}, jobResponse, true)).message).toContain(
+      'before the timeout',
+    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>Starting</html>')));
+    expect((await requestMl('jobs', {}, jobResponse, true)).status).toBe('invalid-response');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private network details')));
+    const result = await requestMl('jobs', {}, jobResponse, true);
+    expect(result.message).toContain('could not reach');
+    expect(result.message).not.toContain('private network');
+  });
   it('does not send requests without configuration or consent', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
