@@ -643,16 +643,23 @@ function JourneyPath({
   progress: ReturnType<typeof useSpring>;
   reduced: boolean;
 }) {
+  const pathRef = useRef<SVGPathElement>(null);
   const d = Array.from({ length: 13 }, (_, i) => {
     const y = i * 440;
     return `${i === 0 ? 'M 500 0 ' : ''}C ${i % 2 ? 535 : 465} ${y + 70}, ${i % 2 ? 535 : 465} ${y + 160}, 500 ${y + 220} C ${i % 2 ? 465 : 535} ${y + 280}, ${i % 2 ? 465 : 535} ${y + 370}, 500 ${y + 440}`;
   }).join(' ');
-  const packetY = useTransform(progress, [0, 1], [0, 5720]);
-  const packetX = useTransform(progress, (value) => -26 * Math.sin(value * 13 * 2 * Math.PI));
+  const pointAtProgress = (value: number) => {
+    const path = pathRef.current;
+    return path
+      ? path.getPointAtLength(Math.max(0, Math.min(1, value)) * path.getTotalLength())
+      : { x: 500, y: 0 };
+  };
+  const packetX = useTransform(progress, (value) => pointAtProgress(value).x);
+  const packetY = useTransform(progress, (value) => pointAtProgress(value).y);
   return (
     <div className="journey-path" aria-hidden="true">
       <svg className="journey-path-desktop" viewBox="0 0 1000 5720" preserveAspectRatio="none">
-        <path d={d} className="journey-path-base" />
+        <path ref={pathRef} d={d} className="journey-path-base" />
         <motion.path
           d={d}
           className="journey-path-fill"
@@ -660,8 +667,8 @@ function JourneyPath({
         />
         {!reduced && (
           <motion.g style={{ y: packetY, x: packetX }}>
-            <rect x="489" y="-10" width="22" height="20" rx="4" fill="#232c39" />
-            <path d="M495 -3h10m-10 5h7" stroke="#fff" strokeWidth="1.5" />
+            <rect x="-11" y="-10" width="22" height="20" rx="4" fill="#232c39" />
+            <path d="M-5 -3h10m-10 5h7" stroke="#fff" strokeWidth="1.5" />
           </motion.g>
         )}
       </svg>
