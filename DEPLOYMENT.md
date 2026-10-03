@@ -101,3 +101,6 @@ Redeploy both the frontend and Express backend after installing this update. No 
 Local development stays unchanged: frontend port 3000, backend port 8000. Start each in its own terminal with `npm run dev` and `npm run server:dev`.
 
 Official references: [Render Blueprint settings](https://render.com/docs/blueprint-spec), [Render port binding](https://render.com/docs/web-services#port-binding), [Vercel Node.js versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions), [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
+# Organization directories
+
+Campus/institute registration, Google onboarding, administrator campus forms, and recruiter company profiles use the backend's public `/api/v1/directory` routes. Deploy both frontend and backend to enable the new controls. No additional environment variables or API keys are needed. The backend needs outbound HTTPS access to `raw.githubusercontent.com` (Hipo university dataset) and `autocomplete.clearbit.com` (company suggestions). Provider coverage and availability vary; users can always type a name manually. Directory selection never grants approval or verifies an organization. Existing campus registration is still required before students can select a campus.

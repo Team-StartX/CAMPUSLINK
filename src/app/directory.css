@@ -1,0 +1,50 @@
+.directory-picker {
+  position: relative;
+  gap: 8px;
+}
+.directory-picker > label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.directory-picker .directory-country {
+  width: auto;
+  max-width: 150px;
+  align-self: flex-start;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.directory-results {
+  border: 1px solid #d4dbcd;
+  border-radius: 12px;
+  background: #fffef9;
+  max-height: 250px;
+  overflow-y: auto;
+  box-shadow: 0 8px 22px #24362d0c;
+}
+.directory-results > p {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #647060;
+}
+.directory-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #e8ebe3;
+}
+.directory-option strong {
+  font-size: 13px;
+}
+.directory-option small,
+.directory-picker > small {
+  color: #647060;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.directory-option:hover,
+.directory-option.active {
+  background: #e8efdf;
+}

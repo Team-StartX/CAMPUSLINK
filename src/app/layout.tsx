@@ -10,6 +10,7 @@ import 'swiper/css/navigation';
 import './globals.css';
 import './auth.css';
 import './admin.css';
+import './directory.css';
 import { Providers } from '@/components/providers';
 import { Platform } from '@/components/platform';
 export const metadata: Metadata = {

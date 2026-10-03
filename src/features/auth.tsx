@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { OrganizationPicker } from '@/components/organization-picker';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -91,6 +92,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<Values>({ resolver: zodResolver(schema) });
   const submit = handleSubmit(
     async (values) => {
@@ -284,31 +286,47 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                       placeholder: 'Repeat your password',
                     }}
                   />
-                  <FormField
-                    label={
-                      role === 'student'
-                        ? 'College / university'
-                        : role === 'recruiter'
-                          ? 'Company name'
-                          : 'Institution name'
-                    }
-                  >
-                    <input
-                      {...register('institution')}
-                      list={role === 'student' ? 'registration-campuses' : undefined}
-                      required
-                      placeholder={
-                        role === 'student' ? 'Delhi Technological University' : 'Organization name'
+                  {role !== 'student' ? (
+                    <>
+                      <input type="hidden" {...register('institution')} />
+                      <OrganizationPicker
+                        kind={role === 'campus' ? 'universities' : 'companies'}
+                        label={role === 'campus' ? 'College / university' : 'Company name'}
+                        value={watch('institution') || ''}
+                        onChange={(value) =>
+                          setValue('institution', value, { shouldValidate: true })
+                        }
+                      />
+                    </>
+                  ) : (
+                    <FormField
+                      label={
+                        role === 'student'
+                          ? 'College / university'
+                          : role === 'recruiter'
+                            ? 'Company name'
+                            : 'Institution name'
                       }
-                    />
-                    {role === 'student' && backendEnabled && (
-                      <datalist id="registration-campuses">
-                        {campuses?.map((c) => (
-                          <option key={c.id} value={c.name} />
-                        ))}
-                      </datalist>
-                    )}
-                  </FormField>
+                    >
+                      <input
+                        {...register('institution')}
+                        list={role === 'student' ? 'registration-campuses' : undefined}
+                        required
+                        placeholder={
+                          role === 'student'
+                            ? 'Delhi Technological University'
+                            : 'Organization name'
+                        }
+                      />
+                      {role === 'student' && backendEnabled && (
+                        <datalist id="registration-campuses">
+                          {campuses?.map((c) => (
+                            <option key={c.id} value={c.name} />
+                          ))}
+                        </datalist>
+                      )}
+                    </FormField>
+                  )}
                   {role === 'student' ? (
                     <>
                       <FormField label="Graduation year">

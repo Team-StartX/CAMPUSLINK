@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { OrganizationPicker } from './organization-picker';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession, authService } from '@/store/session';
@@ -461,11 +462,21 @@ export function ConnectedCompany() {
           }
         }}
       >
-        {(['name', 'industry', 'headquarters'] as const).map((k) => (
-          <FormField key={k} label={k}>
-            <input name={k} defaultValue={data[k]} required={k === 'name'} maxLength={150} />
-          </FormField>
-        ))}
+        {(['name', 'industry', 'headquarters'] as const).map((k) =>
+          k === 'name' ? (
+            <OrganizationPicker
+              key={k}
+              kind="companies"
+              label="Company name"
+              name="name"
+              defaultValue={data.name}
+            />
+          ) : (
+            <FormField key={k} label={k}>
+              <input name={k} defaultValue={data[k]} maxLength={150} />
+            </FormField>
+          ),
+        )}
         <FormField label="About your company">
           <textarea name="description" defaultValue={data.description} maxLength={5000} rows={5} />
         </FormField>

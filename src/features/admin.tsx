@@ -1,4 +1,5 @@
 'use client';
+import { OrganizationPicker } from '@/components/organization-picker';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -838,7 +839,20 @@ function ContentEditor({
           </>
         ) : (
           <>
-            {field('name', 'Name')}
+            {kind === 'campuses' ? (
+              <OrganizationPicker
+                kind="universities"
+                label="College / university name"
+                value={values.name || ''}
+                onChange={(name) => update('name', name)}
+                onSelect={(option) => {
+                  const location = [option.region, option.country].filter(Boolean).join(', ');
+                  if (location) update('location', location);
+                }}
+              />
+            ) : (
+              field('name', 'Name')
+            )}
             {kind === 'campuses' ? (
               <>
                 {field('location', 'Location')}

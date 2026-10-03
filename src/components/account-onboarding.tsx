@@ -5,6 +5,7 @@ import { useSession, authService } from '@/store/session';
 import { apiClient } from '@/services/api/client';
 import { Button, FormField } from './ui';
 import type { Campus } from '@/types';
+import { OrganizationPicker } from './organization-picker';
 
 export function AccountOnboarding() {
   const user = useSession((s) => s.user),
@@ -98,16 +99,12 @@ export function AccountOnboarding() {
             )}
           </FormField>
         ) : (
-          <FormField label={user?.role === 'campus' ? 'College / university name' : 'Company name'}>
-            <input
-              required
-              minLength={2}
-              maxLength={150}
-              value={institution}
-              autoComplete="organization"
-              onChange={(e) => setInstitution(e.target.value)}
-            />
-          </FormField>
+          <OrganizationPicker
+            kind={user?.role === 'campus' ? 'universities' : 'companies'}
+            label={user?.role === 'campus' ? 'College / university name' : 'Company name'}
+            value={institution}
+            onChange={setInstitution}
+          />
         )}
         {student && (
           <>

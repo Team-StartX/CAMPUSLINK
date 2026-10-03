@@ -29,6 +29,7 @@ import { checkEligibility as requireEligibility } from '../src/utils/placement';
 import { mountGoogleAuth } from './google';
 import { mountAdmin } from './admin';
 import { mlConfigured } from './ml-client';
+import { mountDirectory } from './directory';
 
 const registration = z
   .object({
@@ -90,6 +91,7 @@ export async function createApp(db = new Database()) {
     next();
   });
   const base = '/api/v1';
+  mountDirectory(app);
   app.get(`${base}/health`, async (_req, res) => {
     await db.query('SELECT 1');
     res.json({
