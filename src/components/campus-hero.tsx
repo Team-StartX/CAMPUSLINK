@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowDown, ArrowUpRight, Check, Code2, ShieldCheck, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { PublicStartLink } from './public-session';
 
 const words = ['STAND OUT.', 'GET HIRED.', 'GO FURTHER.'];
 const pathways = [
@@ -98,9 +99,9 @@ export function CampusHero() {
               journey from preparation to offer.
             </motion.p>
             <div className="campus-hero-actions">
-              <Link className="campus-button" href="/register?role=student">
+              <PublicStartLink className="campus-button" href="/register?role=student">
                 Get started <ArrowUpRight size={20} />
-              </Link>
+              </PublicStartLink>
               <Link className="campus-secondary" href="/features">
                 Explore platform <ArrowUpRight size={18} />
               </Link>

@@ -111,12 +111,16 @@ export const authService = {
   },
   async restore() {
     if (!backendEnabled) return useSession.getState().user;
+    const previousUser = useSession.getState().user;
     try {
       const { data } = await apiClient.get('/auth/me');
+      // A delayed restore must not overwrite a newer login or logout.
+      if (useSession.getState().user !== previousUser) return useSession.getState().user;
       setCsrf(data.csrf);
       useSession.getState().setUser(data.user);
       return data.user as User;
     } catch {
+      if (useSession.getState().user !== previousUser) return useSession.getState().user;
       useSession.getState().setUser(null);
       return null;
     }

@@ -32,15 +32,26 @@ import { DemoData, Role } from '@/types';
 import { motion } from 'framer-motion';
 import { BackendTools, AuthLinkPage } from './backend-tools';
 import { backendEnabled } from '@/services/api/remote';
+import { PublicSessionProvider } from './public-session';
 export function Platform() {
   const path = usePathname();
-  if (path === '/') return <Landing />;
+  if (path === '/')
+    return (
+      <PublicSessionProvider>
+        <Landing />
+      </PublicSessionProvider>
+    );
   if (path === '/reset-password' || path === '/verify-email')
     return <AuthLinkPage verify={path === '/verify-email'} />;
   if (path === '/login' || path === '/register')
     return <AuthPage registering={path === '/register'} />;
   const [, role, section, id] = path.split('/');
-  if (!['student', 'recruiter', 'campus'].includes(role)) return <PublicPage slug={role} />;
+  if (!['student', 'recruiter', 'campus'].includes(role))
+    return (
+      <PublicSessionProvider>
+        <PublicPage slug={role} />
+      </PublicSessionProvider>
+    );
   return <Workspace role={role as Role} section={section || 'dashboard'} id={id} />;
 }
 function Workspace({ role, section, id }: { role: Role; section: string; id?: string }) {

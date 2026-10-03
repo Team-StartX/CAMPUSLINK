@@ -23,6 +23,7 @@ import { MomentumSection, CommunityAndFAQ } from './home-extras';
 import { PlacementJourney } from './placement-journey';
 import { CampusOperation } from './campus-operation';
 import { useState } from 'react';
+import { PublicStartLink, usePublicSession } from './public-session';
 export function Logo({ dark = false }: { dark?: boolean }) {
   return (
     <Link href="/" className={`logo ${dark ? 'logo-light' : ''}`} aria-label="CampusLink home">
@@ -152,6 +153,7 @@ export function JourneyIllustration() {
   );
 }
 export function PublicNav() {
+  const { user, ready } = usePublicSession();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -204,12 +206,14 @@ export function PublicNav() {
           ))}
         </nav>
         <div className="nav-actions">
-          <Link href="/login" className="sign-in">
-            Sign in <ArrowUpRight size={14} />
-          </Link>
-          <Link href="/register" className="button small dark nav-join">
+          {ready && !user && (
+            <Link href="/login" className="sign-in">
+              Sign in <ArrowUpRight size={14} />
+            </Link>
+          )}
+          <PublicStartLink href="/register" className="button small dark nav-join">
             Get started <ArrowUpRight size={15} />
-          </Link>
+          </PublicStartLink>
           <button
             className="mobile-toggle"
             onClick={() => setOpen(!open)}
@@ -225,6 +229,7 @@ export function PublicNav() {
   );
 }
 export function Landing() {
+  const { user } = usePublicSession();
   return (
     <>
       <PublicNav />
@@ -413,16 +418,20 @@ export function Landing() {
           </h2>
           <p>Your next chapter is closer than you think.</p>
           <div>
-            <Link href="/register?role=student" className="button dark">
+            <PublicStartLink href="/register?role=student" className="button dark">
               Join as a student <ArrowUpRight size={18} />
-            </Link>
-            <Link href="/register?role=recruiter" className="button outline">
-              Hire great talent <ArrowUpRight size={18} />
-            </Link>
+            </PublicStartLink>
+            {!user && (
+              <PublicStartLink href="/register?role=recruiter" className="button outline">
+                Hire great talent <ArrowUpRight size={18} />
+              </PublicStartLink>
+            )}
           </div>
-          <Link href="/register?role=campus" className="text-link">
-            Bring CampusLink to your campus <ArrowRight size={16} />
-          </Link>
+          {!user && (
+            <PublicStartLink href="/register?role=campus" className="text-link">
+              Bring CampusLink to your campus <ArrowRight size={16} />
+            </PublicStartLink>
+          )}
           <span className="cta-star">✦</span>
         </section>
         <TeamStartX />
@@ -445,9 +454,9 @@ export function PublicFooter() {
           <Link href="/pricing">Pricing</Link>
           <Link href="/how-it-works">How it works</Link>
         </div>
-        <Link href="/register" className="text-link">
+        <PublicStartLink href="/register" className="text-link">
           Let’s build your future <ArrowUpRight size={16} />
-        </Link>
+        </PublicStartLink>
       </div>
       <div className="footer-bottom">
         <span>© 2026 CampusLink. Made for what comes next.</span>
@@ -515,9 +524,9 @@ export function PublicPage({ slug }: { slug: string }) {
                     </span>
                   ))}
                 </div>
-                <Link className="button dark" href="/register">
+                <PublicStartLink className="button dark" href="/register">
                   Get started <ArrowUpRight size={16} />
-                </Link>
+                </PublicStartLink>
               </div>
             ))}
           </div>
@@ -562,9 +571,9 @@ export function PublicPage({ slug }: { slug: string }) {
         )}
         <div className="public-page-cta">
           <h2>Ready to write your next chapter?</h2>
-          <Link className="button dark" href="/register">
+          <PublicStartLink className="button dark" href="/register">
             Join CampusLink <ArrowUpRight size={17} />
-          </Link>
+          </PublicStartLink>
         </div>
         {slug === 'about' && (
           <p className="muted">

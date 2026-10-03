@@ -1,6 +1,7 @@
 'use client';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 import Link from 'next/link';
+import { PublicStartLink } from './public-session';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useInView, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
@@ -712,9 +713,9 @@ export function PlacementJourney() {
           </span>
           <h3>Every step, connected.</h3>
           <p>Request → Match → Apply → Shortlist → Schedule → Interview → Offer</p>
-          <Link className="campus-button" href="/register">
+          <PublicStartLink className="campus-button" href="/register">
             Start your journey <ArrowUpRight size={16} />
-          </Link>
+          </PublicStartLink>
         </footer>
       </div>
     </section>
