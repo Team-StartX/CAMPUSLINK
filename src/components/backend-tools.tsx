@@ -1,6 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { OrganizationPicker } from './organization-picker';
+import { PreparationOverview, type PreparationCategory } from './preparation-overview';
+import { ExternalAnalysisSetting, AnalysisSource } from './external-analysis-setting';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession, authService } from '@/store/session';
@@ -17,6 +19,7 @@ function ConnectedTools({ role }: { role: Role }) {
   const user = useSession((s) => s.user),
     client = useQueryClient(),
     [selected, setSelected] = useState(''),
+    [mlSaving, setMlSaving] = useState(false),
     [message, setMessage] = useState('');
   const { data: people } = useQuery({
     queryKey: ['authorized-students', user?.id],
@@ -43,7 +46,10 @@ function ConnectedTools({ role }: { role: Role }) {
   )
     return null;
   return (
-    <section className="panel backend-tools" style={{ marginBottom: 20 }}>
+    <section
+      className={`panel backend-tools ${role === 'student' ? 'student-backend-tools' : ''}`}
+      style={{ marginBottom: 20 }}
+    >
       {!user?.approved && (
         <p role="status">
           Your organization account is awaiting approval. An authorized campus team or project
@@ -111,32 +117,29 @@ function ConnectedTools({ role }: { role: Role }) {
         </label>
       )}
       {role === 'student' && consent?.mlConfigured && (
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={Boolean(consent.mlConsent)}
-            onChange={async (e) => {
-              try {
-                await authService.restore();
-                await apiClient.put('/account/ml-consent', { consent: e.target.checked });
-                void client.invalidateQueries({ queryKey: ['ai-consent'] });
-                client.removeQueries({ queryKey: ['match'] });
-                client.removeQueries({ queryKey: ['outcome-insight'] });
-                setMessage(
-                  e.target.checked
-                    ? 'External ML analysis enabled.'
-                    : 'External ML analysis disabled. Local analysis remains available.',
-                );
-              } catch (e) {
-                setMessage((e as Error).message);
-              }
-            }}
-          />{' '}
-          Allow my redacted resume text, skills and project summaries, preparation scores, and
-          practice answers to be sent to campuslink-ml-demo.onrender.com for optional analysis.
-          Emails and phone numbers are removed from text; other identifying details may remain. I
-          can turn this off at any time to stop future requests. Local analysis works without this.
-        </label>
+        <ExternalAnalysisSetting
+          enabled={Boolean(consent.mlConsent)}
+          busy={mlSaving}
+          onChange={async (enabled) => {
+            setMlSaving(true);
+            try {
+              await authService.restore();
+              await apiClient.put('/account/ml-consent', { consent: enabled });
+              client.setQueryData(
+                ['ai-consent', user?.id],
+                (old: Record<string, unknown> | undefined) => ({ ...old, mlConsent: enabled }),
+              );
+              await client.invalidateQueries({ queryKey: ['ai-consent'] });
+              client.removeQueries({ queryKey: ['match'] });
+              client.removeQueries({ queryKey: ['outcome-insight'] });
+              setMessage('');
+            } catch (e) {
+              setMessage((e as Error).message);
+            } finally {
+              setMlSaving(false);
+            }
+          }}
+        />
       )}
       {approvals?.length ? (
         <details>
@@ -333,10 +336,12 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
   const [question, setQuestion] = useState(''),
     [answer, setAnswer] = useState(''),
     [error, setError] = useState('');
-  const { data } = useQuery<{
+  const { data, isPending, isError } = useQuery<{
     label: string;
     risk: string;
     factors: string[];
+    score?: number;
+    categories?: PreparationCategory[];
     ml?: { status: string; message: string };
     model: {
       available: boolean;
@@ -353,41 +358,47 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
   return (
     <div className="two-columns">
       <section className="panel">
-        <h2>Preparation support</h2>
-        <Badge>{data?.label || 'Loading evidence'}</Badge>
-        <p>{data?.risk} support priority</p>
-        {data?.factors.map((f) => (
-          <p key={f}>{f}</p>
-        ))}
-        <h3>{data?.model.label}</h3>
-        {data?.ml && (
-          <p className="muted" role="status">
-            {data.ml.message}
-          </p>
-        )}
-        {data?.model.available ? (
+        <PreparationOverview
+          score={data?.score}
+          categories={data?.categories}
+          loading={isPending}
+          error={isError}
+        />
+        {data?.ml && <AnalysisSource status={data.ml.status} />}
+        {data?.model.available &&
+        data.model.provenance === 'historical' &&
+        data.categories?.some((c) => c.recorded) ? (
           <p>
-            {data.model.provenance === 'synthetic'
-              ? 'Synthetic demonstration estimate'
-              : 'Historical model estimate'}
-            : {data.model.probability}%. This is not a placement guarantee.
+            Historical model estimate : {data.model.probability}%. This is not a placement
+            guarantee.
           </p>
-        ) : (
-          <p>{data?.model.reason}</p>
+        ) : null}
+        {data && (
+          <details className="preparation-methods">
+            <summary>About this summary</summary>
+            <p>
+              Your recorded skills, academics, projects and practice results form this preparation
+              score. Areas without evidence are marked “Not added” and do not receive points. This
+              is a preparation guide, not a hiring decision or a placement guarantee.
+            </p>
+            {(!data.model.available || data.model.provenance !== 'historical') && (
+              <p>Historical outcome insights are not available yet.</p>
+            )}
+            {data.model.provenance === 'historical' && (
+              <p className="muted">
+                This estimate uses current preparation scores. Confirm that their scoring rubrics
+                match the historical training data before interpreting the probability.
+              </p>
+            )}
+            {data.model.limitations?.map((limitation) => (
+              <p key={limitation} className="muted">
+                {limitation}
+              </p>
+            ))}
+          </details>
         )}
-        {data?.model.provenance === 'historical' && (
-          <p className="muted">
-            This estimate uses current preparation scores. Confirm that their scoring rubrics match
-            the historical training data before interpreting the probability.
-          </p>
-        )}
-        {data?.model.limitations?.map((limitation) => (
-          <p key={limitation} className="muted">
-            {limitation}
-          </p>
-        ))}
       </section>
-      <section className="panel sage">
+      <section className="panel sage career-assistant">
         <h2>Ask your placement assistant</h2>
         <p>Answers use your placement records.</p>
         <form

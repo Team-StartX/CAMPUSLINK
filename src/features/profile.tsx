@@ -19,6 +19,7 @@ import { DemoData, Role } from '@/types';
 import { backendEnabled } from '@/services/api/remote';
 import { aiService } from '@/services/platform.service';
 import { CareerIntelligence } from '@/components/backend-tools';
+import { AnalysisSource } from '@/components/external-analysis-setting';
 import { studentService, documentService, learningService } from '@/services/platform.service';
 import { Badge, Button, EmptyState, FormField, Modal, PageHeader, Progress } from '@/components/ui';
 import { CareerID, ReadinessCard, AnalyticsChart } from './dashboard';
@@ -510,8 +511,9 @@ export function ReadinessPage({ data }: { data: DemoData }) {
         title="Ready for your next chapter?"
         description="Know your strengths. See your next steps. Keep moving forward."
       />
-      <div className="two-columns">
-        <ReadinessCard full />
+      {backendEnabled && <CareerIntelligence studentId={data.student.id} />}
+      <div className={backendEnabled ? 'readiness-next-steps' : 'two-columns'}>
+        {!backendEnabled && <ReadinessCard full />}
         <section className="panel yellow">
           <Badge>YOUR NEXT STEPS</Badge>
           <h2>
@@ -557,7 +559,6 @@ export function ReadinessPage({ data }: { data: DemoData }) {
           )}
         </section>
       </div>
-      {backendEnabled && <CareerIntelligence studentId={data.student.id} />}
       <section className="panel">
         <div className="panel-header">
           <h3>Your progress over time</h3>
@@ -699,7 +700,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
   const [analysis, setAnalysis] = useState<{
     label: string;
     suggestions: string[];
-    ml?: { message: string };
+    ml?: { status?: string; message: string };
   } | null>(null);
   return (
     <>
@@ -757,11 +758,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
       {analysis && (
         <section className="panel">
           <h3>{analysis.label}</h3>
-          {analysis.ml && (
-            <p role="status" className="muted">
-              {analysis.ml.message}
-            </p>
-          )}
+          {analysis.ml && <AnalysisSource status={analysis.ml.status} />}
           {analysis.suggestions.map((s) => (
             <p key={s}>{s}</p>
           ))}

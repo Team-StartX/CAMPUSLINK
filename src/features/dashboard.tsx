@@ -1,4 +1,5 @@
 'use client';
+import { PreparationOverview } from '@/components/preparation-overview';
 import Link from 'next/link';
 import { CareerID } from '@/components/student-id';
 export { CareerID } from '@/components/student-id';
@@ -75,7 +76,24 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
   );
 }
 export function ReadinessCard({ full = false }: { full?: boolean }) {
-  const { data } = useQuery({ queryKey: ['readiness'], queryFn: aiService.getReadinessScore });
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['readiness'],
+    queryFn: aiService.getReadinessScore,
+  });
+  if (backendEnabled)
+    return (
+      <section className="panel">
+        <PreparationOverview
+          score={data?.score}
+          categories={data?.categories}
+          loading={isPending}
+          error={isError}
+        />
+        <Link className="text-link" href="/student/readiness">
+          Explore your next steps <ArrowUpRight size={15} />
+        </Link>
+      </section>
+    );
   return (
     <div className={`readiness-card panel ${full ? 'full-readiness' : ''}`}>
       <div className="panel-header">

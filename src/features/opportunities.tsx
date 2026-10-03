@@ -1,4 +1,5 @@
 'use client';
+import { AnalysisSource } from '@/components/external-analysis-setting';
 import { backendEnabled } from '@/services/api/remote';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -183,11 +184,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
               </small>
             </section>
             <section className="panel">
-              {match?.ml && (
-                <p className="muted" role="status">
-                  {match.ml.message}
-                </p>
-              )}
+              {match?.ml && <AnalysisSource status={match.ml.status} />}
               {match?.lexicalMatch && (
                 <div>
                   <h3>Keyword relevance · {match.lexicalMatch.relevanceScore}%</h3>

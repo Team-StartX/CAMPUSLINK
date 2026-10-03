@@ -1,4 +1,5 @@
 'use client';
+import { AnalysisSource } from '@/components/external-analysis-setting';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { backendEnabled } from '@/services/api/remote';
@@ -330,11 +331,7 @@ export function AIInterview({
             ))}
           </div>
           <p>{feedback?.advice}</p>
-          {feedback?.ml && (
-            <p role="status" className="muted">
-              {feedback.ml.message}
-            </p>
-          )}
+          {feedback?.ml && <AnalysisSource status={feedback.ml.status} />}
           <p className="muted">
             {backendEnabled
               ? 'Feedback uses your submitted answers and supports preparation; it is not a validated hiring assessment.'

@@ -133,19 +133,17 @@ describe('consented ML workflows', () => {
     const local = await rpc('matchingService/getMatchExplanation', ['test-drive']);
     expect(local.status, JSON.stringify(local.body)).toBe(200);
     await consent(true);
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            relevanceScore: 99,
-            matchedSkills: ['React'],
-            skillGaps: ['SQL'],
-            method: 'tfidf-keyword-v1',
-            trained: false,
-          }),
-        ),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          relevanceScore: 99,
+          matchedSkills: ['React'],
+          skillGaps: ['SQL'],
+          method: 'tfidf-keyword-v1',
+          trained: false,
+        }),
+      ),
+    );
     vi.stubGlobal('fetch', fetch);
     const remote = await rpc('matchingService/getMatchExplanation', ['test-drive']);
     expect(remote.status).toBe(200);
@@ -226,6 +224,11 @@ describe('consented ML workflows', () => {
     expect(result.status).toBe(200);
     expect(result.body.ml.status).toBe('unverified-model');
     expect(result.body.model.probability).not.toBe(99);
+    expect(result.body.categories).toHaveLength(6);
+    expect(
+      result.body.categories.find((c: { name: string }) => c.name === 'Projects'),
+    ).toMatchObject({ score: 0, recorded: false });
+    expect(result.body.score).toBeGreaterThanOrEqual(0);
     const payload = JSON.parse(fetch.mock.calls[0][1].body);
     expect(Object.keys(payload.evidence).sort()).toEqual([
       'academics',

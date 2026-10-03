@@ -18,6 +18,8 @@ export function readiness(student: Student, history: AssessmentAttempt[] = []) {
         .filter((h) => types.some((t) => h.type.toLowerCase().includes(t)))
         .map((h) => h.score),
     );
+  const hasAttempt = (types: string[]) =>
+    history.some((h) => types.some((t) => h.type.toLowerCase().includes(t)));
   const categories = [
     {
       name: 'Verified skills',
@@ -27,16 +29,38 @@ export function readiness(student: Student, history: AssessmentAttempt[] = []) {
           )
         : 0,
       weight: 0.3,
+      recorded: student.skills.length > 0,
     },
     {
       name: 'Academics',
       score: Math.min(100, Math.max(0, student.cgpa * 10 - (student.activeBacklogs || 0) * 10)),
       weight: 0.2,
+      recorded: student.cgpa > 0,
     },
-    { name: 'Projects', score: Math.min(100, student.projects.length * 35), weight: 0.15 },
-    { name: 'Aptitude', score: attemptScore(['aptitude']), weight: 0.15 },
-    { name: 'Communication', score: attemptScore(['communication', 'soft']), weight: 0.1 },
-    { name: 'Interview', score: attemptScore(['interview']), weight: 0.1 },
+    {
+      name: 'Projects',
+      score: Math.min(100, student.projects.length * 35),
+      weight: 0.15,
+      recorded: student.projects.length > 0,
+    },
+    {
+      name: 'Aptitude',
+      score: attemptScore(['aptitude']),
+      weight: 0.15,
+      recorded: hasAttempt(['aptitude']),
+    },
+    {
+      name: 'Communication',
+      score: attemptScore(['communication', 'soft']),
+      weight: 0.1,
+      recorded: hasAttempt(['communication', 'soft']),
+    },
+    {
+      name: 'Interview',
+      score: attemptScore(['interview']),
+      weight: 0.1,
+      recorded: hasAttempt(['interview']),
+    },
   ];
   const score = Math.round(categories.reduce((sum, c) => sum + c.score * c.weight, 0));
   return {

@@ -11,6 +11,7 @@ import './globals.css';
 import './auth.css';
 import './admin.css';
 import './directory.css';
+import './preparation.css';
 import { Providers } from '@/components/providers';
 import { Platform } from '@/components/platform';
 export const metadata: Metadata = {

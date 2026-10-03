@@ -61,6 +61,29 @@ describe('explainable placement scoring', () => {
   it('does not award readiness evidence that is absent', () => {
     const student = { ...initialData.student, cgpa: 0, skills: [], projects: [] };
     expect(readiness(student, [])).toMatchObject({ score: 0, label: 'Not Ready' });
+    expect(readiness(student, []).categories.every((c) => !c.recorded)).toBe(true);
+  });
+  it('distinguishes a recorded zero-score attempt from missing assessment evidence', () => {
+    const result = readiness({ ...initialData.student, cgpa: 0, skills: [], projects: [] }, [
+      {
+        id: 'zero',
+        assessmentId: 'aptitude',
+        name: 'Aptitude',
+        type: 'Aptitude',
+        score: 0,
+        points: 0,
+        date: '2026-10-04',
+        seconds: 60,
+      },
+    ]);
+    expect(result.categories.find((c) => c.name === 'Aptitude')).toMatchObject({
+      score: 0,
+      recorded: true,
+    });
+    expect(result.categories.find((c) => c.name === 'Interview')).toMatchObject({
+      score: 0,
+      recorded: false,
+    });
   });
   it('recomputes readiness after verification and interview practice', () => {
     const before = readiness(initialData.student, []).score;

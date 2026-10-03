@@ -265,6 +265,8 @@ export const aiService = {
     return {
       studentId,
       label: 'Rule-based support indicator',
+      score: r.score,
+      categories: r.categories,
       risk: r.score < 45 ? 'High' : r.score < 70 ? 'Moderate' : 'Low',
       factors: r.factors,
     };

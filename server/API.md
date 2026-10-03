@@ -8,6 +8,8 @@ Base: `/api/v1`. Responses are JSON unless downloading a private file. Authentic
 
 Organization suggestions: public `GET /directory/universities?q=technology&country=India` and `GET /directory/companies?q=Infosys` return `{results, unavailable, message}`. Queries require 2–100 characters and are limited to 60 requests/minute per IP. University search defaults to India; `country=` searches worldwide. The server caches Hipo's HTTPS university dataset for 24 hours and Clearbit company suggestions for 30 minutes. No API keys are required. A failed provider returns an empty list with `unavailable: true`, allowing manual entry. Suggestions do not create campuses, verify affiliation, or approve accounts. Students still select only registered CampusLink campuses.
 
+Preparation summaries: `aiService.predictPlacementRisk` also returns `score` and `categories: [{name, score, weight, recorded}]` for the visual student overview. `recorded` distinguishes a zero-score attempt from absent evidence; scoring weights are unchanged. The student interface displays missing evidence as “Not added”, hides synthetic outcome estimates, and presents the external-analysis setting with expandable sharing details. Consent remains off until the student explicitly enables it.
+
 For authorized team operations on one student, set `X-Student-ID`. The server checks the student against the campus or recruiter applicant pool. Leaving it empty selects the first authorized student; the interface exposes a selector. Recruiters cannot browse unrelated registered students.
 
 | Endpoint                                                                                                | Purpose                                                                                                    |

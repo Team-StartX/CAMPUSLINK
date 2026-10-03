@@ -291,6 +291,8 @@ export async function dispatch(service: string, method: string, input: unknown[]
     return {
       studentId: target.id,
       label: 'Preparation support indicator',
+      score: r.score,
+      categories: r.categories,
       risk: r.score < 45 ? 'High' : r.score < 70 ? 'Moderate' : 'Low',
       factors: r.factors,
       model: remote.data
