@@ -73,6 +73,21 @@
   gap: 28px;
   align-items: center;
 }
+@font-face {
+  font-family: 'Campus Signature';
+  src: url('/fonts/allura/Allura-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+.campus-hero-signature {
+  font-family: 'Campus Signature', 'Segoe Script', cursive;
+  font-size: clamp(28px, 3.1vw, 38px);
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #405746;
+}
 .campus-kicker {
   display: flex;
   align-items: center;

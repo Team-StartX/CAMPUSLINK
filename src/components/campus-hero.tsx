@@ -64,9 +64,9 @@ export function CampusHero() {
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              className="campus-kicker"
+              className="campus-hero-signature"
             >
-              <span /> YOUR CAMPUS. YOUR LAUNCHPAD.
+              Your campus. Your launchpad.
             </motion.div>
             <h1 className="campus-placement-heading">
               <span>From Campus</span>
