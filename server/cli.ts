@@ -42,7 +42,26 @@ async function main() {
       );
       console.log('Demo passwords rotated and existing demo sessions revoked.');
     } else if (command === 'migrate') console.log('Database schema is ready.');
-    else if (command === 'approve-user') {
+    else if (command === 'grant-admin' || command === 'revoke-admin') {
+      const account = arg ? await auth.find(arg) : undefined;
+      if (!account) throw new Error('Provide an existing account email.');
+      const grant = command === 'grant-admin';
+      if (grant && account.onboardingComplete === false)
+        throw new Error('Complete this account’s dashboard profile before granting admin access.');
+      account.isAdmin = grant;
+      if (grant) account.approved = true;
+      await auth.save(account);
+      await db.put('audit', randomUUID(), {
+        event: grant ? 'operator-admin-granted' : 'operator-admin-revoked',
+        targetId: account.id,
+        time: new Date().toISOString(),
+      });
+      console.log(
+        grant
+          ? 'Administrator access granted. Verify the account email, then open /admin/dashboard.'
+          : 'Administrator access revoked.',
+      );
+    } else if (command === 'approve-user') {
       const account = arg ? await auth.find(arg) : undefined;
       if (!account) throw new Error('Provide an existing account email.');
       account.approved = true;
@@ -247,7 +266,7 @@ async function main() {
       );
     } else
       throw new Error(
-        'Commands: migrate | seed-local | approve-user EMAIL | outbox | train-demo | train-model FILE.json',
+        'Commands: migrate | seed-local | approve-user EMAIL | grant-admin EMAIL | revoke-admin EMAIL | outbox | train-demo | train-model FILE.json',
       );
   } finally {
     await db.close();

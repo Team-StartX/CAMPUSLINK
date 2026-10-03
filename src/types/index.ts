@@ -1,5 +1,6 @@
 export type Role = 'student' | 'recruiter' | 'campus';
 export interface User {
+  isAdmin?: boolean;
   id: string;
   name: string;
   email: string;
@@ -58,6 +59,7 @@ export interface Application {
   date: string;
 }
 export interface Assessment {
+  questionCount?: number;
   id: string;
   name: string;
   type: string;
@@ -72,6 +74,7 @@ export interface Question {
   topic: string;
 }
 export interface AssessmentAttempt {
+  topicScores?: Record<string, number>;
   id: string;
   assessmentId: string;
   name: string;
@@ -82,6 +85,7 @@ export interface AssessmentAttempt {
   seconds: number;
 }
 export interface Contest {
+  prompt?: string;
   id: string;
   name: string;
   type: string;

@@ -127,7 +127,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
             year: values.year || '2027',
           });
         character.succeed();
-        router.push(`/${user.role}/dashboard`);
+        router.push(user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`);
       } catch (e) {
         character.fail();
         setError((e as Error).message);

@@ -31,6 +31,7 @@ export function verifyPassword(password: string, encoded: string) {
   return actual.length === stored.length && timingSafeEqual(actual, stored);
 }
 export const publicUser = (account: Account) => ({
+  isAdmin: account.isAdmin === true,
   id: account.id,
   name: account.name,
   email: account.email,

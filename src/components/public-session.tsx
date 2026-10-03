@@ -44,7 +44,7 @@ export function PublicStartLink({
 }: {
   href: string;
   className?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const { user, ready } = usePublicSession();
   if (!ready)
@@ -54,7 +54,10 @@ export function PublicStartLink({
       </span>
     );
   return (
-    <Link href={user ? `/${user.role}/dashboard` : href} className={className}>
+    <Link
+      href={user ? (user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`) : href}
+      className={className}
+    >
       {user ? 'Go to dashboard' : children}
     </Link>
   );

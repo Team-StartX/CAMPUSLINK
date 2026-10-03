@@ -33,8 +33,10 @@ import { motion } from 'framer-motion';
 import { BackendTools, AuthLinkPage } from './backend-tools';
 import { backendEnabled } from '@/services/api/remote';
 import { PublicSessionProvider } from './public-session';
+import { AdminDashboard } from '@/features/admin';
 export function Platform() {
   const path = usePathname();
+  if (path === '/admin' || path.startsWith('/admin/')) return <AdminDashboard />;
   if (path === '/')
     return (
       <PublicSessionProvider>

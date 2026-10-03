@@ -8,6 +8,7 @@ import { Account } from './auth';
 import { requireCondition } from './errors';
 import { queueMail } from './mail';
 import { checkEligibility } from '../src/utils/placement';
+import type { AdminAssessment, AdminContest } from '../src/types/admin';
 
 export type StoredDrive = Drive & { recruiterId: string };
 export function emptyWorkspace(account?: Account, campusName = ''): DemoData {
@@ -112,6 +113,42 @@ export async function readWorkspace(): Promise<DemoData> {
     own || emptyWorkspace(target, campuses.find((c) => c.id === target?.campusId)?.name),
   );
   data.campuses = campuses;
+  const assessments = await db.list<AdminAssessment>('admin-assessment');
+  const contests = await db.list<AdminContest>('admin-contest');
+  const visible = (row: { status: string; campusId: string }) =>
+    row.status === 'published' && (!row.campusId || row.campusId === actor.campusId);
+  data.assessments = [
+    ...data.assessments.filter((a) => !assessments.some((row) => row.id === a.id)),
+    ...assessments
+      .filter(visible)
+      .map(({ id, name, type, duration, skill, color, questionIds }) => ({
+        id,
+        name,
+        type,
+        duration,
+        skill,
+        color,
+        questionCount: questionIds.length,
+      })),
+  ];
+  data.contests = [
+    ...data.contests.filter((c) => !contests.some((row) => row.id === c.id)),
+    ...contests.filter(visible).map(({ id, name, type, duration, points, difficulty, prompt }) => {
+      const progress = own?.contests.find((c) => c.id === id);
+      return {
+        id,
+        name,
+        type,
+        duration,
+        points,
+        difficulty,
+        prompt,
+        participants: 0,
+        joined: !!progress?.joined,
+        completed: !!progress?.completed,
+      };
+    }),
+  ];
   data.drives = (await db.list<StoredDrive>('drive')).filter((d) =>
     actor.role === 'recruiter' ? d.recruiterId === actor.id : d.campusId === actor.campusId,
   );
@@ -208,6 +245,11 @@ async function writeWorkspace(action: (data: DemoData) => void) {
               (v) => !previous.some((p) => p.id === v.id),
             );
             (stored as unknown as Record<string, unknown>)[key] = [...keep, ...next];
+          } else if (key === 'contests') {
+            const hidden = stored.contests.filter(
+              (c) => !before.contests.some((v) => v.id === c.id),
+            );
+            stored.contests = [...hidden, ...data.contests];
           } else (stored as unknown as Record<string, unknown>)[key] = data[key];
         }
       }

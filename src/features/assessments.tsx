@@ -54,7 +54,7 @@ export function AssessmentsPage({ data, role = 'student' }: { data: DemoData; ro
                 <p>Show your understanding with 10 thoughtfully selected questions.</p>
                 <div className="assessment-meta">
                   <Clock size={15} />
-                  {a.duration} min · 10 questions
+                  {a.duration} min · {a.questionCount || 10} questions
                 </div>
                 <Link className="button dark" href={`/${role}/assessments/${a.id}`}>
                   Start assessment <ArrowUpRight size={16} />
@@ -115,9 +115,13 @@ export function AssessmentSession({
   onComplete: () => void;
   role?: Role;
 }) {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['assessment', id],
     queryFn: () => assessmentService.startAssessment(id),
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: Infinity,
+    retry: false,
   });
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
@@ -127,6 +131,9 @@ export function AssessmentSession({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   useEffect(() => {
+    if (data && !started) setAnswers(Array(data.questions.length).fill(-1));
+  }, [data, started]);
+  useEffect(() => {
     if (!started || result) return;
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(timer);
@@ -134,7 +141,7 @@ export function AssessmentSession({
   const finish = useCallback(
     async (timed = false) => {
       if (!timed && answers.includes(-1)) {
-        setMessage('Answer all 10 questions before submitting.');
+        setMessage('Answer every question before submitting.');
         return;
       }
       if (busy || result) return;
@@ -152,8 +159,8 @@ export function AssessmentSession({
     [answers, busy, id, onComplete, result, seconds],
   );
   useEffect(() => {
-    if (started && !result && seconds >= 600) void finish(true);
-  }, [seconds, started, result, finish]);
+    if (started && !result && seconds >= (data?.assessment.duration || 10) * 60) void finish(true);
+  }, [seconds, started, result, finish, data?.assessment.duration]);
   if (isLoading) return <div className="skeleton panel">Loading your assessment…</div>;
   if (error || !data)
     return (
@@ -203,9 +210,12 @@ export function AssessmentSession({
             const grouped = questions
               .map((q, i) => ({ ...q, index: i }))
               .filter((q) => q.topic === topic);
-            const score = Math.round(
-              (grouped.filter((q) => answers[q.index] === q.answer).length / grouped.length) * 100,
-            );
+            const score =
+              result.topicScores?.[topic] ??
+              Math.round(
+                (grouped.filter((q) => answers[q.index] === q.answer).length / grouped.length) *
+                  100,
+              );
             return (
               <div key={topic}>
                 <span>{topic}</span>
@@ -241,7 +251,7 @@ export function AssessmentSession({
             <br />A lot of confidence.
           </h2>
           <p>
-            10 questions · 10 minutes ·{' '}
+            {questions.length} questions · {assessment.duration} minutes ·{' '}
             {assessment.skill ? '70% to verify your skill' : '70% to pass'}
           </p>
           <ul>
@@ -249,11 +259,32 @@ export function AssessmentSession({
             <li>You can move back and review your answers.</li>
             <li>Your score and points update your assessment history.</li>
             <li>
-              The timer begins when you start. At 10 minutes, your answers submit automatically.
+              The timer begins when you start. At {assessment.duration} minutes, your answers submit
+              automatically.
             </li>
           </ul>
-          <Button onClick={() => setStarted(true)}>
-            I’m ready. Let’s begin. <ArrowRight size={17} />
+          {message && (
+            <p className="field-error" role="alert">
+              {message}
+            </p>
+          )}
+          <Button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const attempt = await refetch({ throwOnError: true });
+                setAnswers(Array(attempt.data!.questions.length).fill(-1));
+                setSeconds(0);
+                setStarted(true);
+              } catch (e) {
+                setMessage((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? 'Starting…' : 'I’m ready. Let’s begin.'} <ArrowRight size={17} />
           </Button>
         </div>
       </>
@@ -266,7 +297,8 @@ export function AssessmentSession({
         action={
           <Badge>
             <Clock size={14} />
-            {Math.floor((600 - seconds) / 60)}:{String((600 - seconds) % 60).padStart(2, '0')}{' '}
+            {Math.floor(Math.max(0, assessment.duration * 60 - seconds) / 60)}:
+            {String(Math.max(0, assessment.duration * 60 - seconds) % 60).padStart(2, '0')}{' '}
             remaining
           </Badge>
         }
@@ -330,7 +362,9 @@ export function AssessmentSession({
               </button>
             ))}
           </div>
-          <p>{answers.filter((a) => a >= 0).length} of 10 answered</p>
+          <p>
+            {answers.filter((a) => a >= 0).length} of {questions.length} answered
+          </p>
           <small>Take your time. Review your answers before submitting.</small>
         </aside>
       </div>
@@ -411,15 +445,15 @@ export function ContestsPage({
                 notify(`Challenge completed! +${selected.points} XP`);
               }}
             >
-              <h3>Challenge: Find the pattern</h3>
-              <p>Given 2, 4, 8, 16, what is the next number?</p>
+              <h3>Challenge</h3>
+              <p>{selected.prompt || 'Given 2, 4, 8, 16, what is the next number?'}</p>
               <label className="form-field">
                 <span>Your answer</span>
                 <input
                   required
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Enter a number"
+                  placeholder="Enter your answer"
                 />
               </label>
               {error && <p className="field-error">{error}</p>}

@@ -19,6 +19,8 @@
     "db:migrate": "node server/dist/cli.cjs migrate",
     "db:seed": "node server/dist/cli.cjs seed-local",
     "db:approve": "node server/dist/cli.cjs approve-user",
+    "admin:grant": "node server/dist/cli.cjs grant-admin",
+    "admin:revoke": "node server/dist/cli.cjs revoke-admin",
     "email:preview": "node server/dist/cli.cjs outbox",
     "ml:demo": "node server/dist/cli.cjs train-demo",
     "ml:train": "node server/dist/cli.cjs train-model",

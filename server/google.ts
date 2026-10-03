@@ -163,7 +163,11 @@ export function mountGoogleAuth(
       const session = await auth.createSession(account);
       setSessionCookie(res, session.token, session.session.expires);
       res.clearCookie(cookieName, cookieOptions());
-      res.redirect(`${config.origin}/${account.role}/dashboard`);
+      res.redirect(
+        account.isAdmin
+          ? `${config.origin}/admin/dashboard`
+          : `${config.origin}/${account.role}/dashboard`,
+      );
     } catch {
       res.clearCookie(cookieName, cookieOptions());
       res.redirect(`${config.origin}/login?google_error=verification`);

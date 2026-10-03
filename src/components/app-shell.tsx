@@ -163,6 +163,11 @@ export function AppShell({ role, children }: { role: Role; children: React.React
             <X />
           </button>
         </div>
+        {user?.isAdmin && (
+          <Link href="/admin/dashboard" className="text-link">
+            Admin dashboard <ShieldCheck size={15} />
+          </Link>
+        )}
         <div className="workspace-picker">
           <span className="workspace-icon">
             <GraduationIcon role={role} />

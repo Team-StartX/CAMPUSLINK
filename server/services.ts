@@ -13,6 +13,9 @@ import { downloadFile, uploadFile, detectFile } from './storage';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { randomUUID } from 'node:crypto';
 import type { DemoData, Question, Student } from '../src/types';
+import { assessmentQuestions } from './admin';
+import type { AdminContest } from '../src/types/admin';
+import { POINTS } from '../src/config/points.config';
 
 export const policy: Record<string, Record<string, string[]>> = {
   studentService: {
@@ -287,7 +290,13 @@ export async function dispatch(service: string, method: string, input: unknown[]
     };
   }
   if (key === 'assessmentService.startAssessment') {
+    requireCondition(
+      data.assessments.some((a) => a.id === args[0]),
+      404,
+      'Assessment not found.',
+    );
     const result = await platform.assessmentService.startAssessment(String(args[0]));
+    result.questions = (await assessmentQuestions(db, String(args[0]))) || result.questions;
     const attemptId = randomUUID();
     await db.put(
       'assessment-session',
@@ -295,6 +304,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
       {
         id: attemptId,
         assessmentId: args[0],
+        duration: result.assessment.duration,
         started: Date.now(),
         submitted: false,
         questions: result.questions,
@@ -309,6 +319,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
       await db.list<{
         id: string;
         assessmentId: string;
+        duration?: number;
         started: number;
         submitted: boolean;
         questions: Question[];
@@ -317,29 +328,106 @@ export async function dispatch(service: string, method: string, input: unknown[]
       .filter((s) => s.assessmentId === args[0] && !s.submitted)
       .sort((a, b) => b.started - a.started)[0];
     requireCondition(active, 409, 'Start an assessment before submitting it.');
-    requireCondition(Date.now() - active.started <= 7200000, 409, 'Assessment session expired.');
+    requireCondition(
+      Date.now() - active.started <= Math.min((active.duration || 120) * 60 + 60, 7260) * 1000,
+      409,
+      'Assessment session expired.',
+    );
     requireCondition(
       (args[1] as number[]).length === active.questions.length,
       400,
       'Provide one answer for each question.',
     );
-    const previous = data.student.skills.find(
-      (s) => s.name === data.assessments.find((a) => a.id === args[0])?.skill,
-    )?.verified;
-    const result = await platform.assessmentService.submitAssessment(
-      String(args[0]),
-      args[1] as number[],
-      Math.round((Date.now() - active.started) / 1000),
+    const assessment = data.assessments.find((a) => a.id === args[0]);
+    requireCondition(assessment, 404, 'Assessment is no longer available.');
+    requireCondition(
+      Date.now() - active.started <= ((active.duration || assessment.duration) * 60 + 60) * 1000,
+      409,
+      'Assessment time has expired.',
     );
-    if (previous && result.points > 0)
-      await mockAdapter.update((d) => {
-        d.student.xp -= result.points;
-        d.history[0].points = 0;
-        result.points = 0;
-      });
+    const answers = args[1] as number[];
+    requireCondition(
+      answers.every(
+        (answer, index) =>
+          answer === -1 || (answer >= 0 && answer < active.questions[index].options.length),
+      ),
+      400,
+      'Invalid answer option.',
+    );
+    const score = Math.round(
+      (active.questions.filter((q, i) => q.answer === answers[i]).length /
+        active.questions.length) *
+        100,
+    );
+    const previous =
+      data.student.skills.find((s) => s.name === assessment.skill)?.verified ||
+      data.history.some((h) => h.assessmentId === assessment.id && h.score >= 70 && h.points > 0);
+    const points = assessment.skill
+      ? score >= 70 && !previous
+        ? POINTS.skillVerificationPassed
+        : 0
+      : POINTS.assessmentCompleted;
+    const result = {
+      topicScores: Object.fromEntries(
+        [...new Set(active.questions.map((q) => q.topic))].map((topic) => {
+          const grouped = active.questions
+            .map((q, index) => ({ ...q, index }))
+            .filter((q) => q.topic === topic);
+          return [
+            topic,
+            Math.round(
+              (grouped.filter((q) => q.answer === answers[q.index]).length / grouped.length) * 100,
+            ),
+          ];
+        }),
+      ),
+      id: randomUUID(),
+      assessmentId: assessment.id,
+      name: assessment.name,
+      type: assessment.type,
+      score,
+      points,
+      date: new Date().toISOString().slice(0, 10),
+      seconds: Math.round((Date.now() - active.started) / 1000),
+    };
+    await mockAdapter.update((d) => {
+      d.history.unshift(result);
+      d.student.xp += points;
+      const skill = d.student.skills.find((s) => s.name === assessment.skill);
+      if (skill && score >= 70) skill.verified = true;
+    });
     active.submitted = true;
     await db.put('assessment-session', active.id, active, actor.campusId, actor.id);
     return result;
+  }
+  if (key === 'contestService.joinContest' || key === 'contestService.submitContest') {
+    const contest = data.contests.find((c) => c.id === args[0]);
+    requireCondition(contest, 404, 'Contest is unavailable.');
+    const managed = await db.get<AdminContest>('admin-contest', contest.id);
+    if (managed && key === 'contestService.submitContest') {
+      requireCondition(contest.joined, 409, 'Join this contest before submitting.');
+      requireCondition(
+        String(args[1]).trim().toLowerCase() === managed.answer.trim().toLowerCase(),
+        400,
+        'That answer is incorrect. Try again.',
+      );
+      return mockAdapter.update((d) => {
+        const current = d.contests.find((c) => c.id === contest.id)!;
+        if (current.completed) return;
+        current.completed = true;
+        d.student.xp += managed.points;
+        d.history.unshift({
+          id: randomUUID(),
+          assessmentId: contest.id,
+          name: contest.name,
+          type: 'Coding',
+          score: 100,
+          points: managed.points,
+          date: new Date().toISOString().slice(0, 10),
+          seconds: 0,
+        });
+      });
+    }
   }
   if (key === 'interviewService.startAIInterview') {
     const result = await platform.interviewService.startAIInterview(

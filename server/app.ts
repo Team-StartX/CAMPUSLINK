@@ -27,6 +27,7 @@ import { loadModel } from './ml';
 import type { Campus, DemoData } from '../src/types';
 import { checkEligibility as requireEligibility } from '../src/utils/placement';
 import { mountGoogleAuth } from './google';
+import { mountAdmin } from './admin';
 
 const registration = z
   .object({
@@ -215,6 +216,7 @@ export async function createApp(db = new Database()) {
       next(error);
     }
   });
+  mountAdmin(app, db, auth);
   app.get(`${base}/auth/me`, (req, res) =>
     res.json({ user: publicUser(res.locals.account), csrf: res.locals.session.csrf }),
   );

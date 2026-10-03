@@ -63,6 +63,26 @@ The template uses the existing local AI/NLP implementation. To enable the option
 
 ## Check the deployment
 
+### Activate the administrator dashboard
+
+The admin console is available at `/admin/dashboard`. It manages account approvals and access revocation, contests, question banks, assessments, campuses, integration status and audit history. Administrative access is a server-controlled permission on an existing account, not a public registration role.
+
+1. Register your account, complete its dashboard profile, and verify its email (Google accounts are already email verified).
+2. From the repository root, with `server/.env` configured for the deployed Supabase database, run:
+
+```sh
+npm run server:build
+npm run admin:grant -- your-admin-email@example.com
+```
+
+3. Sign out and sign back in. Open `/admin/dashboard` on the frontend domain. The homepage dashboard action and login redirect now open the admin console for an administrator.
+
+Free Render services do not provide a Shell; run this command locally with the same production database configuration. The command grants access only to the specified existing account and records an audit event. To remove administrator access, use `npm run admin:revoke -- your-admin-email@example.com`.
+
+Content starts as a draft. Add multiple-choice questions, select them when creating an assessment, choose all campuses or a specific campus, and set its visibility to **published**. For contests, enter a challenge and an expected short answer. Current contests support short-answer validation; they do not execute submitted code. Archive content to hide it while retaining student history. Correct answers are excluded from student APIs, and assessment scores use server-held question snapshots.
+
+Redeploy both the frontend and Express backend after installing this update. No database schema migration is needed beyond the existing startup migration: management records use the existing PostgreSQL `records` table.
+
 - Open the home page and sign in through the frontend domain.
 - Test profile completion, a private upload/download, and a password-reset email.
 - Confirm the backend health endpoint responds and Render logs have no startup errors.
