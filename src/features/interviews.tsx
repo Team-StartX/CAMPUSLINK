@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DemoData, Role } from '@/types';
 import { interviewService } from '@/services/platform.service';
+import type { MlAnnotation } from '@/types/ml';
 import {
   Badge,
   Button,
@@ -287,7 +288,9 @@ export function AIInterview({
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [practiceError, setPracticeError] = useState('');
-  const { data: feedback } = useQuery({
+  const { data: feedback } = useQuery<
+    Awaited<ReturnType<typeof interviewService.getInterviewFeedback>> & MlAnnotation
+  >({
     queryKey: ['interview-feedback', done],
     queryFn: interviewService.getInterviewFeedback,
     enabled: done,
@@ -327,6 +330,11 @@ export function AIInterview({
             ))}
           </div>
           <p>{feedback?.advice}</p>
+          {feedback?.ml && (
+            <p role="status" className="muted">
+              {feedback.ml.message}
+            </p>
+          )}
           <p className="muted">
             {backendEnabled
               ? 'Feedback uses your submitted answers and supports preparation; it is not a validated hiring assessment.'

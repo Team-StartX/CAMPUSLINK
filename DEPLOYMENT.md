@@ -59,6 +59,14 @@ Use your deployed home, privacy, and terms URLs in Google's application branding
 
 ## 6. AI and trained models
 
+### External ML API
+
+The backend connects to `https://campuslink-ml-demo.onrender.com` through `ML_API_URL`. In the CampusLink Express service's Render Environment settings, set `ML_API_TOKEN` to the ML service's private `CAMPUSLINK_ML_DEV_TOKEN` value. Keep the token on the backend only. Redeploy the backend and frontend, then open Admin → Activity & services → Check ML connection. The check sends only generic sample data, validates authentication and the job-match response, and reports missing configuration, rejected tokens, incompatible responses, or unavailable service without exposing secrets.
+
+The connection adapter uses `Authorization: Bearer <ML_API_TOKEN>`, fixed `/v1/models/...` paths and a seven-second timeout per request. Redirects are rejected and the origin must match the consent destination. Students enable separate ML consent from their dashboard; existing OpenAI consent does not authorize this service. They can withdraw it to stop future requests. Emails and phone numbers are removed from text, but other identifying details may remain. Student workflows retain local analysis if consent is off or the service fails. The admin check tests all four contracts using sample data. The adapter rejects placement predictions from an `unverified_demo` artifact; a historical model is required for probability estimates.
+
+External resume extraction supplies suggestions for review without changing verified skills. Job keyword relevance supplements the existing eligibility and fit calculation. Interview rubric feedback is preparation guidance. Historical-model estimates use the six current readiness scores; the training rubrics must be checked against these scores before interpreting the probabilities. ML responses never approve accounts or make hiring decisions.
+
 The template uses the existing local AI/NLP implementation. To enable the optional OpenAI provider, configure `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and `OPENAI_MODEL` on Render. To use a real trained placement model, include its validated artifact in the deployment and set `ML_MODEL_PATH` to its path. The ignored local model files are not uploaded automatically; synthetic demo models are not production models.
 
 ## Check the deployment

@@ -28,6 +28,7 @@ import type { Campus, DemoData } from '../src/types';
 import { checkEligibility as requireEligibility } from '../src/utils/placement';
 import { mountGoogleAuth } from './google';
 import { mountAdmin } from './admin';
+import { mlConfigured } from './ml-client';
 
 const registration = z
   .object({
@@ -311,8 +312,19 @@ export async function createApp(db = new Database()) {
     res.json({ consent: input.consent });
   });
   app.get(`${base}/account/ai-consent`, (_req, res) =>
-    res.json({ consent: Boolean(res.locals.account.aiConsent), provider: config.ai }),
+    res.json({
+      consent: Boolean(res.locals.account.aiConsent),
+      provider: config.ai,
+      mlConsent: Boolean(res.locals.account.mlConsent),
+      mlConfigured: mlConfigured(),
+    }),
   );
+  app.put(`${base}/account/ml-consent`, async (req, res) => {
+    requireCondition(res.locals.account.role === 'student', 403, 'Student access required.');
+    const { consent } = z.object({ consent: z.boolean() }).strict().parse(req.body);
+    await auth.save({ ...res.locals.account, mlConsent: consent });
+    res.json({ consent });
+  });
   app.get(`${base}/approvals`, async (_req, res) => {
     const actor: Account = res.locals.account;
     requireCondition(

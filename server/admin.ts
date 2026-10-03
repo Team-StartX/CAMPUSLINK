@@ -6,6 +6,7 @@ import { Authentication, Account, publicUser } from './auth';
 import { requireCondition } from './errors';
 import { config } from './config';
 import type { AdminAssessment, AdminQuestion } from '../src/types/admin';
+import { checkMlConnection, mlConfigured } from './ml-client';
 
 const text = z.string().trim().min(1).max(2000);
 const status = z.enum(['draft', 'published', 'archived']);
@@ -101,9 +102,11 @@ export function mountAdmin(app: Express, db: Database, auth: Authentication) {
         storage: config.storage,
         email: config.email,
         ai: config.ai,
+        ml: mlConfigured() ? 'Configured' : 'API token missing',
       },
     });
   });
+  app.get(`${base}/ml-status`, async (_req, res) => res.json(await checkMlConnection(true)));
   app.patch(`${base}/accounts/:id`, async (req, res) => {
     const { approved } = z.object({ approved: z.boolean() }).strict().parse(req.body);
     const actor: Account = res.locals.account;

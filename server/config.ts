@@ -21,6 +21,8 @@ export const config = {
   aiKey: process.env.OPENAI_API_KEY || '',
   aiModel: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
   modelPath: process.env.ML_MODEL_PATH || 'server/models/placement.json',
+  mlApiUrl: process.env.ML_API_URL || 'https://campuslink-ml-demo.onrender.com',
+  mlApiToken: process.env.ML_API_TOKEN || '',
 };
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535)
   throw new Error('PORT must be an integer between 1 and 65535.');

@@ -3,6 +3,8 @@ import { Database } from './db';
 import { HttpError, requireCondition } from './errors';
 import type { Role, User } from '../src/types';
 export interface Account extends User {
+  aiConsent?: boolean;
+  mlConsent?: boolean;
   passwordHash: string;
   campusId: string;
   organization: string;

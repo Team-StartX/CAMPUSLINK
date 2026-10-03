@@ -3,5 +3,5 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  test: { environment: 'node' },
+  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}', 'server/**/*.test.ts'] },
 });

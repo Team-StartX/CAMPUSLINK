@@ -37,6 +37,7 @@ function ConnectedTools({ role }: { role: Role }) {
     user?.approved &&
     user.verified &&
     consent?.provider !== 'openai' &&
+    !consent?.mlConfigured &&
     !message
   )
     return null;
@@ -106,6 +107,34 @@ function ConnectedTools({ role }: { role: Role }) {
           />{' '}
           Allow my resume text and practice answers to be sent to OpenAI for optional coaching.
           Local analysis works without this.
+        </label>
+      )}
+      {role === 'student' && consent?.mlConfigured && (
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={Boolean(consent.mlConsent)}
+            onChange={async (e) => {
+              try {
+                await authService.restore();
+                await apiClient.put('/account/ml-consent', { consent: e.target.checked });
+                void client.invalidateQueries({ queryKey: ['ai-consent'] });
+                client.removeQueries({ queryKey: ['match'] });
+                client.removeQueries({ queryKey: ['outcome-insight'] });
+                setMessage(
+                  e.target.checked
+                    ? 'External ML analysis enabled.'
+                    : 'External ML analysis disabled. Local analysis remains available.',
+                );
+              } catch (e) {
+                setMessage((e as Error).message);
+              }
+            }}
+          />{' '}
+          Allow my redacted resume text, skills and project summaries, preparation scores, and
+          practice answers to be sent to campuslink-ml-demo.onrender.com for optional analysis.
+          Emails and phone numbers are removed from text; other identifying details may remain. I
+          can turn this off at any time to stop future requests. Local analysis works without this.
         </label>
       )}
       {approvals?.length ? (
@@ -307,12 +336,14 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
     label: string;
     risk: string;
     factors: string[];
+    ml?: { status: string; message: string };
     model: {
       available: boolean;
       label: string;
       probability?: number;
       reason?: string;
       provenance?: string;
+      limitations?: string[];
     };
   }>({
     queryKey: ['outcome-insight', studentId],
@@ -328,6 +359,11 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
           <p key={f}>{f}</p>
         ))}
         <h3>{data?.model.label}</h3>
+        {data?.ml && (
+          <p className="muted" role="status">
+            {data.ml.message}
+          </p>
+        )}
         {data?.model.available ? (
           <p>
             {data.model.provenance === 'synthetic'
@@ -338,6 +374,17 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
         ) : (
           <p>{data?.model.reason}</p>
         )}
+        {data?.model.provenance === 'historical' && (
+          <p className="muted">
+            This estimate uses current preparation scores. Confirm that their scoring rubrics match
+            the historical training data before interpreting the probability.
+          </p>
+        )}
+        {data?.model.limitations?.map((limitation) => (
+          <p key={limitation} className="muted">
+            {limitation}
+          </p>
+        ))}
       </section>
       <section className="panel sage">
         <h2>Ask your placement assistant</h2>

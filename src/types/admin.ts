@@ -31,5 +31,5 @@ export interface AdminData {
   contests: AdminContest[];
   campuses: Campus[];
   audit: AuditEntry[];
-  integrations: { database: string; storage: string; email: string; ai: string };
+  integrations: { database: string; storage: string; email: string; ai: string; ml: string };
 }

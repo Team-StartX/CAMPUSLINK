@@ -109,6 +109,12 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
   const [message, setMessage] = useState('');
   const [failure, setFailure] = useState('');
   const [revoke, setRevoke] = useState<User | null>(null);
+  const [mlCheck, setMlCheck] = useState<{
+    connected: boolean;
+    message: string;
+    note: string;
+    checks: { name: string; status: string; message: string; ready: boolean }[];
+  } | null>(null);
   const heading = sections.find((s) => s[0] === section)?.[1] || 'Page not found';
   useEffect(() => {
     setSearch('');
@@ -618,6 +624,52 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
                   ))}
                 </div>
                 <section className="panel">
+                  <div className="panel-header">
+                    <h2>ML service connection</h2>
+                    <Button
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        setFailure('');
+                        try {
+                          setMlCheck((await apiClient.get('/admin/ml-status')).data);
+                        } catch (e) {
+                          setFailure((e as Error).message);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {busy ? 'Checking…' : 'Check ML connection'}
+                    </Button>
+                  </div>
+                  <p className="muted">
+                    Tests the private API connection using generic sample data. Student records are
+                    not sent by this check.
+                  </p>
+                  {mlCheck && (
+                    <p role="status">
+                      {mlCheck.connected ? 'Connected. ' : 'Not ready. '}
+                      {mlCheck.message}
+                      <br />
+                      {mlCheck.note}
+                    </p>
+                  )}
+                </section>
+                {mlCheck?.checks.map((check) => (
+                  <section key={check.name} className="panel" style={{ marginTop: 12 }}>
+                    <h3>
+                      {check.name} · {check.ready ? 'Ready' : 'Local fallback'}
+                    </h3>
+                    <p>{check.message}</p>
+                  </section>
+                ))}
+                <p className="muted">
+                  Students control external analysis from their dashboard. Administrators cannot
+                  enable consent on their behalf. Resume extraction and interview feedback require
+                  review; model outputs do not approve accounts or make hiring decisions.
+                </p>
+                <section className="panel" style={{ marginTop: 24 }}>
                   <h2>Activity log</h2>
                   <p className="muted">
                     Latest 200 events. Times are shown in your local timezone.

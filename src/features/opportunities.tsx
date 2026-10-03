@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { OpportunityCard } from './dashboard';
 import { checkEligibility, driveOpportunity } from '@/utils/placement';
+import type { MlAnnotation } from '@/types/ml';
 type Props = {
   data: DemoData;
   refresh: () => void;
@@ -33,7 +34,9 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const [error, setError] = useState('');
   const job = data.opportunities.find((j) => j.id === id);
   const drive = data.drives.find((d) => d.id === job?.driveId);
-  const { data: match } = useQuery({
+  const { data: match } = useQuery<
+    Awaited<ReturnType<typeof matchingService.getMatchExplanation>> & MlAnnotation
+  >({
     queryKey: ['match', id],
     queryFn: () => matchingService.getMatchExplanation(id!),
     enabled: !!job,
@@ -180,6 +183,25 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
               </small>
             </section>
             <section className="panel">
+              {match?.ml && (
+                <p className="muted" role="status">
+                  {match.ml.message}
+                </p>
+              )}
+              {match?.lexicalMatch && (
+                <div>
+                  <h3>Keyword relevance · {match.lexicalMatch.relevanceScore}%</h3>
+                  <p>
+                    Matched skills:{' '}
+                    {match.lexicalMatch.matchedSkills.join(', ') || 'None identified'}
+                  </p>
+                  <p>Skill gaps: {match.lexicalMatch.skillGaps.join(', ') || 'None identified'}</p>
+                  <small>
+                    TF-IDF keyword guidance; this does not change eligibility or the evidence-based
+                    fit score.
+                  </small>
+                </div>
+              )}
               <h3>The details</h3>
               <div className="detail-list">
                 <span>

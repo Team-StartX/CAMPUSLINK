@@ -696,7 +696,11 @@ export function LearningPage({ data, refresh, notify }: Common) {
 export function DocumentsPage({ data, refresh, notify, role = 'student' }: Common) {
   const [type, setType] = useState('Resume');
   const [error, setError] = useState('');
-  const [analysis, setAnalysis] = useState<{ label: string; suggestions: string[] } | null>(null);
+  const [analysis, setAnalysis] = useState<{
+    label: string;
+    suggestions: string[];
+    ml?: { message: string };
+  } | null>(null);
   return (
     <>
       <PageHeader
@@ -753,6 +757,11 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
       {analysis && (
         <section className="panel">
           <h3>{analysis.label}</h3>
+          {analysis.ml && (
+            <p role="status" className="muted">
+              {analysis.ml.message}
+            </p>
+          )}
           {analysis.suggestions.map((s) => (
             <p key={s}>{s}</p>
           ))}

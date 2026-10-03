@@ -16,6 +16,16 @@ import type { DemoData, Question, Student } from '../src/types';
 import { assessmentQuestions } from './admin';
 import type { AdminContest } from '../src/types/admin';
 import { POINTS } from '../src/config/points.config';
+import {
+  requestMl,
+  placementResponse,
+  resumeResponse,
+  jobResponse,
+  interviewResponse,
+  mlIntegration,
+  redactMlText,
+  extractedNames,
+} from './ml-client';
 
 export const policy: Record<string, Record<string, string[]>> = {
   studentService: {
@@ -223,6 +233,39 @@ export async function dispatch(service: string, method: string, input: unknown[]
       .sort((a, b) => b.xp - a.xp);
   if (key === 'campusService.getPlacementAnalytics') return analytics(db, actor.campusId);
   if (key === 'aiService.parseJobDescription') return parseRequirements(String(args[0]));
+  if (key === 'matchingService.getMatchExplanation') {
+    const local = await platform.matchingService.getMatchExplanation(String(args[0]));
+    const job = data.drives.find((d) => (d.opportunityId || d.id) === args[0]);
+    requireCondition(job, 404, 'Opportunity not found.');
+    const remote = await requestMl(
+      'jobs',
+      {
+        studentProfile: {
+          skills: data.student.skills.map((s) => redactMlText(s.name)),
+          education: [redactMlText(data.student.course)],
+          experience: [],
+          projects: data.student.projects.map((p) =>
+            redactMlText(`${p}: ${data.student.projectDescriptions?.[p] || ''}`).slice(0, 2000),
+          ),
+        },
+        job: {
+          title: job.role,
+          description: redactMlText(job.description || job.role).slice(0, 10000),
+          requiredSkills: job.skills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+      },
+      jobResponse,
+      Boolean(actor.mlConsent),
+    );
+    return {
+      ...local,
+      ml: mlIntegration(remote),
+      ...(remote.data ? { lexicalMatch: remote.data } : {}),
+    };
+  }
   if (key === 'aiService.predictPlacementRisk') {
     requireCondition(target && args[0] === target.id, 403, 'Select an authorized student.');
     const r = readiness(data.student, data.history),
@@ -238,12 +281,28 @@ export async function dispatch(service: string, method: string, input: unknown[]
         ),
         placed: 0,
       } as OutcomeRow;
+    const { cohort: _cohort, placed: _placed, ...evidence } = row;
+    const remote = await requestMl(
+      'placement',
+      { evidence },
+      placementResponse,
+      Boolean(target.mlConsent),
+    );
     return {
       studentId: target.id,
       label: 'Preparation support indicator',
       risk: r.score < 45 ? 'High' : r.score < 70 ? 'Moderate' : 'Low',
       factors: r.factors,
-      model: modelInsight(row),
+      model: remote.data
+        ? {
+            available: true,
+            label: 'External historical model estimate',
+            probability: Math.round(remote.data.outcomeProbability * 100),
+            provenance: remote.data.provenance,
+            limitations: remote.data.limitations,
+          }
+        : modelInsight(row),
+      ml: mlIntegration(remote),
     };
   }
   if (key === 'aiService.getCareerRecommendations') {
@@ -278,6 +337,12 @@ export async function dispatch(service: string, method: string, input: unknown[]
       'No readable text was found. Upload a text-based PDF; scanned PDFs need OCR.',
     );
     const local = analyzeResumeText(parsed.text.slice(0, 40000));
+    const remote = await requestMl(
+      'resume',
+      { resumeText: redactMlText(parsed.text.slice(0, 40000)), language: 'en' },
+      resumeResponse,
+      Boolean(actor.mlConsent),
+    );
     const advice = await coaching(
       'Suggest resume improvements without inventing achievements',
       { text: parsed.text.slice(0, 18000) },
@@ -287,6 +352,18 @@ export async function dispatch(service: string, method: string, input: unknown[]
       documentId: doc.id,
       ...local,
       ...(advice ? { label: 'NLP + AI resume coaching', suggestions: advice.suggestions } : {}),
+      ...(remote.data
+        ? {
+            label: 'External resume extraction · review required',
+            skills: extractedNames(remote.data.skills),
+            suggestions: [
+              ...local.suggestions,
+              `Extracted skills: ${extractedNames(remote.data.skills).join(', ') || 'None identified'}. Review these before adding them to your profile.`,
+              `Education: ${remote.data.education?.length || 0} · Experience: ${remote.data.experience?.length || 0} · Projects: ${remote.data.projects?.length || 0}.`,
+            ],
+          }
+        : {}),
+      ml: mlIntegration(remote),
     };
   }
   if (key === 'assessmentService.startAssessment') {
@@ -458,6 +535,24 @@ export async function dispatch(service: string, method: string, input: unknown[]
       'Answer all practice questions.',
     );
     const feedback = interviewFeedback(practice.questions, answers);
+    const remote = await requestMl(
+      'interview',
+      {
+        responses: practice.questions.map((question, i) => ({
+          question: redactMlText(question),
+          answer: redactMlText(answers[i]),
+        })),
+        rubric: [
+          { name: 'Structure', expectedTerms: ['situation', 'action', 'result'] },
+          {
+            name: 'Specific evidence',
+            expectedTerms: ['built', 'tested', 'measured', 'implemented'],
+          },
+        ],
+      },
+      interviewResponse,
+      Boolean(actor.mlConsent),
+    );
     const advice = await coaching(
       'Give interview preparation feedback',
       { questions: practice.questions, answers },
@@ -467,7 +562,15 @@ export async function dispatch(service: string, method: string, input: unknown[]
       feedback.label = 'Text analysis + AI coaching';
       feedback.advice = advice.summary;
     }
-    await db.put('feedback', actor.id, feedback, actor.campusId, actor.id);
+    if (remote.data) {
+      feedback.label = 'External rubric feedback · preparation only';
+      feedback.categories = remote.data.criteria || remote.data.criterionScores || [];
+      feedback.advice = Array.isArray(remote.data.generatedPreparationAdvice)
+        ? remote.data.generatedPreparationAdvice.join(' ')
+        : remote.data.generatedPreparationAdvice;
+    }
+    const output = { ...feedback, ml: mlIntegration(remote) };
+    await db.put('feedback', actor.id, output, actor.campusId, actor.id);
     await mockAdapter.update((d) => {
       d.student.xp += 75;
       d.history.unshift({
@@ -485,7 +588,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
     });
     practice.completed = true;
     await db.put('practice', actor.id, practice, actor.campusId, actor.id);
-    return feedback;
+    return output;
   }
   if (key === 'interviewService.getInterviewFeedback')
     return (
