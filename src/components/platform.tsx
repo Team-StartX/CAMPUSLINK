@@ -34,6 +34,7 @@ import { BackendTools, AuthLinkPage } from './backend-tools';
 import { backendEnabled } from '@/services/api/remote';
 import { PublicSessionProvider } from './public-session';
 import { AdminDashboard } from '@/features/admin';
+import { ActionCenter } from '@/features/action-center';
 export function Platform() {
   const path = usePathname();
   if (path === '/admin' || path.startsWith('/admin/')) return <AdminDashboard />;
@@ -90,6 +91,9 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
     );
   else
     switch (section) {
+      case 'actions':
+        content = <ActionCenter {...props} />;
+        break;
       case 'dashboard':
         content =
           role === 'student' ? <StudentDashboard {...props} /> : <TeamDashboard {...props} />;

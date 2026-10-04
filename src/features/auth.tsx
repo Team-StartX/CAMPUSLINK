@@ -290,6 +290,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                     <>
                       <input type="hidden" {...register('institution')} />
                       <OrganizationPicker
+                        showHelp={false}
                         kind={role === 'campus' ? 'universities' : 'companies'}
                         label={role === 'campus' ? 'College / university' : 'Company name'}
                         value={watch('institution') || ''}

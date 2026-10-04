@@ -1,3 +1,4 @@
+import { DomainError } from '@/utils/domain-error';
 import { z } from 'zod';
 import { mockAdapter } from '@/mocks/adapter';
 import { defaultDrive } from '@/mocks/placement';
@@ -149,9 +150,9 @@ export const driveService = {
     if (!draft) driveRequestSchema.parse(candidate);
     return mockAdapter.update((data) => {
       const campus = data.campuses?.find((c) => c.id === candidate.campusId);
-      if (!campus) throw new Error('Select an available campus.');
+      if (!campus) throw new DomainError('Select an available campus.');
       if (candidate.preferredDates?.filter(Boolean).some((date) => candidate.deadline! >= date))
-        throw new Error('The application deadline must be before the campus visit.');
+        throw new DomainError('The application deadline must be before the campus visit.');
       const drive = {
         ...candidate,
         id: crypto.randomUUID(),
@@ -174,7 +175,7 @@ export const driveService = {
     mockAdapter.update((data) => {
       const drive = data.drives.find((d) => d.id === id);
       if (!drive || !['DRAFT', 'CHANGES_REQUESTED'].includes(drive.status))
-        throw new Error('Only drafts or requests needing changes can be edited.');
+        throw new DomainError('Only drafts or requests needing changes can be edited.');
       const candidate = { ...drive, ...patch, id: drive.id, status: drive.status };
       driveRequestSchema.parse(candidate);
       Object.assign(drive, candidate);
@@ -184,21 +185,21 @@ export const driveService = {
       const drive = data.drives.find((d) => d.id === id);
       const rule = transitions[action];
       if (!drive || rule.role !== role || !rule.from.includes(drive.status))
-        throw new Error('This action is not available at the current drive stage.');
+        throw new DomainError('This action is not available at the current drive stage.');
       if (
         ['changes', 'reject', 'request-change', 'cancel'].includes(action) &&
         note.trim().length < 5
       )
-        throw new Error('Add a reason of at least 5 characters.');
+        throw new DomainError('Add a reason of at least 5 characters.');
       if (['confirm', 'activate', 'finalize'].includes(action) && !drive.schedule)
-        throw new Error('A campus schedule is required.');
+        throw new DomainError('A campus schedule is required.');
       if (
         action === 'activate' &&
         !drive.audit?.some(
           (a) => a.status === 'CONFIRMED' && a.note === 'Schedule finalized by campus.',
         )
       )
-        throw new Error('Finalize the confirmed schedule before activation.');
+        throw new DomainError('Finalize the confirmed schedule before activation.');
       if (action === 'resubmit') driveRequestSchema.parse(drive);
       audit(
         drive,
@@ -227,16 +228,16 @@ export const driveService = {
     return mockAdapter.update((data) => {
       const drive = data.drives.find((d) => d.id === id);
       if (!drive || drive.status !== 'SCHEDULING')
-        throw new Error('The drive must be approved for scheduling first.');
+        throw new DomainError('The drive must be approved for scheduling first.');
       const conflicts = scheduleConflicts(data.drives, id, schedule);
       if (conflicts.length)
-        throw new Error(
+        throw new DomainError(
           `Scheduling conflict with ${conflicts.map((c) => `${c.company}: ${c.reasons.join(', ')}`).join('; ')}. Choose another date or allocate different resources.`,
         );
       if (schedule.systems < (drive.systems || 0))
-        throw new Error(`Allocate at least ${drive.systems} computer systems.`);
+        throw new DomainError(`Allocate at least ${drive.systems} computer systems.`);
       if (drive.deadline && drive.deadline > schedule.date)
-        throw new Error('Visit must follow the application deadline.');
+        throw new DomainError('Visit must follow the application deadline.');
       drive.schedule = schedule;
       audit(
         drive,
@@ -268,7 +269,7 @@ export const driveService = {
         attended < 0 ||
         attended > drive.applicants
       )
-        throw new Error('Attendance must be between zero and registered applicants.');
+        throw new DomainError('Attendance must be between zero and registered applicants.');
       drive.attended = attended;
     }),
   updateRound: async (id: string, roundId: string, cleared: number) =>
@@ -285,9 +286,11 @@ export const driveService = {
         cleared < 0 ||
         cleared > previous
       )
-        throw new Error('Round results cannot exceed attendees or the previous cleared round.');
+        throw new DomainError(
+          'Round results cannot exceed attendees or the previous cleared round.',
+        );
       if (drive.rounds?.slice(index + 1).some((r) => r.cleared > cleared))
-        throw new Error('Update later rounds first before reducing this count.');
+        throw new DomainError('Update later rounds first before reducing this count.');
       round.cleared = cleared;
     }),
 };

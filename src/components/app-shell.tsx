@@ -38,6 +38,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AccountOnboarding } from './account-onboarding';
 const studentNav = [
   ['dashboard', 'Overview', LayoutDashboard],
+  ['actions', 'Action center', ClipboardCheck],
   ['profile', 'My career profile', UserRound],
   ['skills', 'Skills & verification', ShieldCheck],
   ['assessments', 'Assessments', ClipboardCheck],
@@ -53,6 +54,7 @@ const studentNav = [
 ] as const;
 const recruiterNav = [
   ['dashboard', 'Overview', LayoutDashboard],
+  ['actions', 'Action center', ClipboardCheck],
   ['company', 'Company profile', Building2],
   ['campuses', 'Explore campuses', Building2],
   ['drives', 'Placement drives', BriefcaseBusiness],
@@ -65,6 +67,7 @@ const recruiterNav = [
 ] as const;
 const campusNav = [
   ['dashboard', 'Overview', LayoutDashboard],
+  ['actions', 'Action center', ClipboardCheck],
   ['students', 'Students', Users],
   ['recruiters', 'Recruiters', Building2],
   ['drive-requests', 'New drive requests', BriefcaseBusiness],

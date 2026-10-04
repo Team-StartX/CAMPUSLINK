@@ -26,6 +26,12 @@ export const config = {
 };
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535)
   throw new Error('PORT must be an integer between 1 and 65535.');
+if (!['local', 'supabase'].includes(config.storage))
+  throw new Error('STORAGE_PROVIDER must be local or supabase.');
+if (!['outbox', 'resend'].includes(config.email))
+  throw new Error('EMAIL_PROVIDER must be outbox or resend.');
+if (!['local', 'openai'].includes(config.ai))
+  throw new Error('AI_PROVIDER must be local or openai.');
 if (
   config.production &&
   (!config.database || config.email === 'outbox' || config.storage === 'local')
@@ -40,4 +46,23 @@ if (config.production) {
     config.email === 'resend' && !config.emailFrom && 'EMAIL_FROM',
   ].filter(Boolean);
   if (missing.length) throw new Error(`Missing production settings: ${missing.join(', ')}`);
+  function requireHttpsOrigin(value: string, setting: string) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:' || url.origin !== value || url.username || url.password)
+        throw new Error();
+    } catch {
+      throw new Error(`${setting} must be an HTTPS origin without a path or trailing slash.`);
+    }
+  }
+  requireHttpsOrigin(config.origin, 'FRONTEND_URL');
+  requireHttpsOrigin(config.supabaseUrl, 'SUPABASE_URL');
+  try {
+    const databaseUrl = new URL(config.database);
+    if (!['postgres:', 'postgresql:'].includes(databaseUrl.protocol)) throw new Error();
+  } catch {
+    throw new Error('DATABASE_URL must be a PostgreSQL connection URL.');
+  }
+  if (config.ai === 'openai' && !config.aiKey)
+    throw new Error('OPENAI_API_KEY is required when AI_PROVIDER is openai.');
 }

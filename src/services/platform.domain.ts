@@ -1,3 +1,4 @@
+import { DomainError } from '@/utils/domain-error';
 import { mockAdapter } from '@/mocks/adapter';
 import { POINTS } from '@/config/points.config';
 import { Drive, Interview, Student, InterviewTemplate } from '@/types';
@@ -11,7 +12,7 @@ export const studentService = {
       (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo) ||
         photo.length > 2000000)
     )
-      throw new Error('Use a PNG, JPG, or WebP photo under 2 MB after resizing.');
+      throw new DomainError('Use a PNG, JPG, or WebP photo under 2 MB after resizing.');
     return mockAdapter.update((d) => {
       d.student.photo = photo;
     });
@@ -70,7 +71,7 @@ export const studentService = {
   addSkill: (name: string, level: string) =>
     mockAdapter.update((d) => {
       if (d.student.skills.some((s) => s.name.toLowerCase() === name.toLowerCase()))
-        throw new Error('This skill is already on your profile.');
+        throw new DomainError('This skill is already on your profile.');
       const id = crypto.randomUUID();
       d.student.skills.push({ id, name, level, verified: false });
       d.assessments.push({
@@ -89,7 +90,7 @@ export const studentService = {
   editSkillLevel: (id: string, level: string) =>
     mockAdapter.update((d) => {
       if (!['Beginner', 'Intermediate', 'Advanced'].includes(level))
-        throw new Error('Choose a supported experience level.');
+        throw new DomainError('Choose a supported experience level.');
       const skill = d.student.skills.find((s) => s.id === id);
       if (skill) skill.level = level;
     }),
@@ -104,7 +105,7 @@ export const matchingService = {
     const data = await mockAdapter.read();
     const drive = data.drives.find((d) => (d.opportunityId || d.id) === id);
     if (!drive || !studentVisible(drive) || !checkEligibility(data.student, drive).passed)
-      throw new Error('Matching is available only for eligible, active campus drives.');
+      throw new DomainError('Matching is available only for eligible, active campus drives.');
     return {
       opportunityId: id,
       ...fit(data.student, drive, data.history),
@@ -117,7 +118,7 @@ export const applicationService = {
       const a = d.applications.find((a) => a.id === id);
       const stages = ['Applied', 'Eligibility', 'Shortlisted', 'Assessment', 'Interview', 'Offer'];
       if (!a || !stages.includes(a.stage) || a.stage === 'Offer')
-        throw new Error('This application cannot advance.');
+        throw new DomainError('This application cannot advance.');
       a.stage = stages[stages.indexOf(a.stage) + 1];
       d.notifications.unshift({
         id: crypto.randomUUID(),
@@ -136,13 +137,15 @@ export const applicationService = {
     mockAdapter.update((d) => {
       const drive = d.drives.find((drive) => (drive.opportunityId || drive.id) === id);
       if (!drive || !studentVisible(drive))
-        throw new Error('This campus drive is not open for applications.');
+        throw new DomainError('This campus drive is not open for applications.');
       if (!checkEligibility(d.student, drive).passed)
-        throw new Error('Your profile does not meet this campus drive’s eligibility criteria.');
+        throw new DomainError(
+          'Your profile does not meet this campus drive’s eligibility criteria.',
+        );
       if (drive.deadline && drive.deadline < new Date().toISOString().slice(0, 10))
-        throw new Error('The application deadline has passed.');
+        throw new DomainError('The application deadline has passed.');
       if (d.applications.some((a) => a.opportunityId === id))
-        throw new Error('You have already applied.');
+        throw new DomainError('You have already applied.');
       d.applications.push({
         id: crypto.randomUUID(),
         opportunityId: id,
@@ -163,7 +166,7 @@ export const assessmentService = {
   getAssessments: async () => (await mockAdapter.read()).assessments,
   startAssessment: async (id: string) => {
     const a = (await mockAdapter.read()).assessments.find((a) => a.id === id);
-    if (!a) throw new Error('Assessment not found');
+    if (!a) throw new DomainError('Assessment not found');
     return { assessment: a, questions: mockAdapter.questions(a.skill) };
   },
   submitAssessment: async (id: string, answers: number[], seconds: number) => {
@@ -208,9 +211,10 @@ export const contestService = {
   submitContest: (id: string, answer: string) =>
     mockAdapter.update((d) => {
       const c = d.contests.find((c) => c.id === id);
-      if (!c) throw new Error('Contest not found.');
-      if (!c.joined) throw new Error('Register for this contest first.');
-      if (answer.trim() !== '32') throw new Error('Not quite. Each number doubles. Try again.');
+      if (!c) throw new DomainError('Contest not found.');
+      if (!c.joined) throw new DomainError('Register for this contest first.');
+      if (answer.trim() !== '32')
+        throw new DomainError('Not quite. Each number doubles. Try again.');
       if (!c.completed) {
         c.completed = true;
         d.student.xp += POINTS.contestCompleted;
@@ -292,7 +296,7 @@ export const interviewService = {
   schedule: (interview: Omit<Interview, 'id' | 'status'>) =>
     mockAdapter.update((d) => {
       if (d.interviews.some((i) => i.date === interview.date && i.time === interview.time))
-        throw new Error('Schedule conflict. Please choose another time.');
+        throw new DomainError('Schedule conflict. Please choose another time.');
       d.interviews.push({ ...interview, id: crypto.randomUUID(), status: 'Scheduled' });
       d.notifications.unshift({
         id: crypto.randomUUID(),
@@ -461,14 +465,14 @@ export const offerService = {
   respond: (id: string, status: string) =>
     mockAdapter.update((d) => {
       const o = d.offers.find((o) => o.id === id);
-      if (!o) throw new Error('Offer not found.');
+      if (!o) throw new DomainError('Offer not found.');
       const transitions: Record<string, string[]> = {
         Received: ['Accepted', 'Declined', 'Deferred'],
         Deferred: ['Accepted', 'Declined', 'Withdrawn'],
         Accepted: ['Joined', 'Withdrawn'],
       };
       if (!transitions[o.status]?.includes(status))
-        throw new Error('This offer response is unavailable at the current stage.');
+        throw new DomainError('This offer response is unavailable at the current stage.');
       o.status = status;
       d.notifications.unshift({
         id: crypto.randomUUID(),
@@ -490,7 +494,7 @@ export const documentService = {
     }),
   upload: (file: File, type: string) =>
     mockAdapter.update((d) => {
-      if (file.size > 10 * 1024 * 1024) throw new Error('Maximum file size is 10 MB.');
+      if (file.size > 10 * 1024 * 1024) throw new DomainError('Maximum file size is 10 MB.');
       d.documents.push({
         id: crypto.randomUUID(),
         name: file.name,

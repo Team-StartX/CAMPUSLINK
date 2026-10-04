@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import { backendEnabled } from '@/services/api/remote';
 import type { DirectoryOption, DirectoryResponse } from '@/types/directory';
+import { mergeDirectoryOptions, searchBuiltInDirectory } from '@/utils/directory';
 
 export function OrganizationPicker({
   kind,
@@ -14,6 +15,7 @@ export function OrganizationPicker({
   onChange,
   onSelect,
   required = true,
+  showHelp = true,
 }: {
   kind: 'universities' | 'companies';
   label: string;
@@ -23,6 +25,7 @@ export function OrganizationPicker({
   onChange?: (value: string) => void;
   onSelect?: (option: DirectoryOption) => void;
   required?: boolean;
+  showHelp?: boolean;
 }) {
   const id = useId();
   const [internal, setInternal] = useState(defaultValue),
@@ -49,7 +52,10 @@ export function OrganizationPicker({
     retry: false,
   });
   const current = search === text.trim().slice(0, 100);
-  const options = current ? data?.results || [] : [];
+  const options = mergeDirectoryOptions(
+    current ? data?.results || [] : [],
+    searchBuiltInDirectory(kind, text, country),
+  );
   const update = (next: string) => {
     setInternal(next);
     onChange?.(next);
@@ -92,7 +98,7 @@ export function OrganizationPicker({
         aria-activedescendant={
           active >= 0 && options[active] ? `${id}-option-${active}` : undefined
         }
-        aria-describedby={`${id}-help`}
+        aria-describedby={showHelp ? `${id}-help` : undefined}
         placeholder={
           kind === 'universities' ? 'Search college or university' : 'Search company name'
         }
@@ -122,9 +128,9 @@ export function OrganizationPicker({
           }
         }}
       />
-      {open && text.trim().length >= 2 && backendEnabled && (
+      {open && text.trim().length >= 2 && (
         <div className="directory-results">
-          {(!current || isFetching) && <p role="status">Searching…</p>}
+          {backendEnabled && (!current || isFetching) && <p role="status">Searching…</p>}
           <div id={`${id}-list`} role="listbox" aria-label={`${label} suggestions`}>
             {options.map((option, i) => (
               <div
@@ -143,17 +149,21 @@ export function OrganizationPicker({
               </div>
             ))}
           </div>
-          {current && !isFetching && (
+          {!isFetching && options.length === 0 && (current || !backendEnabled) && (
             <p role="status">
-              {error ? 'Suggestions are unavailable. Enter the name manually.' : data?.message}
+              {error || data?.unavailable
+                ? 'More suggestions are unavailable. Enter the name manually.'
+                : 'No matches found. You can enter the name manually.'}
             </p>
           )}
         </div>
       )}
-      <small id={`${id}-help`}>
-        {kind === 'universities' ? 'University directory: Hipo.' : 'Company directory: Clearbit.'}{' '}
-        Select a suggestion or type manually. Selection does not verify affiliation.
-      </small>
+      {showHelp && (
+        <small id={`${id}-help`}>
+          {kind === 'universities' ? 'University directory: Hipo.' : 'Company directory: Clearbit.'}{' '}
+          Select a suggestion or type manually. Selection does not verify affiliation.
+        </small>
+      )}
     </div>
   );
 }

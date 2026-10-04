@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from './app';
 import { Database } from './db';
@@ -84,6 +84,27 @@ describe('Express placement backend', () => {
     if (target) req = req.set('X-Student-ID', target);
     return req.send({ args });
   };
+  it('prevents caching of public, authenticated, and rejected API responses', async () => {
+    const responses = await Promise.all([
+      request(runtime.app).get('/api/v1/health'),
+      clients.student.agent.get('/api/v1/auth/me'),
+      request(runtime.app).get('/api/v1/analytics'),
+    ]);
+    for (const response of responses) expect(response.headers['cache-control']).toBe('no-store');
+  });
+  it('hides unexpected infrastructure errors from API responses', async () => {
+    const query = vi
+      .spyOn(db, 'query')
+      .mockRejectedValueOnce(new Error('private database connection detail'));
+    try {
+      const response = await request(runtime.app).get('/api/v1/health');
+      expect(response.status).toBe(500);
+      expect(response.body.message).toBe('Unable to complete this request. Please try again.');
+      expect(JSON.stringify(response.body)).not.toContain('private database');
+    } finally {
+      query.mockRestore();
+    }
+  });
   it('rejects guessed passwords and unauthenticated requests', async () => {
     expect(
       (

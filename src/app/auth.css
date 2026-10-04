@@ -30,6 +30,50 @@
   min-height: 40px;
   padding: 9px 12px;
 }
+.compact-auth select {
+  appearance: none;
+  width: 100%;
+  border-radius: 10px;
+  border-color: #d9d5e5;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23675a7d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.compact-auth select:hover {
+  border-color: #a99abd;
+}
+.compact-auth select:focus-visible {
+  border-color: #8d71b8;
+  outline: 2px solid #8d71b8;
+  outline-offset: 2px;
+}
+.compact-auth .directory-country {
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+}
+.compact-auth .directory-results {
+  border-color: #d9d5e5;
+  background: #fff;
+  box-shadow: 0 8px 24px #675a7d14;
+}
+.compact-auth .directory-option {
+  border-bottom-color: #eeeaf4;
+  transition: background-color 160ms ease;
+}
+.compact-auth .directory-option:hover,
+.compact-auth .directory-option.active {
+  background: #f0ebf8;
+}
+.compact-auth .directory-option strong {
+  overflow-wrap: anywhere;
+}
 .compact-auth .role-selector {
   margin-top: 16px;
   gap: 8px;

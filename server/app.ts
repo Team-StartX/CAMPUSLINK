@@ -30,6 +30,7 @@ import { mountGoogleAuth } from './google';
 import { mountAdmin } from './admin';
 import { mlConfigured } from './ml-client';
 import { mountDirectory } from './directory';
+import { DomainError } from '../src/utils/domain-error';
 
 const registration = z
   .object({
@@ -58,6 +59,11 @@ export async function createApp(db = new Database()) {
   app.disable('x-powered-by');
   if (config.production) app.set('trust proxy', 1);
   app.use(helmet());
+  // Workspace records, auth links, and private files must never enter shared caches.
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
   app.use(cors({ origin: config.origin, credentials: true }));
   app.use(express.json({ limit: '3mb' }));
   app.use(cookieParser());
@@ -622,9 +628,20 @@ export async function createApp(db = new Database()) {
       if (error instanceof multer.MulterError)
         return res.status(400).json({ message: 'Upload one supported file under 10 MB.' });
       const status =
-        error instanceof HttpError ? error.status : error instanceof SyntaxError ? 400 : 422;
+        error instanceof HttpError
+          ? error.status
+          : error instanceof SyntaxError
+            ? 400
+            : error instanceof DomainError
+              ? 422
+              : 500;
       res.status(status).json({
-        message: error instanceof Error ? error.message : 'Unable to complete this request.',
+        message:
+          error instanceof HttpError || error instanceof DomainError
+            ? error.message
+            : error instanceof SyntaxError
+              ? 'Invalid request body.'
+              : 'Unable to complete this request. Please try again.',
       });
     },
   );
