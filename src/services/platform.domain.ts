@@ -5,6 +5,8 @@ import { Drive, Interview, Student, InterviewTemplate } from '@/types';
 import { driveService } from './drive.domain';
 import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
 import { readiness, fit } from '@/utils/scoring';
+import { contestAchievements, recordContestCompletion } from '@/utils/contest-achievements';
+import { instituteStudentPatchSchema, type InstituteStudentPatch } from '@/utils/student-records';
 export const studentService = {
   updatePhoto: async (photo?: string) => {
     if (
@@ -40,6 +42,7 @@ export const studentService = {
               h.id !== 'attempt-1' &&
               h.id !== 'attempt-2' &&
               h.type !== 'Interview' &&
+              h.activity !== 'contest' &&
               !['daily', 'weekly', 'monthly'].includes(h.assessmentId),
           )
           .reduce((sum, h) => sum + h.points, 0),
@@ -48,7 +51,9 @@ export const studentService = {
         d.history
           .filter(
             (h) =>
-              h.type === 'Interview' || ['daily', 'weekly', 'monthly'].includes(h.assessmentId),
+              h.type === 'Interview' ||
+              h.activity === 'contest' ||
+              ['daily', 'weekly', 'monthly'].includes(h.assessmentId),
           )
           .reduce((sum, h) => sum + h.points, 0),
     };
@@ -215,20 +220,7 @@ export const contestService = {
       if (!c.joined) throw new DomainError('Register for this contest first.');
       if (answer.trim() !== '32')
         throw new DomainError('Not quite. Each number doubles. Try again.');
-      if (!c.completed) {
-        c.completed = true;
-        d.student.xp += POINTS.contestCompleted;
-        d.history.unshift({
-          id: crypto.randomUUID(),
-          assessmentId: id,
-          name: c.name,
-          type: 'Coding',
-          score: 100,
-          points: POINTS.contestCompleted,
-          date: new Date().toISOString().slice(0, 10),
-          seconds: 900,
-        });
-      }
+      recordContestCompletion(d, c, c.points, 900);
     }),
   getLeaderboard: async () =>
     [
@@ -286,6 +278,20 @@ export const aiService = {
   getCareerRecommendations: async () => ['Frontend Developer', 'Backend Developer', 'Data Analyst'],
 };
 export const interviewService = {
+  getCommunicationHistory: async () => (await mockAdapter.read()).communicationPractice || [],
+  analyzeCommunication: async (input: import('@/utils/communication').CommunicationInput) => {
+    const { communicationInputSchema, analyzeCommunication } =
+      await import('@/utils/communication');
+    const feedback = {
+      ...analyzeCommunication(communicationInputSchema.parse(input)),
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+    };
+    await mockAdapter.update((data) => {
+      data.communicationPractice = [feedback, ...(data.communicationPractice || [])].slice(0, 15);
+    });
+    return feedback;
+  },
   createTemplate: (template: Omit<InterviewTemplate, 'id'>) =>
     mockAdapter.update((d) => {
       d.interviewTemplates = [
@@ -372,8 +378,9 @@ export const recruiterService = {
       d.shortlisted = Array.from(new Set([...(d.shortlisted || []), id]));
     }),
   getCandidates: async () => {
-    const s = (await mockAdapter.read()).student;
-    return [
+    const data = await mockAdapter.read(),
+      s = data.student;
+    const profiles = [
       s,
       {
         ...s,
@@ -421,11 +428,39 @@ export const recruiterService = {
         xp: 2890,
       },
     ];
+    return profiles.map((student) => ({
+      ...student,
+      ...data.instituteStudentUpdates?.[student.id],
+    }));
   },
 };
 export const campusService = {
   getCampusDashboard: () => mockAdapter.read(),
   getStudents: recruiterService.getCandidates,
+  updateStudent: async (studentId: string, input: InstituteStudentPatch) => {
+    const patch = instituteStudentPatchSchema.parse(input);
+    const person = (await campusService.getStudents()).find((s) => s.id === studentId);
+    if (!person) throw new DomainError('Student is unavailable for your institute.');
+    const data = await mockAdapter.update((d) => {
+      if (d.student.id === studentId) Object.assign(d.student, patch);
+      else {
+        d.instituteStudentUpdates ||= {};
+        d.instituteStudentUpdates[studentId] = {
+          ...d.instituteStudentUpdates[studentId],
+          ...patch,
+        };
+      }
+    });
+    return studentId === data.student.id ? data.student : { ...person, ...patch };
+  },
+  getStudentAchievements: async (studentId: string) => {
+    if (!(await campusService.getStudents()).some((s) => s.id === studentId))
+      throw new DomainError('Student is unavailable for your institute.');
+    const data = await mockAdapter.read();
+    return contestAchievements(
+      studentId === data.student.id ? data : { contests: [], history: [] },
+    );
+  },
   getPlacementAnalytics: async () => [
     { name: 'CSE', ready: 88, placed: 72 },
     { name: 'IT', ready: 82, placed: 64 },

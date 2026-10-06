@@ -180,6 +180,20 @@ export function InterviewsPage({
             </div>
           )}
           {role === 'student' && (
+            <Link href="/student/communication" className="communication-dashboard-link">
+              <span className="communication-icon">
+                <Mic size={23} />
+              </span>
+              <div>
+                <strong>Practice your communication with your voice.</strong>
+                <p>Speak, review your transcript, and learn how to improve your answer.</p>
+              </div>
+              <span>
+                Start speaking <ArrowUpRight size={16} />
+              </span>
+            </Link>
+          )}
+          {role === 'student' && (
             <section className="panel ai-practice-banner yellow">
               <span className="ai-icon">
                 <Sparkles size={30} />

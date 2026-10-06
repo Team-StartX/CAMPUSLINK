@@ -5,6 +5,7 @@ import { Database } from './db';
 import { emptyWorkspace, StoredDrive } from './workspace';
 import { defaultDrive } from '../src/mocks/placement';
 import { Account } from './auth';
+import type { DemoData } from '../src/types';
 import { similarity, parseRequirements, interviewFeedback } from './nlp';
 import { train, predict, features, OutcomeRow } from './ml';
 import { promises as fs } from 'node:fs';
@@ -91,6 +92,230 @@ describe('Express placement backend', () => {
       request(runtime.app).get('/api/v1/analytics'),
     ]);
     for (const response of responses) expect(response.headers['cache-control']).toBe('no-store');
+  });
+  it('lets an institute edit its own student, preserves progress, and records the actor', async () => {
+    const before = (await db.get<DemoData>('workspace', student.id))!;
+    const response = await rpc('campus', 'campusService', 'updateStudent', [
+      student.id,
+      {
+        name: 'Updated Student',
+        cgpa: 8.75,
+        branch: 'CSE',
+        activeBacklogs: 1,
+      },
+    ]);
+    expect(response.status).toBe(200);
+    const dashboard = await rpc('student', 'studentService', 'getDashboard');
+    expect(dashboard.body.student).toMatchObject({
+      name: 'Updated Student',
+      cgpa: 8.75,
+      branch: 'CSE',
+      activeBacklogs: 1,
+    });
+    expect(dashboard.body.student.xp).toBe(before.student.xp);
+    expect(dashboard.body.student.skills).toEqual(before.student.skills);
+    expect(dashboard.body.history).toEqual(before.history);
+    expect((await clients.student.agent.get('/api/v1/auth/me')).body.user.name).toBe(
+      'Updated Student',
+    );
+    const audit = await db.list<{
+      event: string;
+      actorId: string;
+      targetId: string;
+      fields: string[];
+    }>('audit');
+    expect(audit).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'institute-student-update',
+          actorId: campus.id,
+          targetId: student.id,
+          fields: expect.arrayContaining(['cgpa', 'name']),
+        }),
+      ]),
+    );
+    await db.put('workspace', student.id, before, student.campusId, student.id);
+    await runtime.auth.save(student);
+  });
+  it('blocks institute edits and achievements outside its campus, other roles, and protected fields', async () => {
+    const before = await db.get<DemoData>('workspace', other.id);
+    expect(
+      (await rpc('campus', 'campusService', 'updateStudent', [other.id, { cgpa: 10 }])).status,
+    ).toBe(403);
+    expect(
+      (await rpc('campus', 'campusService', 'getStudentAchievements', [other.id])).status,
+    ).toBe(403);
+    for (const who of ['student', 'recruiter'])
+      expect(
+        (await rpc(who, 'campusService', 'updateStudent', [student.id, { cgpa: 10 }])).status,
+      ).toBe(403);
+    for (const patch of [
+      { xp: 999 },
+      { campusId: 'campus-b' },
+      { email: 'changed@test.invalid' },
+      { skills: [] },
+      { cgpa: 11 },
+      {},
+    ])
+      expect(
+        (await rpc('campus', 'campusService', 'updateStudent', [student.id, patch])).status,
+      ).toBe(400);
+    expect(await db.get('workspace', other.id)).toEqual(before);
+  });
+  it('shows institute edits on the selected student rather than the default student', async () => {
+    const sibling = await runtime.auth.create(
+      {
+        role: 'student',
+        email: 'sibling@test.invalid',
+        name: 'Sibling Student',
+        password,
+        campusId: 'campus-a',
+        organization: 'campus-a',
+      },
+      true,
+    );
+    const response = await rpc('campus', 'campusService', 'updateStudent', [
+      sibling.id,
+      { cgpa: 9.25 },
+    ]);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ id: sibling.id, cgpa: 9.25 });
+    expect((await db.get<DemoData>('workspace', student.id))?.student.cgpa).toBe(8);
+    expect((await rpc('campus', 'campusService', 'getStudents')).body).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: sibling.id, cgpa: 9.25 })]),
+    );
+    await db.remove('account', sibling.email);
+    await db.remove('workspace', sibling.id);
+  });
+  it('unlocks a contest badge on correct completion and prevents concurrent award replay', async () => {
+    const before = (await db.get<DemoData>('workspace', student.id))!;
+    const contest = before.contests[0];
+    expect((await rpc('student', 'contestService', 'joinContest', [contest.id])).status).toBe(200);
+    expect(
+      (await rpc('student', 'contestService', 'submitContest', [contest.id, 'wrong'])).status,
+    ).toBe(422);
+    expect(
+      (await rpc('campus', 'campusService', 'getStudentAchievements', [student.id])).body.completed,
+    ).toBe(0);
+    const results = await Promise.all(
+      [1, 2].map(() => rpc('student', 'contestService', 'submitContest', [contest.id, '32'])),
+    );
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    const updated = (await db.get<DemoData>('workspace', student.id))!;
+    expect(updated.student.xp).toBe(before.student.xp + contest.points);
+    expect(updated.history.filter((h) => h.activity === 'contest')).toHaveLength(1);
+    const progress = await rpc('campus', 'campusService', 'getStudentAchievements', [student.id]);
+    expect(progress.body).toMatchObject({ completed: 1, currentStreak: 1 });
+    expect(
+      progress.body.badges.find((b: { id: string }) => b.id === 'first-finish').earnedOn,
+    ).toBeTruthy();
+    const dashboard = await rpc('student', 'studentService', 'getDashboard');
+    expect(dashboard.body.pointsSummary.participation).toBe(contest.points);
+    await db.put('workspace', student.id, before, student.campusId, student.id);
+  });
+  it('saves communication feedback only in the submitting student history', async () => {
+    const response = await rpc('student', 'interviewService', 'analyzeCommunication', [
+      {
+        promptId: 'project',
+        transcript:
+          'Um I am agree that we should discuss about this project because the result improved teamwork.',
+        mode: 'text',
+        seconds: null,
+      },
+    ]);
+    expect(response.status).toBe(200);
+    expect(response.body.metrics.wordsPerMinute).toBeNull();
+    expect(response.body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ quote: 'I am agree', correction: 'I agree' }),
+      ]),
+    );
+    const own = await rpc('student', 'interviewService', 'getCommunicationHistory');
+    const unrelated = await rpc('other', 'interviewService', 'getCommunicationHistory');
+    expect(own.body.some((item: { id: string }) => item.id === response.body.id)).toBe(true);
+    expect(unrelated.body).toEqual([]);
+    expect((await rpc('recruiter', 'interviewService', 'getCommunicationHistory')).status).toBe(
+      403,
+    );
+  });
+  it('validates communication input before saving feedback', async () => {
+    const bad = await rpc('student', 'interviewService', 'analyzeCommunication', [
+      { promptId: 'project', transcript: 'A short response', mode: 'text', seconds: 20 },
+    ]);
+    expect(bad.status).toBe(400);
+    expect(
+      (
+        await rpc('student', 'interviewService', 'analyzeCommunication', [
+          {
+            promptId: 'project',
+            transcript: 'A complete project response with at least eight words here.',
+            mode: 'voice',
+            seconds: 999,
+          },
+        ])
+      ).status,
+    ).toBe(400);
+  });
+  it('respects AI consent and preserves transcript feedback when coaching fails', async () => {
+    const originalAi = config.ai,
+      originalKey = config.aiKey,
+      originalConsent = student.aiConsent;
+    const provider = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                {
+                  type: 'output_text',
+                  text: JSON.stringify({
+                    summary: 'Explain your contribution before the result.',
+                    suggestions: ['Give one clear example.'],
+                  }),
+                },
+              ],
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    const input = {
+      promptId: 'project',
+      transcript:
+        'I am agree that we should discuss about this project because the result improved teamwork.',
+      mode: 'text',
+      seconds: null,
+    };
+    try {
+      config.ai = 'openai';
+      config.aiKey = 'test-only-provider-key';
+      student.aiConsent = false;
+      await runtime.auth.save(student);
+      const local = await rpc('student', 'interviewService', 'analyzeCommunication', [input]);
+      expect(local.body.source).toBe('Transcript checks');
+      expect(provider).not.toHaveBeenCalled();
+      student.aiConsent = true;
+      await runtime.auth.save(student);
+      const coached = await rpc('student', 'interviewService', 'analyzeCommunication', [input]);
+      expect(coached.status).toBe(200);
+      expect(coached.body.source).toBe('Transcript checks + AI coaching');
+      expect(coached.body.coaching.suggestions).toEqual(['Give one clear example.']);
+      expect(coached.body.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ quote: 'I am agree' })]),
+      );
+      provider.mockRejectedValueOnce(new Error('Test provider unavailable'));
+      const fallback = await rpc('student', 'interviewService', 'analyzeCommunication', [input]);
+      expect(fallback.status).toBe(200);
+      expect(fallback.body.coachingStatus).toBe('unavailable');
+      expect(fallback.body.issues.length).toBeGreaterThan(0);
+    } finally {
+      provider.mockRestore();
+      config.ai = originalAi;
+      config.aiKey = originalKey;
+      student.aiConsent = originalConsent;
+      await runtime.auth.save(student);
+    }
   });
   it('hides unexpected infrastructure errors from API responses', async () => {
     const query = vi

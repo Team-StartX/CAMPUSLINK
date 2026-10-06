@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUpRight,
   Plus,
@@ -12,8 +12,8 @@ import {
   ChevronRight,
   CircleCheck,
 } from 'lucide-react';
-import { DemoData, Role } from '@/types';
-import { recruiterService, demoService } from '@/services/platform.service';
+import { DemoData, Role, Student } from '@/types';
+import { recruiterService, campusService, demoService } from '@/services/platform.service';
 import { Badge, Button, EmptyState, FormField, PageHeader } from '@/components/ui';
 import { AnalyticsChart, CareerID } from './dashboard';
 import { checkEligibility } from '@/utils/placement';
@@ -21,6 +21,9 @@ import { fit } from '@/utils/scoring';
 import { backendEnabled, rpc } from '@/services/api/remote';
 import { apiClient } from '@/services/api/client';
 import { ConnectedCompany } from '@/components/backend-tools';
+import { useSession } from '@/store/session';
+import { InstituteStudentEditor } from './institute-student-editor';
+import { ContestProgress } from '@/components/contest-progress';
 type Props = {
   data: DemoData;
   role: Role;
@@ -29,10 +32,44 @@ type Props = {
   notify: (s: string) => void;
 };
 export function PeoplePage({ data, role, id, refresh, notify }: Props) {
-  const { data: people } = useQuery({
-    queryKey: ['people'],
-    queryFn: recruiterService.getCandidates,
+  const user = useSession((s) => s.user);
+  const client = useQueryClient();
+  const peopleKey = ['people', role, user?.id];
+  const {
+    data: people,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: peopleKey,
+    queryFn: role === 'campus' ? campusService.getStudents : recruiterService.getCandidates,
   });
+  const [editing, setEditing] = useState<Student | null>(null);
+  const closeEditor = useCallback(() => setEditing(null), []);
+  const {
+    data: achievements,
+    isLoading: loadingAchievements,
+    error: achievementsError,
+  } = useQuery({
+    queryKey: ['student-achievements', user?.id, id],
+    queryFn: () => campusService.getStudentAchievements(id!),
+    enabled: role === 'campus' && Boolean(id && people?.some((p) => p.id === id)),
+  });
+  const editor = editing && (
+    <InstituteStudentEditor
+      student={editing}
+      onClose={closeEditor}
+      onSaved={(updated) => {
+        client.setQueryData<Student[]>(peopleKey, (list) =>
+          list?.map((p) => (p.id === updated.id ? updated : p)),
+        );
+        void client.invalidateQueries({ queryKey: peopleKey });
+        void client.invalidateQueries({ queryKey: ['candidate-ranking'] });
+        closeEditor();
+        refresh();
+        notify('Student record updated.');
+      }}
+    />
+  );
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All students');
   const [driveId, setDriveId] = useState(
@@ -68,6 +105,18 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     refresh();
   };
   const person = people?.find((p) => p.id === id);
+  if (error)
+    return (
+      <EmptyState title="Student records are unavailable" description={(error as Error).message} />
+    );
+  if (id && isLoading) return <p role="status">Opening student record…</p>;
+  if (id && !person)
+    return (
+      <EmptyState
+        title="Student unavailable"
+        description="This student is not in your institute or authorized candidate list."
+      />
+    );
   if (id && person)
     return (
       <>
@@ -75,19 +124,23 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           title={person.name}
           description={`${person.course} · ${person.campus}`}
           action={
-            <Button
-              disabled={
-                shortlisted.includes(person.id) ||
-                (role === 'recruiter' &&
-                  (!selectedDrive || !checkEligibility(person, selectedDrive).passed))
-              }
-              onClick={() => {
-                setShortlisted((s) => [...s, person.id]);
-                notify('Candidate added to the shortlist.');
-              }}
-            >
-              Shortlist candidate <Check size={16} />
-            </Button>
+            role === 'campus' ? (
+              <Button onClick={() => setEditing(person)}>Edit student record</Button>
+            ) : (
+              <Button
+                disabled={
+                  shortlisted.includes(person.id) ||
+                  (role === 'recruiter' &&
+                    (!selectedDrive || !checkEligibility(person, selectedDrive).passed))
+                }
+                onClick={() => {
+                  setShortlisted((s) => [...s, person.id]);
+                  notify('Candidate added to the shortlist.');
+                }}
+              >
+                Shortlist candidate <Check size={16} />
+              </Button>
+            )
           }
         />
         <div className="two-columns">
@@ -148,10 +201,27 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
             </Link>
           </section>
         </div>
-        <section className="panel">
-          <h3>Assessment performance · Demo analytics</h3>
-          <AnalyticsChart />
-        </section>
+        {role === 'campus' ? (
+          achievements ? (
+            <ContestProgress achievements={achievements} />
+          ) : (
+            <section className="panel">
+              <p role="status">
+                {loadingAchievements
+                  ? 'Loading contest achievements…'
+                  : achievementsError
+                    ? 'Could not load contest achievements. Refresh to try again.'
+                    : 'No contest achievements available.'}
+              </p>
+            </section>
+          )
+        ) : (
+          <section className="panel">
+            <h3>Assessment performance · Demo analytics</h3>
+            <AnalyticsChart />
+          </section>
+        )}
+        {editor}
       </>
     );
   return (
@@ -234,11 +304,14 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
               .map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <Link
-                      href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
+                      <Link
+                        className="student-record-link"
+                        href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
                     >
                       <b>{p.name}</b>
-                      <small>{p.id} · CSE</small>
+                      <small>
+                        {p.id} · {p.branch || p.course}
+                      </small>
                     </Link>
                   </td>
                   <td>{p.cgpa}</td>
@@ -257,22 +330,29 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                     </Badge>
                   </td>
                   <td>
-                    <button
-                      className="text-button"
-                      disabled={shortlisted.includes(p.id)}
-                      onClick={() => {
-                        setShortlisted((s) => [...s, p.id]);
-                        notify(`${p.name} shortlisted.`);
-                      }}
-                    >
-                      Shortlist <Plus size={14} />
-                    </button>
+                    {role === 'campus' ? (
+                      <button className="text-button" onClick={() => setEditing(p)}>
+                        Edit record <ArrowUpRight size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        className="text-button"
+                        disabled={shortlisted.includes(p.id)}
+                        onClick={() => {
+                          setShortlisted((s) => [...s, p.id]);
+                          notify(`${p.name} shortlisted.`);
+                        }}
+                      >
+                        Shortlist <Plus size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
           </tbody>
         </table>
       </div>
+      {editor}
     </>
   );
 }

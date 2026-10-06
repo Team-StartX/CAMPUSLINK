@@ -2,6 +2,9 @@
 import { PreparationOverview } from '@/components/preparation-overview';
 import Link from 'next/link';
 import { CareerID } from '@/components/student-id';
+import { DashboardActivity } from '@/components/dashboard-activity';
+import { ContestProgress } from '@/components/contest-progress';
+import { contestAchievements } from '@/utils/contest-achievements';
 export { CareerID } from '@/components/student-id';
 
 import {
@@ -18,6 +21,7 @@ import {
   Plus,
   Zap,
   Target,
+  Mic,
 } from 'lucide-react';
 
 import { useQuery } from '@tanstack/react-query';
@@ -82,7 +86,7 @@ export function ReadinessCard({ full = false }: { full?: boolean }) {
   });
   if (backendEnabled)
     return (
-      <section className="panel">
+      <section className="panel connected-readiness">
         <PreparationOverview
           score={data?.score}
           categories={data?.categories}
@@ -190,24 +194,75 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
         .slice(0, 3)
     : undefined;
   return (
-    <>
+    <div className="student-dashboard">
       <PageHeader
-        eyebrow={new Date()
-          .toLocaleDateString('en-IN', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })
-          .toUpperCase()}
-        title={`Good morning, ${student.name.split(' ')[0]}.`}
-        description="A little progress today. A bigger possibility tomorrow."
+        eyebrow="YOUR NEXT CHAPTER"
+        title="Career dashboard"
+        description={`Welcome back, ${student.name.split(' ')[0]}. Let's make a little progress today.`}
         action={
-          <Link className="button outline" href="/student/profile">
-            My career profile <ArrowUpRight size={16} />
-          </Link>
+          <div className="dashboard-header-actions">
+            <span className="dashboard-date">
+              <CalendarDays size={15} />
+              {new Date().toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </span>
+            <Link className="button outline" href="/student/profile">
+              My career profile <ArrowUpRight size={16} />
+            </Link>
+          </div>
         }
       />
+      <div className="dashboard-snapshot">
+        {[
+          {
+            label: 'Verified skills',
+            value: student.skills.filter((skill) => skill.verified).length,
+            detail: `${student.skills.length} skills in your toolkit`,
+            href: '/student/skills',
+            color: 'sage',
+            Icon: CircleCheck,
+          },
+          {
+            label: 'Applications',
+            value: data.applications.length,
+            detail: 'Your next chapter in motion',
+            href: '/student/applications',
+            color: 'lavender',
+            Icon: ArrowUpRight,
+          },
+          {
+            label: 'Upcoming interviews',
+            value: data.interviews.filter((interview) => interview.status === 'Scheduled').length,
+            detail: 'A chance to show your potential',
+            href: '/student/interviews',
+            color: 'yellow',
+            Icon: CalendarDays,
+          },
+          {
+            label: 'Career points',
+            value: student.xp.toLocaleString(),
+            detail: 'Every effort adds up',
+            href: '/student/career-points',
+            color: 'pink',
+            Icon: Trophy,
+          },
+        ].map(({ label, value, detail, href, color, Icon }) => (
+          <Link className="snapshot-card" href={href} key={label}>
+            <span className="snapshot-label">
+              <span className={`snapshot-icon ${color}`}>
+                <Icon size={16} />
+              </span>
+              {label}
+              <ArrowUpRight size={14} />
+            </span>
+            <strong>{value}</strong>
+            <small>{detail}</small>
+          </Link>
+        ))}
+      </div>
       {!data.onboardingDismissed && (
         <div className="onboarding-strip">
           <span className="onboarding-icon">
@@ -236,8 +291,8 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
         </div>
       )}
       <div className="dashboard-hero-grid">
-        <CareerID student={student} refresh={refresh} />
         <ReadinessCard />
+        <DashboardActivity history={data.history} />
         <div className="next-action panel yellow">
           <div className="tiny-label">
             <Zap size={16} /> YOUR NEXT BEST ACTION
@@ -266,6 +321,7 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
           <span className="action-meta">10 questions · 10 min · +120 XP</span>
         </div>
       </div>
+      <ContestProgress achievements={contestAchievements(data)} compact />
       <div className="career-progress panel">
         <div>
           <h3>Your career, in motion.</h3>
@@ -287,6 +343,18 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
           )}
         </div>
       </div>
+      <Link href="/student/communication" className="communication-dashboard-link">
+        <span className="communication-icon">
+          <Mic size={23} />
+        </span>
+        <div>
+          <strong>Find your voice.</strong>
+          <p>Practice speaking and get feedback on your wording, fillers, and answer structure.</p>
+        </div>
+        <span>
+          Practice communication <ArrowUpRight size={16} />
+        </span>
+      </Link>
       <div className="dashboard-middle">
         <section>
           <div className="section-header">
@@ -430,7 +498,25 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
         <Sparkles size={15} /> Your potential isn’t a number. These insights help you decide what to
         do next.
       </div>
-    </>
+      <section className="dashboard-identity panel">
+        <div>
+          <span className="eyebrow">YOUR CAMPUSLINK IDENTITY</span>
+          <h2>
+            Your potential.
+            <br />
+            All in one place.
+          </h2>
+          <p>
+            Your skills, your progress, your next chapter. Keep your career ID up to date as you
+            grow.
+          </p>
+          <Link className="button outline" href="/student/profile">
+            View your profile <ArrowUpRight size={16} />
+          </Link>
+        </div>
+        <CareerID student={student} refresh={refresh} />
+      </section>
+    </div>
   );
 }
 const activity = [

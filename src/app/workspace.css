@@ -4,7 +4,47 @@
 }
 .app-shell .sidebar {
   background: #fff;
+  color: #51566b;
   border-right-color: #e6e8ef;
+}
+.app-shell .workspace-picker {
+  border-color: #e6e8ef;
+  background: #f8f9fc;
+  color: #34394d;
+}
+.app-shell .workspace-picker small,
+.app-shell .sidebar-user small {
+  color: #697086;
+}
+.app-shell .workspace-icon {
+  background: #eeeafb;
+  color: #59438d;
+}
+.app-shell .sidebar-label {
+  color: #697086;
+}
+.app-shell .sidebar nav > a,
+.app-shell .sidebar-bottom > a:not(.sidebar-promo),
+.app-shell .sidebar-bottom > button {
+  color: #51566b;
+}
+.app-shell .sidebar nav > a:hover,
+.app-shell .sidebar-bottom > a:not(.sidebar-promo):hover,
+.app-shell .sidebar-bottom > button:hover {
+  background: #f3f1fa;
+  color: #59438d;
+}
+.app-shell .sidebar .nav-count {
+  border-color: #ded9ec;
+  background: #f3f1fa;
+  color: #59438d;
+}
+.app-shell .sidebar-user {
+  border-top-color: #e6e8ef;
+}
+.app-shell .sidebar-user strong,
+.app-shell .sidebar-brand .mobile-toggle {
+  color: #34394d;
 }
 .app-shell .topbar {
   background: rgba(255, 255, 255, 0.96);

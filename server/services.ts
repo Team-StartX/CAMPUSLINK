@@ -4,11 +4,30 @@ import { driveService, driveRequestSchema } from '../src/services/drive.domain';
 import { mockAdapter } from '../src/mocks/adapter';
 import { readiness, fit } from '../src/utils/scoring';
 import { checkEligibility } from '../src/utils/placement';
-import { currentContext, readWorkspace, studentProfiles, StoredDrive } from './workspace';
+import {
+  currentContext,
+  readWorkspace,
+  studentProfiles,
+  emptyWorkspace,
+  StoredDrive,
+} from './workspace';
+import type { Account } from './auth';
+import {
+  instituteStudentPatchSchema,
+  type InstituteStudentPatch,
+} from '../src/utils/student-records';
+import { contestAchievements, recordContestCompletion } from '../src/utils/contest-achievements';
 import { requireCondition } from './errors';
 import { analyzeResumeText, interviewFeedback, parseRequirements, similarity } from './nlp';
 import { modelInsight, OutcomeRow } from './ml';
 import { coaching } from './generative';
+import {
+  analyzeCommunication,
+  communicationInputSchema,
+  communicationPrompts,
+  type CommunicationFeedback,
+  type CommunicationInput,
+} from '../src/utils/communication';
 import { downloadFile, uploadFile, detectFile } from './storage';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { randomUUID } from 'node:crypto';
@@ -69,6 +88,8 @@ export const policy: Record<string, Record<string, string[]>> = {
     startAIInterview: ['student'],
     getInterviewFeedback: ['student'],
     completePractice: ['student'],
+    analyzeCommunication: ['student'],
+    getCommunicationHistory: ['student'],
   },
   recruiterService: {
     getRecruiterDashboard: ['recruiter'],
@@ -80,6 +101,8 @@ export const policy: Record<string, Record<string, string[]>> = {
   campusService: {
     getCampusDashboard: ['campus'],
     getStudents: ['campus'],
+    updateStudent: ['campus'],
+    getStudentAchievements: ['campus'],
     getPlacementAnalytics: ['campus'],
   },
   notificationService: { markRead: ['student', 'recruiter', 'campus'] },
@@ -120,6 +143,10 @@ const profilePatch = z
   .strict();
 const optionalId = id.optional();
 const schemas: Record<string, z.ZodTypeAny> = {
+  'campusService.updateStudent': z.tuple([id, instituteStudentPatchSchema]),
+  'campusService.getStudentAchievements': z.tuple([id]),
+  'interviewService.analyzeCommunication': z.tuple([communicationInputSchema]),
+  'interviewService.getCommunicationHistory': z.tuple([]),
   'studentService.updateStudent': z.tuple([profilePatch]),
   'studentService.updatePhoto': z.tuple([z.string().max(2000000).optional()]),
   'studentService.addSkill': z.tuple([
@@ -227,6 +254,44 @@ export async function dispatch(service: string, method: string, input: unknown[]
   }
   if (['recruiterService.getCandidates', 'campusService.getStudents'].includes(key))
     return studentProfiles(db, actor);
+  if (key === 'campusService.updateStudent' || key === 'campusService.getStudentAchievements') {
+    return db.transaction(async () => {
+      const account = (await db.list<Account>('account')).find((a) => a.id === args[0]);
+      requireCondition(
+        actor.campusId &&
+          account?.role === 'student' &&
+          account.approved &&
+          account.campusId === actor.campusId,
+        403,
+        'This student does not belong to your institute.',
+      );
+      const campus = await db.get<{ name: string }>('campus', account.campusId);
+      const workspace =
+        (await db.get<DemoData>('workspace', account.id)) || emptyWorkspace(account, campus?.name);
+      if (key === 'campusService.getStudentAchievements') return contestAchievements(workspace);
+      const patch = args[1] as InstituteStudentPatch;
+      Object.assign(workspace.student, patch);
+      await db.put('workspace', account.id, workspace, account.campusId, account.id);
+      if (patch.name) {
+        account.name = patch.name;
+        await db.put('account', account.email, account, account.campusId, account.id);
+      }
+      await db.put(
+        'audit',
+        randomUUID(),
+        {
+          event: 'institute-student-update',
+          actorId: actor.id,
+          targetId: account.id,
+          fields: Object.keys(patch),
+          time: new Date().toISOString(),
+        },
+        actor.campusId,
+        actor.id,
+      );
+      return workspace.student;
+    });
+  }
   if (key === 'contestService.getLeaderboard')
     return (await studentProfiles(db, actor))
       .map((s) => ({ name: s.name, xp: s.xp, campus: s.campus }))
@@ -492,21 +557,50 @@ export async function dispatch(service: string, method: string, input: unknown[]
       );
       return mockAdapter.update((d) => {
         const current = d.contests.find((c) => c.id === contest.id)!;
-        if (current.completed) return;
-        current.completed = true;
-        d.student.xp += managed.points;
-        d.history.unshift({
-          id: randomUUID(),
-          assessmentId: contest.id,
-          name: contest.name,
-          type: 'Coding',
-          score: 100,
-          points: managed.points,
-          date: new Date().toISOString().slice(0, 10),
-          seconds: 0,
-        });
+        recordContestCompletion(d, current, managed.points, 0);
       });
     }
+  }
+  if (key === 'interviewService.getCommunicationHistory') {
+    return (await db.get<CommunicationFeedback[]>('communication-practice', actor.id)) || [];
+  }
+  if (key === 'interviewService.analyzeCommunication') {
+    const input = args[0] as CommunicationInput;
+    const feedback: CommunicationFeedback = {
+      ...analyzeCommunication(input),
+      id: randomUUID(),
+      date: new Date().toISOString(),
+    };
+    const consent = Boolean((actor as typeof actor & { aiConsent?: boolean }).aiConsent);
+    try {
+      const advice = await coaching(
+        'Coach an English communication practice response. Identify specific grammar or wording errors using short quoted excerpts and corrected alternatives in your suggestions. Explain how to improve clarity, organization, and relevance to the prompt. Acknowledge that a transcript may contain recognition errors. Do not claim to measure pronunciation, accent, confidence, emotion, or pauses from text. Do not invent personal facts or achievements. Include an improved version of a short excerpt only when justified.',
+        {
+          prompt: communicationPrompts.find((prompt) => prompt.id === input.promptId)?.question,
+          transcript: input.transcript,
+          mode: input.mode,
+          metrics: feedback.metrics,
+        },
+        consent,
+      );
+      if (advice) {
+        feedback.coaching = advice;
+        feedback.source = 'Transcript checks + AI coaching';
+        feedback.coachingStatus = 'available';
+      }
+    } catch {
+      feedback.coachingStatus = 'unavailable';
+    }
+    const previous =
+      (await db.get<CommunicationFeedback[]>('communication-practice', actor.id)) || [];
+    await db.put(
+      'communication-practice',
+      actor.id,
+      [feedback, ...previous].slice(0, 15),
+      actor.campusId,
+      actor.id,
+    );
+    return feedback;
   }
   if (key === 'interviewService.startAIInterview') {
     const result = await platform.interviewService.startAIInterview(

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard,
   UserRound,
@@ -26,6 +26,7 @@ import {
   Users,
   CalendarDays,
   BarChart3,
+  Mic,
 } from 'lucide-react';
 import { Logo } from './public';
 import { Modal } from './ui';
@@ -46,6 +47,7 @@ const studentNav = [
   ['opportunities', 'Campus opportunities', BriefcaseBusiness],
   ['applications', 'My applications', Files],
   ['interviews', 'Interview hub', Video],
+  ['communication', 'Communication practice', Mic],
   ['readiness', 'Placement readiness', Sparkles],
   ['learning', 'Learning paths', BookOpen],
   ['offers', 'My offers', Gift],
@@ -103,6 +105,43 @@ export function AppShell({ role, children }: { role: Role; children: React.React
   const [term, setTerm] = useState('');
   const [ready, setReady] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const profileMenu = useRef<HTMLDivElement>(null);
+  const profileButton = useRef<HTMLButtonElement>(null);
+  const logout = async () => {
+    setLoggingOut(true);
+    setLogoutError('');
+    try {
+      await authService.logout();
+      queryClient.clear();
+      router.push('/login');
+    } catch {
+      setProfileOpen(true);
+      setLogoutError('Unable to log out. Please try again.');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+  useEffect(() => {
+    if (!profileOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!profileMenu.current?.contains(event.target as Node)) setProfileOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setProfileOpen(false);
+        profileButton.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [profileOpen]);
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [path]);
@@ -153,11 +192,13 @@ export function AppShell({ role, children }: { role: Role; children: React.React
     <div className="app-shell">
       <aside
         className={`sidebar ${drawer ? 'sidebar-open' : ''}`}
+        id="workspace-navigation"
+        aria-label="Workspace navigation"
         aria-hidden={mobile && !drawer}
         inert={mobile && !drawer}
       >
         <div className="sidebar-brand">
-          <Logo dark />
+          <Logo />
           <button
             className="mobile-toggle"
             onClick={() => setDrawer(false)}
@@ -167,8 +208,13 @@ export function AppShell({ role, children }: { role: Role; children: React.React
           </button>
         </div>
         {user?.isAdmin && (
-          <Link href="/admin/dashboard" className="text-link">
-            Admin dashboard <ShieldCheck size={15} />
+          <Link
+            href="/admin/dashboard"
+            className="sidebar-admin"
+            aria-label="Admin dashboard"
+            title="Admin dashboard"
+          >
+            <ShieldCheck size={18} /> <span className="nav-label">Admin dashboard</span>
           </Link>
         )}
         <div className="workspace-picker">
@@ -199,13 +245,20 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               href={`/${role}/${slug}`}
               prefetch={true}
               scroll={false}
+              aria-label={label}
+              aria-current={
+                path === `/${role}/${slug}` || path.startsWith(`/${role}/${slug}/`)
+                  ? 'page'
+                  : undefined
+              }
+              title={label}
               onClick={() => setDrawer(false)}
               className={
                 path === `/${role}/${slug}` || path.startsWith(`/${role}/${slug}/`) ? 'active' : ''
               }
             >
               <Icon size={18} />
-              {label}
+              <span className="nav-label">{label}</span>
               {slug === 'opportunities' && (
                 <span className="nav-count">{data?.opportunities.length || 0}</span>
               )}
@@ -214,7 +267,12 @@ export function AppShell({ role, children }: { role: Role; children: React.React
         </nav>
         <div className="sidebar-bottom">
           {role === 'student' && (
-            <Link href="/student/membership" className="sidebar-promo">
+            <Link
+              href="/student/membership"
+              className="sidebar-promo"
+              aria-label="Explore Premium"
+              title="Explore Premium"
+            >
               <Sparkles size={20} />
               <strong>Give your future a boost.</strong>
               <p>
@@ -226,21 +284,23 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               </span>
             </Link>
           )}
-          <Link href={`/${role}/notifications`}>
-            <Bell size={17} /> Notifications{' '}
+          <Link href={`/${role}/notifications`} aria-label="Notifications" title="Notifications">
+            <Bell size={17} /> <span className="nav-label">Notifications</span>{' '}
             {unread > 0 && <span className="nav-count">{unread}</span>}
           </Link>
-          <Link href={`/${role}/settings`}>
-            <Settings size={17} /> Settings
+          <Link href={`/${role}/settings`} aria-label="Settings" title="Settings">
+            <Settings size={17} /> <span className="nav-label">Settings</span>
           </Link>
           <button
-            onClick={async () => {
-              await authService.logout();
-              queryClient.clear();
-              router.push('/login');
-            }}
+            onClick={logout}
+            disabled={loggingOut}
+            aria-label={loggingOut ? 'Signing out' : user ? 'Sign out' : 'Sign in'}
+            title={user ? 'Sign out' : 'Sign in'}
           >
-            <LogOut size={17} /> {user ? 'Sign out' : 'Sign in'}
+            <LogOut size={17} />{' '}
+            <span className="nav-label">
+              {loggingOut ? 'Signing out…' : user ? 'Sign out' : 'Sign in'}
+            </span>
           </button>
           <div className="sidebar-user">
             <span className="avatar-circle lavender">{initials}</span>
@@ -266,6 +326,8 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               className="mobile-toggle"
               onClick={() => setDrawer(true)}
               aria-label="Open menu"
+              aria-expanded={drawer}
+              aria-controls="workspace-navigation"
             >
               <Menu />
             </button>
@@ -295,12 +357,41 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               <Bell size={19} />
               {unread > 0 && <i />}
             </Link>
-            <Link
-              href={`/${role}/${role === 'student' ? 'profile' : 'settings'}`}
-              className="avatar-circle lavender"
+            <div
+              className="profile-menu"
+              ref={profileMenu}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  setProfileOpen(false);
+              }}
             >
-              {initials}
-            </Link>
+              <button
+                ref={profileButton}
+                type="button"
+                className="avatar-circle lavender"
+                aria-label="Account options"
+                aria-expanded={profileOpen}
+                aria-controls="account-options"
+                onClick={() => setProfileOpen((open) => !open)}
+              >
+                {initials}
+              </button>
+              {profileOpen && (
+                <div className="profile-dropdown" id="account-options">
+                  <strong>{displayName}</strong>
+                  <Link
+                    href={`/${role}/${role === 'student' ? 'profile' : 'settings'}`}
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <UserRound size={17} /> {role === 'student' ? 'My profile' : 'Account settings'}
+                  </Link>
+                  <button type="button" onClick={logout} disabled={loggingOut}>
+                    <LogOut size={17} /> {loggingOut ? 'Logging out…' : 'Logout'}
+                  </button>
+                  {logoutError && <p role="alert">{logoutError}</p>}
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <main className="dashboard-content">

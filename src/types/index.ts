@@ -74,6 +74,7 @@ export interface Question {
   topic: string;
 }
 export interface AssessmentAttempt {
+  activity?: 'contest';
   topicScores?: Record<string, number>;
   id: string;
   assessmentId: string;
@@ -232,6 +233,8 @@ export interface InterviewTemplate {
   audience: string;
 }
 export interface DemoData {
+  instituteStudentUpdates?: Record<string, import('@/utils/student-records').InstituteStudentPatch>;
+  communicationPractice?: import('@/utils/communication').CommunicationFeedback[];
   placementVersion?: number;
   campuses?: Campus[];
   student: Student;

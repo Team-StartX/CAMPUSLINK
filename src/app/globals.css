@@ -2290,6 +2290,61 @@ td small {
   height: 31px;
   font-size: 9px;
 }
+.profile-menu {
+  position: relative;
+}
+.profile-menu > button {
+  border: 0;
+  cursor: pointer;
+}
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 50;
+  width: 230px;
+  max-width: calc(100vw - 32px);
+  padding: 10px;
+  border: 1px solid #e3e6da;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px #26351b1a;
+}
+.profile-dropdown > strong {
+  display: block;
+  padding: 8px 10px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.profile-dropdown > a,
+.profile-dropdown > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5c6451;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.profile-dropdown > a:hover,
+.profile-dropdown > button:hover {
+  background: #f3f5ee;
+}
+.profile-dropdown > button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.profile-dropdown > p {
+  padding: 0 10px;
+  color: #a13333;
+  font-size: 12px;
+}
 .dashboard-content {
   max-width: 1510px;
   margin: auto;

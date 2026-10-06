@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { UserRound } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { authService, useSession } from '@/store/session';
 import type { User } from '@/types';
@@ -58,7 +59,13 @@ export function PublicStartLink({
       href={user ? (user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`) : href}
       className={className}
     >
-      {user ? 'Go to dashboard' : children}
+      {user ? (
+        <>
+          <UserRound size={17} aria-hidden="true" /> Go to dashboard
+        </>
+      ) : (
+        children
+      )}
     </Link>
   );
 }

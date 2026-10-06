@@ -35,6 +35,7 @@ import { backendEnabled } from '@/services/api/remote';
 import { PublicSessionProvider } from './public-session';
 import { AdminDashboard } from '@/features/admin';
 import { ActionCenter } from '@/features/action-center';
+import { CommunicationPractice } from '@/features/communication';
 export function Platform() {
   const path = usePathname();
   if (path === '/admin' || path.startsWith('/admin/')) return <AdminDashboard />;
@@ -130,6 +131,14 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         break;
       case 'readiness':
         content = <ReadinessPage data={props.data} />;
+        break;
+      case 'communication':
+        content =
+          role === 'student' ? (
+            <CommunicationPractice />
+          ) : (
+            <EmptyState title="Communication practice is available in the student workspace." />
+          );
         break;
       case 'learning':
         content = <LearningPage {...props} />;

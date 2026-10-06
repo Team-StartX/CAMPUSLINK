@@ -70,7 +70,7 @@ export async function candidates(db: Database, actor: Account) {
   return accounts
     .filter((a) => a.role === 'student' && a.approved)
     .filter((a) => {
-      if (actor.role === 'campus') return a.campusId === actor.campusId;
+      if (actor.role === 'campus') return Boolean(actor.campusId) && a.campusId === actor.campusId;
       if (actor.role === 'student') return a.id === actor.id;
       const data = profiles.find((p) => p.student.id === a.id);
       return data?.applications.some((app) =>
@@ -186,10 +186,20 @@ export async function readWorkspace(): Promise<DemoData> {
   });
   data.pointsSummary = {
     assessments: data.history
-      .filter((h) => h.type !== 'Interview')
+      .filter(
+        (h) =>
+          h.type !== 'Interview' &&
+          h.activity !== 'contest' &&
+          !data.contests.some((c) => c.id === h.assessmentId),
+      )
       .reduce((s, h) => s + h.points, 0),
     participation: data.history
-      .filter((h) => h.type === 'Interview')
+      .filter(
+        (h) =>
+          h.type === 'Interview' ||
+          h.activity === 'contest' ||
+          data.contests.some((c) => c.id === h.assessmentId),
+      )
       .reduce((s, h) => s + h.points, 0),
   };
   return data;
@@ -324,7 +334,8 @@ export async function studentProfiles(db: Database, actor: Account): Promise<Stu
   const result: Student[] = [];
   for (const a of allowed) {
     const data = await db.get<DemoData>('workspace', a.id);
-    if (data) result.push(data.student);
+    const campus = await db.get<Campus>('campus', a.campusId);
+    result.push((data || emptyWorkspace(a, campus?.name)).student);
   }
   return result;
 }

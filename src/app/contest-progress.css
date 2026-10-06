@@ -1,0 +1,182 @@
+.contest-progress {
+  margin: 28px 0;
+  scroll-margin-top: 100px;
+}
+.contest-stats-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 16px;
+}
+.contest-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.contest-stats-grid strong {
+  display: block;
+  font-size: 48px;
+  font-weight: 500;
+  letter-spacing: -2px;
+  margin: 17px 0 8px;
+}
+.contest-stats-grid strong small {
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.contest-stats-grid p {
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 290px;
+}
+.contest-streak-panel > small {
+  display: block;
+  font-size: 10px;
+  color: #676171;
+  margin-top: 12px;
+}
+.contest-week {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.contest-week > div {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  font-size: 10px;
+  color: #625c6b;
+}
+.contest-week > div > span:last-child {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: #ffffff85;
+  border-radius: 50%;
+  font-size: 18px;
+}
+.contest-week .completed {
+  background: #383042 !important;
+  color: white;
+}
+.contest-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.contest-badge {
+  position: relative;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+}
+.contest-badge-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: #eee8fa;
+  color: #665387;
+}
+.contest-badge.earned {
+  border-color: #c5d6bf;
+  background: #f7faf5;
+}
+.contest-badge.earned .contest-badge-icon {
+  background: #dceacb;
+  color: #41663d;
+}
+.contest-badge-status {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 15px 0 4px;
+  color: #706b76;
+}
+.contest-badge h3 {
+  font-size: 13px;
+  margin: 0;
+}
+.contest-badge p {
+  font-size: 11px;
+  line-height: 1.6;
+  flex: 1;
+  margin: 9px 0 17px;
+}
+.contest-badge small {
+  font-size: 10px;
+  color: #706b76;
+  margin-top: 9px;
+}
+.contest-badge .progress {
+  width: 100%;
+  height: 5px;
+}
+.contest-progress-preview {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+  background: #f5f0fb;
+}
+.contest-progress-icon {
+  background: #e4d9f6;
+  color: #6a488b;
+  padding: 12px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+}
+.contest-progress-preview strong {
+  font-size: 15px;
+}
+.contest-progress-preview p {
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+.contest-progress-preview > span:last-child {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.institute-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.institute-student-form {
+  gap: 14px;
+}
+.student-record-link { display: block; }
+@media (max-width: 1100px) {
+  .contest-badges-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .contest-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .contest-badges-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .contest-progress .section-header {
+    align-items: flex-start;
+    gap: 12px;
+    flex-direction: column;
+  }
+  .contest-progress-preview {
+    flex-wrap: wrap;
+  }
+  .contest-progress-preview > span:last-child {
+    margin-left: 0;
+    width: 100%;
+  }
+}

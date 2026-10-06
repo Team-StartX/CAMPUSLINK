@@ -15,6 +15,8 @@ import {
 import { assessmentService, contestService } from '@/services/platform.service';
 import { AssessmentAttempt, DemoData, Role } from '@/types';
 import { Button, PageHeader, Progress, Badge, EmptyState, formatDate } from '@/components/ui';
+import { ContestProgress } from '@/components/contest-progress';
+import { contestAchievements } from '@/utils/contest-achievements';
 export function AssessmentsPage({ data, role = 'student' }: { data: DemoData; role?: Role }) {
   const [tab, setTab] = useState('Available');
   const [filter, setFilter] = useState('All');
@@ -491,6 +493,7 @@ export function ContestsPage({
           ))}
         </div>
       )}
+      {role === 'student' && <ContestProgress achievements={contestAchievements(data)} />}
       <div className="section-header">
         <div>
           <h2>Progress worth celebrating.</h2>

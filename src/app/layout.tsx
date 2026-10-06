@@ -13,6 +13,9 @@ import './admin.css';
 import './directory.css';
 import './preparation.css';
 import './workspace.css';
+import './dashboard.css';
+import './communication.css';
+import './contest-progress.css';
 import { Providers } from '@/components/providers';
 import { Platform } from '@/components/platform';
 export const metadata: Metadata = {

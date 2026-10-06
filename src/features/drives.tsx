@@ -27,6 +27,8 @@ import {
 } from '@/services/drive.service';
 import { aiService } from '@/services/platform.service';
 import { statusLabel, driveStatuses, checkEligibility } from '@/utils/placement';
+import { ContestProgress } from '@/components/contest-progress';
+import { contestAchievements } from '@/utils/contest-achievements';
 import {
   Badge,
   Button,
@@ -1550,6 +1552,7 @@ export function CareerPointsPage({ data }: Props) {
           </div>
         ))}
       </section>
+      <ContestProgress achievements={contestAchievements(data)} />
     </>
   );
 }

@@ -23,7 +23,7 @@ const guides: Record<string, { icon: typeof BookOpen; href: string; action: stri
   Aptitude: { icon: BookOpen, href: '/student/assessments', action: 'Take an assessment' },
   Communication: {
     icon: MessageCircle,
-    href: '/student/assessments',
+    href: '/student/communication',
     action: 'Practice communication',
   },
   Interview: { icon: Mic, href: '/student/interviews/ai', action: 'Try a mock interview' },
