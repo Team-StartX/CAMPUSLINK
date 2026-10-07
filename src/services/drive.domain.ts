@@ -68,14 +68,15 @@ export const driveService = {
   createDriveRequest: async (input: Partial<Drive>, draft = false) => {
     const candidate = defaultDrive(input);
     if (!draft) driveRequestSchema.parse(candidate);
-    return mockAdapter.update((data) => {
+    const createdDriveId = crypto.randomUUID();
+    const workspace = await mockAdapter.update((data) => {
       const campus = data.campuses?.find((c) => c.id === candidate.campusId);
       if (!campus) throw new DomainError('Select an available campus.');
       if (candidate.preferredDates?.filter(Boolean).some((date) => candidate.deadline! >= date))
         throw new DomainError('The application deadline must be before the campus visit.');
       const drive = {
         ...candidate,
-        id: crypto.randomUUID(),
+        id: createdDriveId,
         campus: campus.name,
         applicants: 0,
         status: (draft ? 'DRAFT' : 'SUBMITTED') as DriveStatus,
@@ -90,6 +91,7 @@ export const driveService = {
       data.drives.push(drive);
       return drive;
     });
+    return { ...workspace, createdDriveId };
   },
   updateDriveRequest: async (id: string, patch: Partial<Drive>) =>
     mockAdapter.update((data) => {

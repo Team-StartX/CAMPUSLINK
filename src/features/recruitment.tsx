@@ -1,13 +1,14 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/store/session';
 import { Badge, Button, EmptyState, FormField, Modal } from '@/components/ui';
 import { recruitmentService as service } from '@/services/recruitment.service';
 import { documentService } from '@/services/platform.service';
 import type { Drive, Role, WorkspaceData } from '@/types';
-import type { CandidateResult, RecruitmentAssignment } from '@/types/recruitment';
+import type { CandidateResult, RecruitmentAssignment, Relationship } from '@/types/recruitment';
 import { ScheduleSummary } from './drives';
 const fieldLabel = (key: string) =>
   key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
@@ -195,8 +196,9 @@ export function StudentCompanyPage({ data, id }: { data: WorkspaceData; id?: str
 }
 
 export function RecruitmentDashboard({ role, data }: { role: Role; data: WorkspaceData }) {
+  const userId = useSession((s) => s.user?.id);
   const query = useQuery({
-    queryKey: ['recruitment-dashboard', role],
+    queryKey: ['recruitment-dashboard', role, userId],
     queryFn: service.dashboard,
     refetchInterval: 15000,
   });
@@ -211,6 +213,9 @@ export function RecruitmentDashboard({ role, data }: { role: Role; data: Workspa
           <div className="metric-card" key={label}>
             <span>{label}</span>
             <b>{value}</b>
+            {role === 'campus' && label === 'Pending approvals' && (
+              <Link href="/campus/drive-requests">Review requests</Link>
+            )}
           </div>
         ))}
       </div>
@@ -835,47 +840,91 @@ export function RecruitmentPanel({
   );
 }
 
-export function CampusRelationships({ role, data }: { role: Role; data: WorkspaceData }) {
+export function CampusRelationships({
+  role,
+  data,
+  campusId,
+}: {
+  role: Role;
+  data: WorkspaceData;
+  campusId?: string;
+}) {
+  const userId = useSession((s) => s.user?.id);
+  const client = useQueryClient();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const query = useQuery({ queryKey: ['relationships', role], queryFn: service.relationships });
+  const inFlight = useRef(false);
+  const query = useQuery({
+    queryKey: ['relationships', role, userId],
+    queryFn: service.relationships,
+    enabled: Boolean(userId),
+    refetchInterval: 15000,
+  });
   const run = async (fn: () => Promise<unknown>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       setError('');
       await fn();
+      void client.invalidateQueries({ queryKey: ['recruitment-dashboard'] });
       await query.refetch();
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
   return (
     <section className="panel">
-      <h2>{role === 'campus' ? 'Recruiter requests' : 'Campus recruitment access'}</h2>
+      <h2>{role === 'campus' ? 'Recruiter access approval' : 'Campus recruitment access'}</h2>
       <p>
         Campus acceptance is required before a recruiter can submit a job. Student records remain
         private until application.
       </p>
-      {(error || query.error) && <p role="alert">{error || query.error?.message}</p>}
+      {(error || (!query.data && query.error)) && (
+        <p role="alert">{error || query.error?.message}</p>
+      )}
+      {query.isPending && <p role="status">Loading campus access requests…</p>}
+      {role === 'campus' && query.data?.length === 0 && (
+        <p>No recruiter access requests have been sent to this campus yet.</p>
+      )}
       {role === 'recruiter' &&
-        data.campuses?.map((c) => {
-          const row = query.data?.find((r) => r.campusId === c.id);
-          return (
-            <div className="panel-header" key={c.id}>
-              <span>
-                {c.name} · {row?.status || 'No request'}
-              </span>
-              <Button
-                disabled={busy || (!!row && row.status !== 'Rejected')}
-                onClick={() => void run(() => service.requestCampus(c.id))}
-              >
-                Request access
-              </Button>
-            </div>
-          );
-        })}
+        data.campuses
+          ?.filter((c) => !campusId || c.id === campusId)
+          .map((c) => {
+            const row = query.data?.find((r) => r.campusId === c.id);
+            return (
+              <div className="panel-header" key={c.id}>
+                <span>
+                  {c.name} · {row?.status || 'No request'}
+                </span>
+                <Button
+                  disabled={
+                    busy || query.isPending || !!query.error || (!!row && row.status !== 'Rejected')
+                  }
+                  onClick={() =>
+                    void run(async () => {
+                      const sent = await service.requestCampus(c.id);
+                      client.setQueryData<Relationship[]>(
+                        ['relationships', role, userId],
+                        (rows = []) => [...rows.filter((r) => r.id !== sent.id), sent],
+                      );
+                    })
+                  }
+                >
+                  {row?.status === 'Pending'
+                    ? 'Request sent'
+                    : row?.status === 'Accepted'
+                      ? 'Access accepted'
+                      : row?.status === 'Rejected'
+                        ? 'Request again'
+                        : 'Request access'}
+                </Button>
+              </div>
+            );
+          })}
       {role === 'campus' &&
         query.data?.map((r) => (
           <form
@@ -884,9 +933,14 @@ export function CampusRelationships({ role, data }: { role: Role; data: Workspac
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              void run(() =>
-                service.reviewCampus(r.id, String(f.get('status')), String(f.get('reason'))),
-              );
+              const status = String(f.get('status')) as Relationship['status'];
+              const reason = String(f.get('reason') || '');
+              void run(async () => {
+                await service.reviewCampus(r.id, status, reason);
+                client.setQueryData<Relationship[]>(['relationships', role, userId], (rows = []) =>
+                  rows.map((row) => (row.id === r.id ? { ...row, status, reason } : row)),
+                );
+              });
             }}
           >
             <h3>

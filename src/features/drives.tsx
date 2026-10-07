@@ -38,7 +38,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 type Props = {
@@ -139,9 +140,7 @@ export function DrivesPage(
     <>
       <PageHeader
         eyebrow="CAMPUS VISITS, COORDINATED"
-        title={
-          requestsOnly ? 'Requests that need your attention.' : 'Every drive. Every next step.'
-        }
+        title={requestsOnly ? 'Campus approval requests.' : 'Every drive. Every next step.'}
         description="Request → campus review → scheduling → recruiter confirmation → activation → physical campus visit."
         action={
           role === 'recruiter' && (
@@ -151,6 +150,13 @@ export function DrivesPage(
           )
         }
       />
+      {requestsOnly && role === 'campus' && (
+        <>
+          <CampusRelationships role="campus" data={data} />
+          <h2>Drive approval requests</h2>
+          <p>After campus access is accepted, recruiters can submit their drive for review here.</p>
+        </>
+      )}
       <div className="info-banner sage">
         <ShieldCheck />
         <div>
@@ -224,7 +230,7 @@ export function DrivesPage(
       </div>
       {!list.length && (
         <EmptyState
-          title="No drive requests in this view."
+          title="No submitted drive requests in this view."
           description="Try another status or clear your search."
         />
       )}
@@ -241,10 +247,19 @@ function DriveRequestWizard({
 }) {
   const router = useRouter();
   const user = useSession((s) => s.user);
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const [saved, setSaved] = useState<{ id: string; draft: boolean } | null>(null);
+  const access = useQuery({
+    queryKey: ['relationships', 'recruiter', user?.id],
+    queryFn: recruitmentService.relationships,
+    enabled: Boolean(user?.id),
+    refetchInterval: 15000,
+  });
   const [values, setValues] = useState<Drive>(() => {
     const campusId =
       typeof window !== 'undefined'
@@ -270,6 +285,8 @@ function DriveRequestWizard({
   });
   const set = <K extends keyof Drive>(key: K, value: Drive[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
+  const campusAccess = access.data?.find((r) => r.campusId === values.campusId);
+  const canSave = campusAccess?.status === 'Accepted';
   const stageNames = [
     'Select campus',
     'Job information',
@@ -312,9 +329,16 @@ function DriveRequestWizard({
     return true;
   };
   const save = async (draft: boolean) => {
+    if (saving.current || saved) return;
+    if (!canSave) {
+      setError('Request campus access and wait for acceptance before submitting a drive.');
+      return;
+    }
     if (!draft && !validateStep()) return;
+    saving.current = true;
     setBusy(true);
     setError('');
+    let savedId = existing?.id || '';
     try {
       const input = { ...values, preferredDates: values.preferredDates?.filter(Boolean) };
       if (existing) {
@@ -331,24 +355,34 @@ function DriveRequestWizard({
           'recruiterId',
           'workflowVersion',
           'companyDetails',
+          'eligibilityApprovals',
+          'requestedSlot',
         ] as const)
           delete patch[key];
         await driveService.updateDriveRequest(existing.id, patch);
-        await driveService.transition(existing.id, 'resubmit', 'recruiter');
-      } else await driveService.createDriveRequest(input, draft);
-      refresh();
-      notify(
-        draft
-          ? 'Draft saved. Students cannot see it.'
-          : 'Request submitted. Awaiting campus review.',
-      );
-      const requests = await driveService.getDriveRequests();
-      router.push(`/recruiter/drives/${existing?.id || requests.at(-1)?.id || ''}`);
+        const result = await driveService.transition(existing.id, 'resubmit', 'recruiter');
+        queryClient.setQueryData(['platform', user?.id], result);
+      } else {
+        const result = await driveService.createDriveRequest(input, draft);
+        savedId = result.createdDriveId;
+        queryClient.setQueryData(['platform', user?.id], result);
+      }
+      setSaved({ id: savedId, draft });
     } catch (e) {
       setError(e instanceof z.ZodError ? e.issues[0].message : (e as Error).message);
+      return;
     } finally {
+      saving.current = false;
       setBusy(false);
     }
+    // Refreshing the list is independent of the successful mutation.
+    void Promise.resolve()
+      .then(refresh)
+      .catch(() => undefined);
+    notify(
+      draft ? 'Draft saved. Students cannot see it.' : 'Request submitted. Awaiting campus review.',
+    );
+    if (savedId) router.push(`/recruiter/drives/${savedId}`);
   };
   const roundSet = (
     id: string,
@@ -378,6 +412,7 @@ function DriveRequestWizard({
         className="panel drive-form form-stack"
         onSubmit={(e) => {
           e.preventDefault();
+          if (saving.current || saved) return;
           if (step < 5) {
             if (validateStep()) setStep(step + 1);
           } else void save(false);
@@ -430,6 +465,9 @@ function DriveRequestWizard({
                   </button>
                 ))}
             </div>
+            {values.campusId && (
+              <CampusRelationships role="recruiter" data={data} campusId={values.campusId} />
+            )}
           </>
         )}
         {step === 1 && (
@@ -548,7 +586,7 @@ function DriveRequestWizard({
                 notify('Extraction complete. Review the suggested skills before continuing.');
               }}
             >
-              Extract requirements · {'Local NLP'}
+              Extract skills
             </Button>
           </>
         )}
@@ -919,10 +957,27 @@ function DriveRequestWizard({
             {error}
           </p>
         )}
+        {saved && (
+          <p role="status">
+            {saved.draft ? 'Draft saved.' : 'Request sent. Awaiting campus review.'}{' '}
+            <Link href={`/recruiter/drives/${saved.id}`}>
+              View {saved.draft ? 'draft' : 'request'}
+            </Link>
+          </p>
+        )}
+        {step === 5 && !saved && !canSave && (
+          <p role="status">
+            {access.isPending
+              ? 'Checking campus access…'
+              : campusAccess?.status === 'Pending'
+                ? 'Campus access request sent. Wait for campus acceptance before submitting the drive.'
+                : 'Campus access is required. Request access in the Select campus step.'}
+          </p>
+        )}
         <div className="wizard-actions">
           <Button
             kind="outline"
-            disabled={step === 0 || busy}
+            disabled={step === 0 || busy || !!saved}
             onClick={() => {
               setError('');
               setStep(step - 1);
@@ -933,20 +988,24 @@ function DriveRequestWizard({
           {!existing && (
             <Button
               kind="outline"
-              disabled={busy || !values.campusId}
+              disabled={busy || !!saved || !canSave}
               onClick={() => void save(true)}
             >
               Save draft
             </Button>
           )}
-          <Button type="submit" disabled={busy}>
-            {busy
-              ? 'Saving…'
-              : step === 5
-                ? existing
-                  ? 'Resubmit request'
-                  : 'Submit drive request'
-                : 'Continue'}{' '}
+          <Button type="submit" disabled={busy || !!saved || (step === 5 && !canSave)}>
+            {saved
+              ? saved.draft
+                ? 'Draft saved'
+                : 'Request sent'
+              : busy
+                ? 'Saving…'
+                : step === 5
+                  ? existing
+                    ? 'Resubmit request'
+                    : 'Submit drive request'
+                  : 'Continue'}{' '}
             <ArrowUpRight size={16} />
           </Button>
         </div>
@@ -1017,21 +1076,30 @@ function DriveDetail({
 }: Props & {
   drive: Drive;
 }) {
+  const userId = useSession((s) => s.user?.id);
+  const queryClient = useQueryClient();
+  const transitioning = useRef(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const run = async (action: Parameters<typeof driveService.transition>[1]) => {
+    if (transitioning.current) return;
+    transitioning.current = true;
     setBusy(true);
     setError('');
     try {
-      await driveService.transition(drive.id, action, role, note);
-      refresh();
+      const result = await driveService.transition(drive.id, action, role, note);
+      queryClient.setQueryData(['platform', userId], result);
+      void Promise.resolve()
+        .then(refresh)
+        .catch(() => undefined);
       notify('Drive updated. The next step is ready.');
       setNote('');
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      transitioning.current = false;
       setBusy(false);
     }
   };
@@ -1208,6 +1276,9 @@ function DriveDetail({
                 <Button onClick={() => setEditing(true)}>
                   Edit & {drive.status === 'DRAFT' ? 'submit' : 'resubmit'} request
                 </Button>
+              )}
+              {!campus && ['SUBMITTED', 'UNDER_REVIEW'].includes(drive.status) && (
+                <Button disabled>Request sent · Awaiting campus review</Button>
               )}
               {!campus && drive.status === 'AWAITING_RECRUITER_CONFIRMATION' && (
                 <>

@@ -78,6 +78,35 @@ describe('campus recruitment scenario with individual student outcomes', () => {
     }
   });
   afterEach(async () => db.close());
+  it('returns an already sent campus access request without duplicating notifications or audit events', async () => {
+    const first = await recruit(recruiter, 'requestCampus', ['campus-a']);
+    expect(await recruit(campus, 'relationships')).toEqual([first]);
+    expect(await recruit(account('other-team', 'campus', 'campus-b'), 'relationships')).toEqual([]);
+    expect(await recruit(campus, 'dashboard')).toMatchObject({
+      metrics: { 'Pending approvals': 1 },
+    });
+    const notifications = await db.list('notification');
+    const audit = await db.list('audit');
+    expect(await recruit(recruiter, 'requestCampus', ['campus-a'])).toEqual(first);
+    expect(await db.list('campus-recruiter')).toHaveLength(1);
+    expect(await db.list('notification')).toHaveLength(notifications.length);
+    expect(await db.list('audit')).toHaveLength(audit.length);
+    await recruit(campus, 'reviewCampus', [`campus-a:${recruiter.id}`, 'Accepted', '']);
+    expect(await recruit(campus, 'dashboard')).toMatchObject({
+      metrics: { 'Pending approvals': 0 },
+    });
+    expect(await recruit(recruiter, 'requestCampus', ['campus-a'])).toMatchObject({
+      status: 'Accepted',
+    });
+    expect(await db.list('campus-recruiter')).toHaveLength(1);
+    await expect(
+      recruit(account('other-recruiter', 'recruiter'), 'reviewCampus', [
+        `campus-a:${recruiter.id}`,
+        'Accepted',
+        '',
+      ]),
+    ).rejects.toThrow('role');
+  });
   async function create() {
     const input = defaultDrive({
       campusId: 'campus-a',
@@ -170,6 +199,20 @@ describe('campus recruitment scenario with individual student outcomes', () => {
   }
   it('reviews, schedules, publishes, applies, hides future assignments, rejects candidates, publishes results, and tracks an offer', async () => {
     const drive = await create();
+    const campusWorkspace = await runWorkspace(db, campus, undefined, readWorkspace);
+    expect(campusWorkspace.drives).toContainEqual(
+      expect.objectContaining({ id: drive.id, status: 'SUBMITTED' }),
+    );
+    const otherWorkspace = await runWorkspace(
+      db,
+      account('other-team', 'campus', 'campus-b'),
+      undefined,
+      readWorkspace,
+    );
+    expect(otherWorkspace.drives.some((d) => d.id === drive.id)).toBe(false);
+    expect(await recruit(campus, 'dashboard')).toMatchObject({
+      metrics: { 'Pending approvals': 1 },
+    });
     await expect(recruit(a, 'overview', [drive.id])).rejects.toThrow('unavailable');
     await publish(drive);
     await expect(recruit(low, 'overview', [drive.id])).rejects.toThrow('not eligible');

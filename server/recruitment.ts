@@ -197,8 +197,9 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       'Active jobs': drives.filter((d) =>
         ['ACTIVE', 'APPLICATIONS_CLOSED', 'IN_PROGRESS'].includes(d.status),
       ).length,
-      'Pending approvals': drives.filter((d) => ['SUBMITTED', 'UNDER_REVIEW'].includes(d.status))
-        .length,
+      'Pending approvals':
+        drives.filter((d) => ['SUBMITTED', 'UNDER_REVIEW'].includes(d.status)).length +
+        relationships.filter((r) => r.status === 'Pending').length,
       'Upcoming drives': drives.filter(
         (d) =>
           d.schedule &&
@@ -265,11 +266,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
     requireCondition(await db.get('campus', campusId), 404, 'Campus not found.');
     const id = `${campusId}:${actor.id}`;
     const previous = await db.get<Relationship>('campus-recruiter', id);
-    requireCondition(
-      !previous || previous.status === 'Rejected',
-      409,
-      'A pending or accepted request already exists.',
-    );
+    if (previous && previous.status !== 'Rejected') return previous;
     const row: Relationship = {
       id,
       campusId,

@@ -451,6 +451,8 @@ describe('Express placement backend', () => {
     expect(created.status).toBe(200);
     const drives = await db.list<StoredDrive>('drive');
     const drive = drives.find((d) => d.role === 'Frontend Engineer')!;
+    expect(created.body.createdDriveId).toBe(drive.id);
+    expect(created.body.drives.some((d: StoredDrive) => d.id === drive.id)).toBe(true);
     expect(drive.company).toBe('Test Company');
     expect(
       (await rpc('recruiter', 'driveService', 'transition', [drive.id, 'approve', 'campus', '']))

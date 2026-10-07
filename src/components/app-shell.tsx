@@ -71,7 +71,7 @@ const campusNav = [
   ['actions', 'Action center', ClipboardCheck],
   ['students', 'Students', Users],
   ['recruiters', 'Recruiters', Building2],
-  ['drive-requests', 'New drive requests', BriefcaseBusiness],
+  ['drive-requests', 'Approval requests', BriefcaseBusiness],
   ['drives', 'Placement drives', BriefcaseBusiness],
   ['scheduling', 'Scheduling', CalendarDays],
   ['campus-assessments', 'Campus Assessments', ClipboardCheck],

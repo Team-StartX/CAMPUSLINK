@@ -29,7 +29,8 @@ export const recruitmentService = {
   verifyEligibility: (driveId: string, studentId: string, approved: boolean, reason: string) =>
     rpc('recruitmentService', 'verifyEligibility', [driveId, studentId, approved, reason]),
   relationships: () => rpc<Relationship[]>('recruitmentService', 'relationships'),
-  requestCampus: (campusId: string) => rpc('recruitmentService', 'requestCampus', [campusId]),
+  requestCampus: (campusId: string) =>
+    rpc<Relationship>('recruitmentService', 'requestCampus', [campusId]),
   reviewCampus: (id: string, status: string, reason: string) =>
     rpc('recruitmentService', 'reviewCampus', [id, status, reason]),
   overview: (driveId: string) =>
