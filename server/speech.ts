@@ -94,11 +94,6 @@ export function mountSpeech(app: Express) {
           'Student access required.',
         );
         requireCondition(
-          !config.production || actor.verified,
-          403,
-          'Verify your email before recording practice.',
-        );
-        requireCondition(
           speechConfigured(),
           503,
           'Voice transcription is not configured. You can type a response instead.',

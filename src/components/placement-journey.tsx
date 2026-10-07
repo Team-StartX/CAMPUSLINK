@@ -4,7 +4,7 @@ const stages = [
   {
     title: 'Create your account',
     description:
-      'Register your institution or company. Students join a registered campus. Verify your email and complete your profile.',
+      'Register your institution or company. Students join a registered campus. Complete your profile to get started.',
     href: '/register',
     action: 'Create account',
   },

@@ -156,13 +156,6 @@ export async function createApp(db = new Database()) {
         workspace.student.year = input.year || '2027';
         await db.put('workspace', user.id, workspace, user.campusId, user.id);
       }
-      const token = await auth.issueToken(user, 'verify');
-      await queueMail(
-        db,
-        user.email,
-        'Verify your CampusLink email',
-        `${config.origin}/verify-email?token=${token}`,
-      );
       return user;
     });
     const login = await auth.login(account.email, input.password, false);
@@ -204,10 +197,8 @@ export async function createApp(db = new Database()) {
     await auth.consumeToken(input.token, 'reset', input.password);
     res.json({ message: 'Password reset. Sign in with your new password.' });
   });
-  app.post(`${base}/auth/verify-email`, authLimit, async (req, res) => {
-    const { token } = z.object({ token: z.string().min(20) }).parse(req.body);
-    await auth.consumeToken(token, 'verify');
-    res.json({ message: 'Email verified.' });
+  app.post(`${base}/auth/verify-email`, authLimit, (_req, res) => {
+    res.json({ message: 'Email verification is not required. You can sign in directly.' });
   });
   app.use(base, async (req, res, next) => {
     try {
@@ -309,16 +300,8 @@ export async function createApp(db = new Database()) {
     });
     res.json({ user });
   });
-  app.post(`${base}/auth/resend-verification`, authLimit, async (_req, res) => {
-    const a: Account = res.locals.account;
-    const token = await auth.issueToken(a, 'verify');
-    await queueMail(
-      db,
-      a.email,
-      'Verify your CampusLink email',
-      `${config.origin}/verify-email?token=${token}`,
-    );
-    res.json({ message: 'Verification email queued.' });
+  app.post(`${base}/auth/resend-verification`, authLimit, (_req, res) => {
+    res.json({ message: 'Email verification is not required.' });
   });
   app.put(`${base}/account/ai-consent`, async (req, res) => {
     const input = z.object({ consent: z.boolean() }).parse(req.body);
@@ -386,11 +369,6 @@ export async function createApp(db = new Database()) {
   app.post(`${base}/services/:service/:method`, async (req, res) => {
     const { args } = z.object({ args: z.array(z.unknown()).max(8).default([]) }).parse(req.body);
     const actor: Account = res.locals.account;
-    requireCondition(
-      !config.production || actor.verified,
-      403,
-      'Verify your email before using the platform.',
-    );
     const result = await db.transaction(() =>
       runWorkspace(db, actor, req.header('X-Student-ID'), () =>
         dispatch(

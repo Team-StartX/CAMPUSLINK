@@ -63,9 +63,9 @@ describe('administrator management and student publishing', () => {
       .set('X-CSRF-Token', clients.student.csrf)
       .send({ args });
 
-  it('requires authenticated, verified administrator access and CSRF', async () => {
+  it('requires authenticated, approved administrator access and CSRF without email verification', async () => {
     expect((await request(runtime.app).get('/api/v1/admin')).status).toBe(401);
-    for (const key of ['student', 'campus', 'recruiter', 'unverified']) {
+    for (const key of ['student', 'campus', 'recruiter']) {
       expect((await clients[key].agent.get('/api/v1/admin')).status).toBe(403);
       expect(
         (
@@ -77,6 +77,7 @@ describe('administrator management and student publishing', () => {
       ).toBe(403);
     }
     expect((await clients.admin.agent.post('/api/v1/admin/questions').send({})).status).toBe(403);
+    expect((await clients.unverified.agent.get('/api/v1/admin')).status).toBe(200);
   });
   it('does not permit admin self-registration or expose password hashes', async () => {
     const registration = await request(runtime.app).post('/api/v1/auth/register').send({

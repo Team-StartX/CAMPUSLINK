@@ -72,11 +72,11 @@ export function AdminDashboard() {
         <p>Checking your access.</p>
       </div>
     );
-  if (!user?.isAdmin || !user.approved || !user.verified)
+  if (!user?.isAdmin || !user.approved)
     return (
       <EmptyState
         title="Administrator access required"
-        description="Use a verified account with administrator access granted by the project operator."
+        description="Use an approved account with administrator access granted by the project operator."
         action={
           <Link className="button dark" href="/">
             Back to home
@@ -503,7 +503,7 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
                             {a.role}
                             <small>{a.organization}</small>
                           </td>
-                          <td>{a.verified ? 'Verified' : 'Awaiting verification'}</td>
+                          <td>{a.verified ? 'Verified' : 'Not required'}</td>
                           <td>
                             <Badge>{a.approved ? 'Approved' : 'Pending / revoked'}</Badge>
                           </td>

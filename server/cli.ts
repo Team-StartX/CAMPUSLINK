@@ -30,7 +30,7 @@ async function main() {
       });
       console.log(
         grant
-          ? 'Administrator access granted. Verify the account email, then open /admin/dashboard.'
+          ? 'Administrator access granted. Open /admin/dashboard.'
           : 'Administrator access revoked.',
       );
     } else if (command === 'approve-user') {
@@ -44,13 +44,13 @@ async function main() {
         { event: 'operator-approval', targetId: account.id, time: new Date().toISOString() },
         account.campusId,
       );
-      console.log('Account approved. Email verification remains required in production.');
+      console.log('Account approved. You can sign in directly.');
     } else if (command === 'outbox') {
       const output = 'server/data/outbox.json';
       fs.mkdirSync(path.dirname(output), { recursive: true });
       fs.writeFileSync(output, JSON.stringify(await db.list<MailJob>('mail'), null, 2));
       console.log(
-        `Local email preview saved to ${output}. It contains private verification/reset links; do not share it.`,
+        `Local email preview saved to ${output}. It contains private password reset links; do not share it.`,
       );
     } else if (command === 'train-model') {
       if (!arg)

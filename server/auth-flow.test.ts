@@ -42,6 +42,9 @@ describe('email authentication flow', () => {
       institution: 'Authentication Test College',
     });
     expect(signup.status).toBe(201);
+    expect(signup.body.user.verified).toBe(false);
+    expect(await db.list('mail')).toHaveLength(0);
+    expect(await db.list('token')).toHaveLength(0);
     expect(signup.headers['set-cookie'][0]).toContain('HttpOnly');
     expect((await student.get('/api/v1/auth/me')).body.user.email).toBe('student@example.edu');
     expect(
@@ -104,6 +107,37 @@ describe('email authentication flow', () => {
         })
       ).status,
     ).toBe(400);
+  });
+  it('allows existing unverified accounts to use production features without verification mail', async () => {
+    config.production = true;
+    try {
+      const student = request.agent(runtime.app);
+      const login = await student.post('/api/v1/auth/login').send({
+        email: 'student@example.edu',
+        password,
+      });
+      expect(login.status).toBe(200);
+      expect(login.body.user.verified).toBe(false);
+      // Secure production cookies need HTTPS; send the authenticated cookie explicitly here.
+      const cookie = login.headers['set-cookie'][0].split(';')[0];
+      const dashboard = await request(runtime.app)
+        .post('/api/v1/services/studentService/getDashboard')
+        .set('Cookie', cookie)
+        .set('X-CSRF-Token', login.body.csrf)
+        .send({ args: [] });
+      expect(dashboard.status).toBe(200);
+      const resend = await request(runtime.app)
+        .post('/api/v1/auth/resend-verification')
+        .set('Cookie', cookie)
+        .set('X-CSRF-Token', login.body.csrf);
+      expect(resend.status).toBe(200);
+      expect(resend.body.message).toContain('not required');
+      expect((await request(runtime.app).post('/api/v1/auth/verify-email')).status).toBe(200);
+      expect(await db.list('mail')).toHaveLength(0);
+      expect(await db.list('token')).toHaveLength(0);
+    } finally {
+      config.production = false;
+    }
   });
   it('keeps unrelated browser origins blocked before authentication', async () => {
     for (const origin of ['https://untrusted.example', 'http://localhost:3001']) {

@@ -84,7 +84,7 @@ export class Authentication {
     requireCondition(account, 401, 'Account is unavailable.');
     return { account, session };
   }
-  async issueToken(account: Account, purpose: 'verify' | 'reset') {
+  async issueToken(account: Account, purpose: 'reset') {
     const token = randomBytes(32).toString('base64url');
     await this.db.put(
       'token',
@@ -92,14 +92,14 @@ export class Authentication {
       {
         userId: account.id,
         purpose,
-        expires: Date.now() + (purpose === 'verify' ? 86400000 : 1800000),
+        expires: Date.now() + 1800000,
       },
       account.campusId,
       account.id,
     );
     return token;
   }
-  async consumeToken(token: string, purpose: 'verify' | 'reset', password?: string) {
+  async consumeToken(token: string, purpose: 'reset', password?: string) {
     return this.db.transaction(async () => {
       const record = await this.db.get<{ userId: string; purpose: string; expires: number }>(
         'token',
@@ -112,13 +112,10 @@ export class Authentication {
       );
       const account = await this.byId(record.userId);
       requireCondition(account, 400, 'Account is unavailable.');
-      if (purpose === 'verify') account.verified = true;
-      else {
-        requireCondition(password && password.length >= 10, 400, 'Use at least 10 characters.');
-        account.passwordHash = hashPassword(password);
-        for (const session of await this.db.list<SessionRecord>('session', undefined, account.id))
-          await this.db.remove('session', session.id);
-      }
+      requireCondition(password && password.length >= 10, 400, 'Use at least 10 characters.');
+      account.passwordHash = hashPassword(password);
+      for (const session of await this.db.list<SessionRecord>('session', undefined, account.id))
+        await this.db.remove('session', session.id);
       await this.save(account);
       await this.db.remove('token', digest(token));
       return publicUser(account);

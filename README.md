@@ -44,6 +44,7 @@ Configure secrets in `server/.env` or the hosting service's environment settings
 
 - Voice input: `SPEECH_PROVIDER=openai`, `OPENAI_API_KEY`, optionally
   `OPENAI_TRANSCRIPTION_MODEL` (default `gpt-4o-mini-transcribe`).
+- Email verification is not required for signup or access, including existing accounts. Staff organization approval still applies. Password recovery and notification emails remain available.
 - Real email: `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, verified `EMAIL_FROM`.
 - Database and files: PostgreSQL and private Supabase storage settings.
 - Optional generative coaching: `AI_PROVIDER=openai`, `OPENAI_API_KEY`,

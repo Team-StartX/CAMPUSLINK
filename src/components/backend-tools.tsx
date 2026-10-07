@@ -39,7 +39,6 @@ function ConnectedTools({ role }: { role: Role }) {
   if (
     role === 'student' &&
     user?.approved &&
-    user.verified &&
     consent?.provider !== 'openai' &&
     !consent?.mlConfigured &&
     !message
@@ -54,25 +53,6 @@ function ConnectedTools({ role }: { role: Role }) {
         <p role="status">
           Your organization account is awaiting approval. An authorized campus team or project
           operator must approve it.
-        </p>
-      )}
-      {user && !user.verified && (
-        <p>
-          Email verification is pending.{' '}
-          <button
-            className="text-button"
-            onClick={async () => {
-              try {
-                await authService.restore();
-                await apiClient.post('/auth/resend-verification');
-                setMessage('Verification email queued.');
-              } catch (e) {
-                setMessage((e as Error).message);
-              }
-            }}
-          >
-            Send verification email
-          </button>
         </p>
       )}
       {role !== 'student' && (
@@ -310,9 +290,17 @@ export function AuthLinkPage({ verify = false }: { verify?: boolean }) {
   const [password, setPassword] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false);
+  if (verify)
+    return (
+      <div className="content-width" style={{ maxWidth: 560, padding: '80px 20px' }}>
+        <h1>You can sign in directly</h1>
+        <p>Email verification is not required.</p>
+        <Link href="/login">Go to sign in</Link>
+      </div>
+    );
   return (
     <div className="content-width" style={{ maxWidth: 560, padding: '80px 20px' }}>
-      <h1>{verify ? 'Verify your email' : 'Reset your password'}</h1>
+      <h1>Reset your password</h1>
       <form
         method="post"
         className="panel form-stack"
@@ -321,10 +309,7 @@ export function AuthLinkPage({ verify = false }: { verify?: boolean }) {
           setBusy(true);
           try {
             const token = new URLSearchParams(window.location.search).get('token');
-            const { data } = await apiClient.post(
-              verify ? '/auth/verify-email' : '/auth/reset-password',
-              { token, ...(!verify ? { password } : {}) },
-            );
+            const { data } = await apiClient.post('/auth/reset-password', { token, password });
             setMessage(data.message);
           } catch (e) {
             setMessage((e as Error).message);
@@ -333,21 +318,19 @@ export function AuthLinkPage({ verify = false }: { verify?: boolean }) {
           }
         }}
       >
-        {!verify && (
-          <FormField label="New password">
-            <input
-              type="password"
-              minLength={10}
-              maxLength={128}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </FormField>
-        )}
+        <FormField label="New password">
+          <input
+            type="password"
+            minLength={10}
+            maxLength={128}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+        </FormField>
         <Button type="submit" disabled={busy}>
-          {verify ? 'Verify email' : 'Save new password'}
+          Save new password
         </Button>
         <p role="status">{message}</p>
         <Link href="/login">Back to sign in</Link>

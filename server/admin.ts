@@ -73,9 +73,9 @@ export function mountAdmin(app: Express, db: Database, auth: Authentication) {
   app.use(base, (_req, res, next) => {
     const actor: Account = res.locals.account;
     requireCondition(
-      actor.isAdmin === true && actor.approved && actor.verified,
+      actor.isAdmin === true && actor.approved,
       403,
-      'Verified administrator access required.',
+      'Administrator access required.',
     );
     next();
   });
