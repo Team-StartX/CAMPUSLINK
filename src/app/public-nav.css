@@ -1,0 +1,271 @@
+.public-header-shell {
+  position: sticky;
+  top: 18px;
+  z-index: 30;
+  height: 58px;
+  margin-top: 18px;
+  pointer-events: none;
+}
+
+.public-header-shell .glass-header.public-header {
+  --nav-compact-width: 280px;
+  --nav-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  top: auto;
+  margin: 0 auto;
+  width: min(1200px, calc(100% - 64px));
+  max-width: none;
+  border: 1px solid rgb(255 255 255 / 75%);
+  background: rgb(248 247 241 / 72%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    0 8px 32px rgb(32 34 31 / 7%),
+    inset 0 1px 0 rgb(255 255 255 / 85%);
+  pointer-events: auto;
+  transition:
+    width 460ms var(--nav-ease),
+    background 320ms ease,
+    box-shadow 460ms ease;
+}
+
+.public-header-shell .glass-header.has-session {
+  --nav-compact-width: 144px;
+}
+
+.public-header-shell .glass-header.is-hidden {
+  pointer-events: none;
+}
+
+.public-header-shell .glass-header.is-scrolled {
+  background: rgb(248 247 241 / 68%);
+  box-shadow:
+    0 12px 36px rgb(32 34 31 / 12%),
+    inset 0 1px 0 rgb(255 255 255 / 90%);
+}
+
+.public-header-shell .glass-header.is-compact {
+  width: min(var(--nav-compact-width), calc(100% - 32px));
+}
+
+.public-header-shell .glass-header .public-nav {
+  min-height: 56px;
+  padding: 0 22px;
+  gap: 18px;
+  transition:
+    min-height 460ms var(--nav-ease),
+    padding 460ms var(--nav-ease),
+    gap 460ms var(--nav-ease);
+}
+
+.glass-header .logo {
+  flex-shrink: 0;
+}
+
+.glass-header .logo-mark {
+  flex-shrink: 0;
+  margin-right: 0;
+}
+
+.glass-header .logo > .logo-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 150px;
+  padding-left: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 700;
+  opacity: 1;
+  transition:
+    max-width 460ms var(--nav-ease),
+    padding 460ms var(--nav-ease),
+    opacity 220ms ease;
+}
+
+.glass-header .logo-name-light {
+  font-weight: 400;
+}
+
+.public-header-shell .glass-header .public-links {
+  min-width: 0;
+  max-width: 760px;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    max-width 460ms var(--nav-ease),
+    opacity 240ms ease 100ms,
+    visibility 0s;
+}
+
+.public-header-shell .glass-header .public-links > a {
+  flex-shrink: 0;
+}
+
+.public-header-shell .glass-header .nav-actions {
+  flex-shrink: 0;
+  gap: 18px;
+  transition: gap 460ms var(--nav-ease);
+}
+
+.public-header-shell .glass-header .sign-in,
+.public-header-shell .glass-header .mobile-toggle {
+  max-width: 90px;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    max-width 460ms var(--nav-ease),
+    padding 460ms var(--nav-ease),
+    opacity 200ms ease 100ms,
+    visibility 0s;
+}
+
+.public-header-shell .glass-header .nav-join {
+  padding: 8px 15px;
+  white-space: nowrap;
+  transition:
+    padding 460ms var(--nav-ease),
+    box-shadow 320ms ease,
+    background 200ms ease;
+}
+
+.public-header-shell .glass-header.is-compact .public-nav {
+  min-height: 48px;
+  padding: 0 16px;
+  gap: 14px;
+}
+
+.glass-header.is-compact .logo > .logo-wordmark {
+  max-width: 0;
+  padding-left: 0;
+  opacity: 0;
+}
+
+.public-header-shell .glass-header.is-compact .public-links,
+.public-header-shell .glass-header.is-compact .sign-in,
+.public-header-shell .glass-header.is-compact .mobile-toggle {
+  max-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    max-width 460ms var(--nav-ease),
+    padding 460ms var(--nav-ease),
+    opacity 150ms ease,
+    visibility 0s 460ms;
+}
+
+.public-header-shell .glass-header.is-compact .public-links {
+  overflow: hidden;
+  margin-left: 0;
+}
+
+.public-header-shell .glass-header.is-compact .sign-in,
+.public-header-shell .glass-header.is-compact .mobile-toggle {
+  padding: 0;
+}
+
+.public-header-shell .glass-header.is-compact .nav-actions {
+  gap: 0;
+  margin-left: auto;
+}
+
+.public-header-shell .glass-header.is-compact .nav-join {
+  padding: 7px 15px;
+}
+
+.public-header-shell .glass-header .nav-profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgb(37 39 35 / 16%);
+  background: #e5ec94;
+  color: #252723;
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.public-header-shell .glass-header .nav-profile:hover {
+  background: #d9e67a;
+  box-shadow: 0 3px 12px rgb(32 34 31 / 12%);
+}
+
+@media (max-width: 1150px) {
+  .public-header-shell .glass-header .public-links {
+    display: none;
+  }
+  .public-header-shell .glass-header .mobile-toggle {
+    display: flex;
+  }
+  .public-header-shell .glass-header .public-links.opened {
+    display: flex;
+    max-width: none;
+    top: calc(100% + 10px);
+    background: rgb(248 247 241 / 92%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+  }
+  .public-header-shell .glass-header .nav-actions {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 800px) {
+  .public-header-shell {
+    top: 12px;
+    height: 54px;
+    margin-top: 12px;
+  }
+  .public-header-shell .glass-header.public-header {
+    width: calc(100% - 32px);
+  }
+  .public-header-shell .glass-header.is-compact {
+    width: min(var(--nav-compact-width), calc(100% - 32px));
+  }
+  .public-header-shell .glass-header .public-nav {
+    min-height: 52px;
+    padding: 0 16px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .public-header-shell .glass-header .public-nav {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .public-header-shell .glass-header .nav-actions {
+    gap: 8px;
+  }
+  .public-header-shell .glass-header .logo {
+    font-size: clamp(16px, 4.8vw, 20px);
+  }
+  .public-header-shell .glass-header.has-session .logo {
+    font-size: clamp(14px, 4.3vw, 18px);
+  }
+  .public-header-shell .glass-header .mobile-toggle {
+    padding: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-header-shell .glass-header,
+  .public-header-shell .glass-header .public-nav,
+  .public-header-shell .glass-header .logo-wordmark,
+  .public-header-shell .glass-header .public-links,
+  .public-header-shell .glass-header .nav-actions,
+  .public-header-shell .glass-header .sign-in,
+  .public-header-shell .glass-header .mobile-toggle,
+  .public-header-shell .glass-header .nav-profile,
+  .public-header-shell .glass-header .nav-join {
+    transition: none;
+  }
+}

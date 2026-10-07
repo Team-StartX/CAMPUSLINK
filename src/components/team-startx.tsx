@@ -9,12 +9,12 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 
 const members = [
-  { name: 'Diptiprava Dash', role: 'Team leader', image: 'diptiprava' },
-  { name: 'Sonalika Nayak', role: 'Presenter', image: 'sonalika' },
-  { name: 'Ayushman Nayak', role: 'Tester', image: 'ayushman' },
-  { name: 'Rishikanta Sahoo', role: 'AI engineer', image: 'rishikanta' },
-  { name: 'Sachin Das', role: 'AI engineer', image: 'sachin' },
-  { name: 'Biswojit Sahoo', role: 'Developer & UI/UX', image: 'biswojit' },
+  { name: 'Diptiprava Dash', role: 'Team lead', image: 'diptiprava-id-card-transparent.png' },
+  { name: 'Sonalika Nayak', role: 'Presenter', image: 'sonalika-id-card-transparent.png' },
+  { name: 'Ayushman Nayak', role: 'DB engineer', image: 'ayushman-id-card-transparent.png' },
+  { name: 'Rishikanta Sahoo', role: 'AI engineer', image: 'rishikanta-transparent.png' },
+  { name: 'Sachin Das', role: 'AI engineer', image: 'sachin-transparent.png' },
+  { name: 'Biswojit Sahoo', role: 'Developer', image: 'biswojit-id-card-transparent.png' },
 ];
 const subscribe = () => () => {};
 const clientSnapshot = () => true;
@@ -30,7 +30,7 @@ function TeamCard({
   return (
     <Image
       className={standalone ? 'startx-swiper startx-card' : 'startx-card'}
-      src={`/images/team-startx/${member.image}${member.image === 'biswojit' ? '' : '-transparent'}.png`}
+      src={`/images/team-startx/${member.image}`}
       alt={`${member.name}, ${member.role}, Team StartX`}
       width={1024}
       height={1536}

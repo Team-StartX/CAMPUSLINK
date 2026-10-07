@@ -1,6 +1,7 @@
 const { context } = require('esbuild');
 const { spawn } = require('node:child_process');
 let child;
+let watcher;
 context({
   entryPoints: ['server/index.ts'],
   bundle: true,
@@ -21,8 +22,13 @@ context({
       },
     },
   ],
-}).then((ctx) => ctx.watch());
-process.on('SIGINT', () => {
-  child?.kill();
-  process.exit(0);
+}).then((ctx) => {
+  watcher = ctx;
+  return ctx.watch();
 });
+async function close() {
+  child?.kill();
+  await watcher?.dispose();
+}
+process.on('SIGINT', close);
+process.on('SIGTERM', close);

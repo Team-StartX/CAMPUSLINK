@@ -43,6 +43,7 @@ export const useSession = create<Session>()(
 );
 export const authService = {
   async login(email: string, password: string, remember = false): Promise<User> {
+    email = email.trim().toLowerCase();
     if (backendEnabled) {
       const { data } = await apiClient.post('/auth/login', { email, password, remember });
       setCsrf(data.csrf);
@@ -85,6 +86,7 @@ export const authService = {
     password?: string,
     details: Record<string, string | undefined> = {},
   ): Promise<User> {
+    email = email.trim().toLowerCase();
     if (backendEnabled) {
       const { data } = await apiClient.post('/auth/register', {
         name,

@@ -44,6 +44,11 @@ export class Database {
         };
       }
       this.pool = new Pool({ connectionString, ssl, max: 10, connectionTimeoutMillis: 15000 });
+      // Idle connections can be closed by the hosted database or network. pg removes
+      // that client; handling the event keeps the API alive for the next connection.
+      this.pool.on('error', () => {
+        console.error('Database connection interrupted. The next request will reconnect.');
+      });
     } else {
       if (sqlitePath !== ':memory:') fs.mkdirSync(path.dirname(sqlitePath), { recursive: true });
       this.sqlite = new DatabaseSync(sqlitePath);

@@ -22,19 +22,45 @@ import { TeamStartX } from './team-startx';
 import { MomentumSection, CommunityAndFAQ } from './home-extras';
 import { PlacementJourney } from './placement-journey';
 import { CampusOperation } from './campus-operation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEventHandler } from 'react';
+import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 import { PublicStartLink, usePublicSession } from './public-session';
-export function Logo({ dark = false }: { dark?: boolean }) {
+export function Logo({
+  dark = false,
+  collapsible = false,
+  onClick,
+  label = 'CampusLink home',
+}: {
+  dark?: boolean;
+  collapsible?: boolean;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+  label?: string;
+}) {
   return (
-    <Link href="/" className={`logo ${dark ? 'logo-light' : ''}`} aria-label="CampusLink home">
-      <span className="logo-mark">
+    <Link
+      href="/"
+      className={`logo ${dark ? 'logo-light' : ''}`}
+      aria-label={label}
+      onClick={onClick}
+    >
+      <span className="logo-mark" aria-hidden="true">
         <i />
         <i />
         <i />
         <i />
       </span>
-      campus<span>link</span>
-      <span className="logo-dot">®</span>
+      {collapsible ? (
+        <span className="logo-wordmark">
+          campus<span className="logo-name-light">link</span>
+          <span className="logo-dot">®</span>
+        </span>
+      ) : (
+        <>
+          campus<span>link</span>
+          <span className="logo-dot">®</span>
+        </>
+      )}
     </Link>
   );
 }
@@ -156,10 +182,47 @@ export function PublicNav() {
   const { user, ready } = usePublicSession();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [scrollHidden, setScrollHidden] = useState(false);
+  const scrollAnchor = useRef(0);
+  const [pointerInside, setPointerInside] = useState(false);
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
+  const header = useRef<HTMLElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const pathname = usePathname();
   const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, 'change', (value) => setScrolled(value > 30));
+  const reduced = useHydratedReducedMotion();
+  useMotionValueEvent(scrollY, 'change', (value) => {
+    const position = Math.max(0, value);
+    setScrolled((previous) => position > 80 || (previous && position > 40));
+    if (position <= 40) {
+      setScrollHidden(false);
+      scrollAnchor.current = position;
+      return;
+    }
+    const distance = position - scrollAnchor.current;
+    if (Math.abs(distance) < 10) return;
+    setScrollHidden(distance > 0 && position > 80);
+    if (distance > 0) setPointerInside(false);
+    scrollAnchor.current = position;
+  });
+  useEffect(() => {
+    setScrolled(window.scrollY > 80);
+    setScrollHidden(false);
+    scrollAnchor.current = window.scrollY;
+  }, [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !header.current?.contains(event.target)) {
+        setOpen(false);
+        setKeyboardFocus(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [open]);
+  const compact = scrolled && !pointerInside && !keyboardFocus && !open;
+  const hidden = scrollHidden && !keyboardFocus && !open;
   const links = [
     ['/features', 'Product'],
     [pathname === '/' ? '/#placement-journey' : '/how-it-works', 'How it works'],
@@ -170,62 +233,103 @@ export function PublicNav() {
     ['/pricing', 'Pricing'],
   ];
   return (
-    <motion.header
-      initial={{ y: -90, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-      className={`public-header glass-header ${scrolled ? 'is-scrolled' : ''}`}
-    >
-      <div className="public-nav">
-        <Logo />
-        <nav
-          id="public-navigation"
-          aria-label="Main navigation"
-          className={open ? 'public-links opened' : 'public-links'}
-          onMouseLeave={() => setHovered(null)}
-        >
-          {links.map(([href, label]) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              onMouseEnter={() => setHovered(href)}
-              onFocus={() => setHovered(href)}
-              onBlur={() => setHovered(null)}
-              aria-current={pathname === href ? 'page' : undefined}
-            >
-              {(hovered === href || (!hovered && pathname === href)) && (
-                <motion.span
-                  className="nav-hover-pill"
-                  layoutId="nav-hover"
-                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                />
-              )}
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="nav-actions">
-          {ready && !user && (
-            <Link href="/login" className="sign-in">
-              Sign in <ArrowUpRight size={14} />
-            </Link>
-          )}
-          <PublicStartLink href="/register" className="button small dark nav-join">
-            Get started <ArrowUpRight size={15} />
-          </PublicStartLink>
-          <button
-            className="mobile-toggle"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            aria-controls="public-navigation"
-            aria-label={open ? 'Close navigation' : 'Open navigation'}
+    <div className="public-header-shell">
+      <motion.header
+        ref={header}
+        initial={{ y: -90, opacity: 0 }}
+        animate={{ y: hidden ? -110 : 0, opacity: hidden ? 0 : 1 }}
+        transition={{ duration: reduced ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className={`public-header glass-header ${scrolled ? 'is-scrolled' : ''} ${compact ? 'is-compact' : 'is-expanded'} ${user ? 'has-session' : ''} ${hidden ? 'is-hidden' : ''}`}
+        inert={hidden}
+        aria-hidden={hidden || undefined}
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse' || event.pointerType === 'pen') setPointerInside(true);
+        }}
+        onPointerLeave={() => setPointerInside(false)}
+        onPointerDownCapture={() => setKeyboardFocus(false)}
+        onFocusCapture={(event) => {
+          if (event.target.matches(':focus-visible')) setKeyboardFocus(true);
+        }}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardFocus(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setOpen(false);
+        }}
+      >
+        <div className="public-nav">
+          <Logo
+            collapsible
+            label={compact ? 'Expand navigation' : 'CampusLink home'}
+            onClick={(event) => {
+              if (compact) {
+                event.preventDefault();
+                setOpen(true);
+              } else setOpen(false);
+            }}
+          />
+          <nav
+            id="public-navigation"
+            aria-label="Main navigation"
+            className={open ? 'public-links opened' : 'public-links'}
+            inert={compact}
+            aria-hidden={compact || undefined}
+            onMouseLeave={() => setHovered(null)}
           >
-            {open ? <X /> : <Menu />}
-          </button>
+            {links.map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                onMouseEnter={() => setHovered(href)}
+                onFocus={() => setHovered(href)}
+                onBlur={() => setHovered(null)}
+                aria-current={pathname === href ? 'page' : undefined}
+              >
+                {(hovered === href || (!hovered && pathname === href)) && (
+                  <motion.span
+                    className="nav-hover-pill"
+                    layoutId="nav-hover"
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  />
+                )}
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>
+          <div className="nav-actions">
+            {ready && !user && (
+              <Link
+                href="/login"
+                className="sign-in"
+                inert={compact}
+                aria-hidden={compact || undefined}
+              >
+                Sign in <ArrowUpRight size={14} />
+              </Link>
+            )}
+            <PublicStartLink
+              href="/register"
+              className={user ? 'nav-profile' : 'button small dark nav-join'}
+              iconOnly
+            >
+              Get started <ArrowUpRight size={15} />
+            </PublicStartLink>
+            <button
+              className="mobile-toggle"
+              onClick={() => setOpen(!open)}
+              aria-expanded={open}
+              aria-controls="public-navigation"
+              aria-label={open ? 'Close navigation' : 'Open navigation'}
+              inert={compact}
+              aria-hidden={compact || undefined}
+            >
+              {open ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
-      </div>
-    </motion.header>
+      </motion.header>
+    </div>
   );
 }
 export function Landing() {

@@ -47,7 +47,7 @@ export const publicUser = (account: Account) => ({
 export class Authentication {
   constructor(private db: Database) {}
   async find(email: string) {
-    return this.db.get<Account>('account', email.toLowerCase());
+    return this.db.get<Account>('account', email.trim().toLowerCase());
   }
   async byId(id: string) {
     return (await this.db.list<Account>('account')).find((a) => a.id === id);
@@ -143,7 +143,7 @@ export class Authentication {
     const account: Account = {
       id: randomUUID(),
       name: input.name,
-      email: input.email.toLowerCase(),
+      email: input.email.trim().toLowerCase(),
       role: input.role,
       passwordHash: hashPassword(input.password),
       campusId: input.campusId,

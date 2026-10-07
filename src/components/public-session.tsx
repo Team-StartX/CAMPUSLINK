@@ -42,10 +42,12 @@ export function PublicStartLink({
   href,
   className,
   children,
+  iconOnly = false,
 }: {
   href: string;
   className?: string;
   children?: React.ReactNode;
+  iconOnly?: boolean;
 }) {
   const { user, ready } = usePublicSession();
   if (!ready)
@@ -58,10 +60,13 @@ export function PublicStartLink({
     <Link
       href={user ? (user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`) : href}
       className={className}
+      aria-label={user && iconOnly ? 'Go to dashboard' : undefined}
+      title={user && iconOnly ? 'Go to dashboard' : undefined}
     >
       {user ? (
         <>
-          <UserRound size={17} aria-hidden="true" /> Go to dashboard
+          <UserRound size={iconOnly ? 20 : 17} aria-hidden="true" />
+          {!iconOnly && ' Go to dashboard'}
         </>
       ) : (
         children

@@ -19,32 +19,22 @@ import { apiClient } from '@/services/api/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Campus } from '@/types';
 import { FormField, Modal, Button } from '@/components/ui';
-const schema = z.object({
-  email: z.string().email('Enter a valid email address.'),
-  password: z
-    .string()
-    .min(
-      backendEnabled ? 10 : 6,
-      backendEnabled ? 'Use at least 10 characters.' : 'Use at least 6 characters.',
-    ),
-  name: z.string().optional(),
-  confirm: z.string().optional(),
-  institution: z.string().optional(),
-  designation: z.string().optional(),
-  course: z.string().optional(),
-  branch: z.string().optional(),
-  year: z.string().optional(),
-});
-type Values = z.infer<typeof schema>;
+import { authSchema } from '@/utils/auth-validation';
+type Values = z.infer<ReturnType<typeof authSchema>>;
 export function AuthPage({ registering = false }: { registering?: boolean }) {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   const router = useRouter();
   const client = useQueryClient();
-  const { data: campuses } = useQuery<Campus[]>({
+  const {
+    data: campuses,
+    isLoading: campusesLoading,
+    error: campusesError,
+  } = useQuery<Campus[]>({
     queryKey: ['registration-campuses'],
     queryFn: async () => (await apiClient.get('/campuses')).data,
     enabled: backendEnabled && registering,
+    retry: false,
   });
   const [role, setRole] = useState<Role>('student');
   const [selected, setSelected] = useState(false);
@@ -93,7 +83,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
     formState: { errors },
     setValue,
     watch,
-  } = useForm<Values>({ resolver: zodResolver(schema) });
+  } = useForm<Values>({ resolver: zodResolver(authSchema(registering, backendEnabled)) });
   const submit = handleSubmit(
     async (values) => {
       character.reset();
@@ -109,7 +99,6 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
         return;
       }
       setLoading(true);
-      client.clear();
       try {
         const user = registering
           ? await authService.register(values.name!, values.email, role, values.password, {
@@ -128,6 +117,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
             branch: values.branch || 'Computer Science',
             year: values.year || '2027',
           });
+        client.clear();
         character.succeed();
         router.push(user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`);
       } catch (e) {
@@ -231,6 +221,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                 <AuthInput
                   id="auth-name"
                   label="Full name"
+                  error={errors.name?.message}
                   inputProps={{
                     ...register('name', { onChange: character.type, onBlur: character.blur }),
                     onFocus: () => character.focus('name'),
@@ -265,7 +256,11 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                 inputProps={{
                   ...register('password', { onBlur: character.blur }),
                   onFocus: () => character.focus('password'),
-                  placeholder: backendEnabled ? 'At least 10 characters' : 'At least 6 characters',
+                  placeholder: registering
+                    ? backendEnabled
+                      ? 'At least 10 characters'
+                      : 'At least 6 characters'
+                    : 'Enter your password',
                   autoComplete: registering ? 'new-password' : 'current-password',
                 }}
               />
@@ -274,6 +269,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                   <PasswordInput
                     id="auth-confirm"
                     label="Confirm password"
+                    error={errors.confirm?.message}
                     visible={showConfirm}
                     onToggle={() => setShowConfirm(!showConfirm)}
                     onToggleFocus={() => character.focus('confirm')}
@@ -311,6 +307,8 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                     >
                       <input
                         {...register('institution')}
+                        aria-invalid={!!errors.institution}
+                        aria-describedby={errors.institution ? 'institution-error' : undefined}
                         list={role === 'student' ? 'registration-campuses' : undefined}
                         required
                         placeholder={
@@ -326,7 +324,23 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                           ))}
                         </datalist>
                       )}
+                      {backendEnabled && (
+                        <small>
+                          {campusesError
+                            ? campusesError.message
+                            : campusesLoading
+                              ? 'Loading registered colleges…'
+                              : campuses?.length
+                                ? 'Choose your registered college from the suggestions. If it is missing, ask your campus team to register first.'
+                                : 'Your campus team must register the college before students can sign up.'}
+                        </small>
+                      )}
                     </FormField>
+                  )}
+                  {errors.institution && (
+                    <p id="institution-error" role="alert" className="field-error">
+                      {errors.institution.message}
+                    </p>
                   )}
                   {role === 'student' ? (
                     <>

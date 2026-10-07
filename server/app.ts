@@ -31,12 +31,14 @@ import { mountAdmin } from './admin';
 import { mlConfigured } from './ml-client';
 import { mountDirectory } from './directory';
 import { DomainError } from '../src/utils/domain-error';
+import { trustedOrigin } from './origin';
 
 const registration = z
   .object({
     name: z.string().trim().min(2).max(120),
     email: z
       .string()
+      .trim()
       .email()
       .max(254)
       .transform((s) => s.toLowerCase()),
@@ -64,7 +66,12 @@ export async function createApp(db = new Database()) {
     res.setHeader('Cache-Control', 'no-store');
     next();
   });
-  app.use(cors({ origin: config.origin, credentials: true }));
+  app.use(
+    cors({
+      origin: (origin, callback) => callback(null, trustedOrigin(origin)),
+      credentials: true,
+    }),
+  );
   app.use(express.json({ limit: '3mb' }));
   app.use(cookieParser());
   const general = rateLimit({
@@ -88,11 +95,7 @@ export async function createApp(db = new Database()) {
   app.use('/api', general);
   // Reject browser writes from unexpected origins even before authentication.
   app.use('/api', (req, res, next) => {
-    if (
-      !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
-      req.headers.origin &&
-      req.headers.origin !== config.origin
-    )
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !trustedOrigin(req.headers.origin))
       return next(new HttpError(403, 'Untrusted request origin.'));
     next();
   });
@@ -168,7 +171,7 @@ export async function createApp(db = new Database()) {
   app.post(`${base}/auth/login`, authLimit, async (req, res) => {
     const input = z
       .object({
-        email: z.string().email(),
+        email: z.string().trim().email().max(254).toLowerCase(),
         password: z.string().min(1).max(128),
         remember: z.boolean().optional(),
       })
@@ -178,7 +181,9 @@ export async function createApp(db = new Database()) {
     res.json({ user: publicUser(result.account), csrf: result.session.csrf });
   });
   app.post(`${base}/auth/forgot-password`, authLimit, async (req, res) => {
-    const input = z.object({ email: z.string().email() }).parse(req.body),
+    const input = z
+        .object({ email: z.string().trim().email().max(254).toLowerCase() })
+        .parse(req.body),
       account = await auth.find(input.email);
     if (account) {
       const token = await auth.issueToken(account, 'reset');

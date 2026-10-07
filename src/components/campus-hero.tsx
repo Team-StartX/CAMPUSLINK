@@ -4,10 +4,11 @@ import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 import Image from 'next/image';
 import { CompanyLoop } from './home-extras';
 import Link from 'next/link';
-import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
+import { AnimatePresence, motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { ArrowDown, ArrowUpRight, Check, Code2, ShieldCheck, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { PublicStartLink } from './public-session';
+import { interactionSpring } from '@/utils/motion';
 
 const words = ['STAND OUT.', 'GET HIRED.', 'GO FURTHER.'];
 const pathways = [
@@ -48,13 +49,15 @@ export function CampusHero() {
   const [word, setWord] = useState(0);
   const [path, setPath] = useState(0);
   const ref = useRef<HTMLElement>(null);
+  const visible = useInView(ref, { margin: '100px' });
+  const animateArt = !reduced && visible;
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
   const artY = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : 85]);
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || !visible) return;
     const timer = setInterval(() => setWord((i) => (i + 1) % words.length), 3600);
     return () => clearInterval(timer);
-  }, [reduced]);
+  }, [reduced, visible]);
   const selected = pathways[path];
   return (
     <>
@@ -152,8 +155,8 @@ export function CampusHero() {
             </motion.div>
             <motion.div
               className="collage-sticker"
-              animate={reduced ? {} : { rotate: [10, 14, 10] }}
-              transition={{ duration: 6, repeat: Infinity }}
+              animate={{ rotate: animateArt ? [10, 14, 10] : 10 }}
+              transition={animateArt ? { duration: 6, repeat: Infinity } : { duration: 0 }}
             >
               <ArrowUpRight size={31} />
               <span>
@@ -164,8 +167,8 @@ export function CampusHero() {
             </motion.div>
             <motion.div
               className="collage-skill"
-              animate={reduced ? {} : { y: [0, -8, 0] }}
-              transition={{ duration: 5, repeat: Infinity }}
+              animate={{ y: animateArt ? [0, -8, 0] : 0 }}
+              transition={animateArt ? { duration: 5, repeat: Infinity } : { duration: 0 }}
             >
               <span className="collage-check">
                 <Check size={20} />
@@ -253,7 +256,7 @@ export function CampusHero() {
                 <motion.span
                   layoutId="pathway-pill"
                   className="pathway-active"
-                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  transition={interactionSpring}
                 />
               )}
               <p.icon size={17} />
@@ -274,7 +277,7 @@ export function CampusHero() {
               initial={{ opacity: 0, y: reduced ? 0 : 14 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
+              transition={{ duration: reduced ? 0 : 0.12 }}
               className="pathway-panel-content"
             >
               <div>
@@ -297,7 +300,7 @@ export function CampusHero() {
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: reduced ? 0 : i * 0.09 }}
+                    transition={{ duration: reduced ? 0 : 0.18, delay: reduced ? 0 : i * 0.03 }}
                     key={row}
                     className="feed-row"
                   >

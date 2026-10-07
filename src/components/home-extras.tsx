@@ -2,8 +2,9 @@
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
+import { useRef, useState } from 'react';
+import { interactionSpring, interactionTransition } from '@/utils/motion';
 import { MobileCardSlider } from './mobile-card-slider';
 import { ArrowUpRight, Code2, GraduationCap, Minus, Plus, ShieldCheck, Trophy } from 'lucide-react';
 
@@ -85,8 +86,11 @@ export function CompanyLoop() {
 
 export function MomentumSection() {
   const reduced = useHydratedReducedMotion();
+  const section = useRef<HTMLElement>(null);
+  const visible = useInView(section, { margin: '100px' });
+  const animateArt = !reduced && visible;
   return (
-    <section className="momentum-section content-width">
+    <section ref={section} className="momentum-section content-width">
       <div className="momentum-heading">
         <span className="campus-kicker">THE SMALL WINS ADD UP.</span>
         <h2>
@@ -129,13 +133,20 @@ export function MomentumSection() {
             initial={{ opacity: 0, y: 45, rotate: reduced ? 0 : [-3, 2, -2][i] }}
             whileInView={{ opacity: 1, y: 0, rotate: 0 }}
             viewport={{ once: true, amount: 0.25 }}
-            transition={{ duration: 0.6, delay: reduced ? 0 : i * 0.12 }}
-            whileHover={reduced ? {} : { y: -8 }}
+            transition={{
+              ...interactionSpring,
+              opacity: { duration: reduced ? 0 : 0.3, delay: reduced ? 0 : i * 0.06 },
+            }}
+            whileHover={reduced ? {} : { y: -6 }}
           >
             <div className="momentum-art">
               <motion.div
-                animate={reduced ? {} : { rotate: i === 1 ? [0, 360] : [0, -8, 0] }}
-                transition={{ duration: i === 1 ? 24 : 5, repeat: Infinity, ease: 'linear' }}
+                animate={{ rotate: animateArt ? (i === 1 ? [0, 360] : [0, -8, 0]) : 0 }}
+                transition={
+                  animateArt
+                    ? { duration: i === 1 ? 24 : 5, repeat: Infinity, ease: 'linear' }
+                    : { duration: 0 }
+                }
                 className="momentum-orb"
               >
                 <c.icon size={45} />
@@ -144,8 +155,8 @@ export function MomentumSection() {
                 <motion.span
                   key={t}
                   className={`momentum-tag tag-${j}`}
-                  animate={reduced ? {} : { y: [0, j % 2 ? -5 : 5, 0] }}
-                  transition={{ duration: 4 + j, repeat: Infinity }}
+                  animate={{ y: animateArt ? [0, j % 2 ? -5 : 5, 0] : 0 }}
+                  transition={animateArt ? { duration: 4 + j, repeat: Infinity } : { duration: 0 }}
                 >
                   {t}
                 </motion.span>
@@ -208,6 +219,7 @@ export function CommunityAndFAQ() {
               key={name}
               variants={{ hidden: { opacity: 0, scale: 0.85 }, visible: { opacity: 1, scale: 1 } }}
               whileHover={reduced ? {} : { rotate: i % 2 ? 3 : -3, scale: 1.04 }}
+              transition={interactionSpring}
               className={`community-person person-${i}`}
             >
               <span>{String(i + 1).padStart(2, '0')}</span>
@@ -259,7 +271,7 @@ export function CommunityAndFAQ() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: reduced ? 0 : 0.25 }}
+                    transition={{ ...interactionTransition, duration: reduced ? 0 : 0.18 }}
                   >
                     <p>{f.a}</p>
                   </motion.div>

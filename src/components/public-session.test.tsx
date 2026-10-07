@@ -65,4 +65,19 @@ describe('public authentication actions', () => {
       .setUser({ id: 'user', name: 'Test', email: 'test@example.com', role: 'student' });
     expect(render()).toBe(initial);
   });
+  it.each(['student', 'recruiter', 'campus'] as const)(
+    'keeps the %s dashboard accessible through the navbar profile icon',
+    (role) => {
+      session.ready = true;
+      session.user = { id: 'user', name: 'Test', email: 'test@example.com', role };
+      const icon = renderToString(
+        createElement(PublicStartLink, { href: '/register', iconOnly: true }, 'Get started'),
+      );
+      expect(icon).toContain(`href="/${role}/dashboard"`);
+      expect(icon).toContain('aria-label="Go to dashboard"');
+      expect(icon).toContain('<svg');
+      expect(icon).not.toContain(' Go to dashboard<');
+      expect(icon).not.toContain('Get started');
+    },
+  );
 });

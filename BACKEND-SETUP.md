@@ -6,6 +6,13 @@ CampusLink now has a Node.js / Express / TypeScript API. The existing Next.js in
 
 Use Node.js 24 or newer. From `C:\CampusLink`:
 
+For day-to-day development, run `npm run dev`. It starts the local API, waits for its
+database health check, and then opens the Next.js development server. A healthy API
+already running on the configured address is reused. Use `npm run dev:frontend` only
+when you intentionally manage the API in a separate terminal or use a remote API.
+
+For initial local database setup or to run the built backend separately:
+
 ```powershell
 npm install
 npm run server:build
@@ -18,7 +25,7 @@ npm run server:start
 In a second terminal:
 
 ```powershell
-npm run dev
+npm run dev:frontend
 ```
 
 Copy `.env.example` to `.env` and `server/.env.example` to `server/.env` if those files do not exist. Do not overwrite existing secrets. `NEXT_PUBLIC_APP_ENV=api` enables the real API; `demo` retains the earlier standalone browser demonstration. Use `npm run server:dev` for backend editing.
