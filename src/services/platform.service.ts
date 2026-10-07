@@ -1,21 +1,29 @@
-import * as local from './platform.domain';
-import { remoteService, backendEnabled, rpc } from './api/remote';
 import { apiClient } from './api/client';
-export const studentService = remoteService('studentService', local.studentService);
-export const matchingService = remoteService('matchingService', local.matchingService);
-export const applicationService = remoteService('applicationService', local.applicationService);
-export const assessmentService = remoteService('assessmentService', local.assessmentService);
-export const contestService = remoteService('contestService', local.contestService);
-export const aiService = remoteService('aiService', local.aiService);
-export const interviewService = remoteService('interviewService', local.interviewService);
-export const recruiterService = remoteService('recruiterService', local.recruiterService);
-export const campusService = remoteService('campusService', local.campusService);
-export const notificationService = remoteService('notificationService', local.notificationService);
-export const offerService = remoteService('offerService', local.offerService);
+import { remoteService, rpc } from './api/remote';
+import type * as local from './platform.domain';
+export const studentService = remoteService<typeof local.studentService>('studentService');
+export const matchingService = remoteService<typeof local.matchingService>('matchingService');
+export const applicationService =
+  remoteService<typeof local.applicationService>('applicationService');
+export const assessmentService = remoteService<typeof local.assessmentService>('assessmentService');
+export const contestService = remoteService<typeof local.contestService>('contestService');
+export const aiService = remoteService<typeof local.aiService>('aiService');
+export const interviewService = remoteService<typeof local.interviewService>('interviewService');
+export const recruiterService = remoteService<typeof local.recruiterService>('recruiterService');
+export const campusService = remoteService<typeof local.campusService>('campusService');
+export const notificationService =
+  remoteService<typeof local.notificationService>('notificationService');
+export const offerService = remoteService<typeof local.offerService>('offerService');
 export const documentService = {
-  ...remoteService('documentService', local.documentService),
+  verify: (id: string) =>
+    rpc<Awaited<ReturnType<typeof local.documentService.verify>>>('documentService', 'verify', [
+      id,
+    ]),
+  remove: (id: string) =>
+    rpc<Awaited<ReturnType<typeof local.documentService.remove>>>('documentService', 'remove', [
+      id,
+    ]),
   upload: async (file: File, type: string) => {
-    if (!backendEnabled) return local.documentService.upload(file, type);
     await rpc('studentService', 'getDashboard');
     const form = new FormData();
     form.append('file', file);
@@ -29,5 +37,4 @@ export const documentService = {
     return URL.createObjectURL(data);
   },
 };
-export const learningService = remoteService('learningService', local.learningService);
-export const demoService = remoteService('demoService', local.demoService);
+export const learningService = remoteService<typeof local.learningService>('learningService');

@@ -1,12 +1,14 @@
-import { DomainError } from '@/utils/domain-error';
-import { mockAdapter } from '@/mocks/adapter';
 import { POINTS } from '@/config/points.config';
-import { Drive, Interview, Student, InterviewTemplate } from '@/types';
-import { driveService } from './drive.domain';
-import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
-import { readiness, fit } from '@/utils/scoring';
+import { mockAdapter } from '@/mocks/adapter';
+import { Drive, Interview, InterviewTemplate, Student } from '@/types';
 import { contestAchievements, recordContestCompletion } from '@/utils/contest-achievements';
+import { parseRequirements } from '../../server/nlp';
+import type { WorkspaceData } from '@/types';
+import { DomainError } from '@/utils/domain-error';
+import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
+import { fit, readiness } from '@/utils/scoring';
 import { instituteStudentPatchSchema, type InstituteStudentPatch } from '@/utils/student-records';
+import { driveService } from './drive.domain';
 export const studentService = {
   updatePhoto: async (photo?: string) => {
     if (
@@ -222,19 +224,10 @@ export const contestService = {
         throw new DomainError('Not quite. Each number doubles. Try again.');
       recordContestCompletion(d, c, c.points, 900);
     }),
-  getLeaderboard: async () =>
-    [
-      { name: 'Sonalika Nayak', xp: 3240, campus: 'DTU' },
-      { name: 'Sachin Dash', xp: 2980, campus: 'IIT Delhi' },
-      {
-        name: (await mockAdapter.read()).student.name,
-        xp: (await mockAdapter.read()).student.xp,
-        campus: 'DTU',
-      },
-      { name: 'Rishikanta Sahoo', xp: 2160, campus: 'DTU' },
-      { name: 'Ayushman Nayak', xp: 2780, campus: 'DTU' },
-      { name: 'Biswojit Sahoo', xp: 2890, campus: 'DTU' },
-    ].sort((a, b) => b.xp - a.xp),
+  getLeaderboard: async () => {
+    const { student } = await mockAdapter.read();
+    return [{ name: student.name, xp: student.xp, campus: student.campus }];
+  },
 };
 export const aiService = {
   getReadinessScore: async () => {
@@ -248,13 +241,7 @@ export const aiService = {
       d.drives.find((r) => studentVisible(r) && checkEligibility(d.student, r).passed);
     return drive ? fit(d.student, drive, d.history).gaps : [];
   },
-  parseJobDescription: async (text: string) => ({
-    label: 'Demo extraction',
-    skills: ['React', 'JavaScript', 'SQL'].filter((s) =>
-      text.toLowerCase().includes(s.toLowerCase()),
-    ),
-    eligibility: 'Review extracted requirements before publishing.',
-  }),
+  parseJobDescription: async (text: string) => parseRequirements(text),
   predictPlacementRisk: async (studentId: string) => {
     const d = await mockAdapter.read();
     const r = readiness(d.student, d.history);
@@ -267,15 +254,18 @@ export const aiService = {
       factors: r.factors,
     };
   },
-  analyzeResume: async (documentId: string) => ({
-    documentId,
-    label: 'Demo resume analysis' as const,
-    suggestions: [
-      'Add measurable project outcomes.',
-      'Keep contact information and links current.',
-    ],
-  }),
-  getCareerRecommendations: async () => ['Frontend Developer', 'Backend Developer', 'Data Analyst'],
+  analyzeResume: async (_documentId: string): Promise<{ label: string; suggestions: string[] }> => {
+    throw new DomainError('Resume analysis requires an authenticated document upload.');
+  },
+  getCareerRecommendations: async () => {
+    const { student } = await mockAdapter.read();
+    const skills = new Set(student.skills.map((skill) => skill.name.toLowerCase()));
+    return [
+      ...(skills.has('react') || skills.has('javascript') ? ['Frontend Developer'] : []),
+      ...(skills.has('node.js') || skills.has('java') ? ['Backend Developer'] : []),
+      ...(skills.has('python') || skills.has('sql') ? ['Data Analyst'] : []),
+    ];
+  },
 };
 export const interviewService = {
   getCommunicationHistory: async () => (await mockAdapter.read()).communicationPractice || [],
@@ -320,7 +310,7 @@ export const interviewService = {
   ) => {
     const t = (await mockAdapter.read()).interviewTemplates?.find((t) => t.id === templateId);
     return {
-      label: 'Demo Interview',
+      label: 'Interview preparation',
       questions:
         t?.questions ||
         (type === 'HR' || type === 'Behavioral'
@@ -341,29 +331,13 @@ export const interviewService = {
     };
   },
   getInterviewFeedback: async () => ({
-    label: 'Demo feedback',
-    categories: [
-      { name: 'Communication', score: 78 },
-      { name: 'Technical relevance', score: 82 },
-      { name: 'Clarity', score: 80 },
-      { name: 'Structure', score: 74 },
-    ],
-    advice: 'Use a specific example and explain the measurable impact of your work.',
+    label: 'No practice feedback yet',
+    categories: [] as { name: string; score: number }[],
+    advice: 'Complete an authenticated practice session to receive feedback.',
   }),
-  completePractice: (_answers?: string[], _seconds?: number) =>
-    mockAdapter.update((d) => {
-      d.student.xp += POINTS.mockInterviewCompleted;
-      d.history.unshift({
-        id: crypto.randomUUID(),
-        assessmentId: 'interview',
-        name: 'Mock Interview Practice',
-        type: 'Interview',
-        score: 78,
-        points: POINTS.mockInterviewCompleted,
-        date: new Date().toISOString().slice(0, 10),
-        seconds: 600,
-      });
-    }),
+  completePractice: async (_answers?: string[], _seconds?: number): Promise<WorkspaceData> => {
+    throw new DomainError('Start an authenticated practice session first.');
+  },
 };
 export const recruiterService = {
   getRecruiterDashboard: () => mockAdapter.read(),
@@ -378,60 +352,8 @@ export const recruiterService = {
       d.shortlisted = Array.from(new Set([...(d.shortlisted || []), id]));
     }),
   getCandidates: async () => {
-    const data = await mockAdapter.read(),
-      s = data.student;
-    const profiles = [
-      s,
-      {
-        ...s,
-        photo: undefined,
-        email: 'sonalika@campus.edu',
-        id: 'STU-20483',
-        name: 'Sonalika Nayak',
-        cgpa: 9.1,
-        xp: 3240,
-      },
-      {
-        ...s,
-        photo: undefined,
-        email: 'sachin@campus.edu',
-        id: 'STU-20484',
-        name: 'Sachin Dash',
-        cgpa: 8.8,
-        xp: 2980,
-      },
-      {
-        ...s,
-        photo: undefined,
-        email: 'rishikanta@campus.edu',
-        id: 'STU-20485',
-        name: 'Rishikanta Sahoo',
-        cgpa: 8.2,
-        xp: 2160,
-      },
-      {
-        ...s,
-        photo: undefined,
-        email: 'ayushman@campus.edu',
-        id: 'STU-20486',
-        name: 'Ayushman Nayak',
-        cgpa: 8.6,
-        xp: 2780,
-      },
-      {
-        ...s,
-        photo: undefined,
-        email: 'biswojit@campus.edu',
-        id: 'STU-20487',
-        name: 'Biswojit Sahoo',
-        cgpa: 8.9,
-        xp: 2890,
-      },
-    ];
-    return profiles.map((student) => ({
-      ...student,
-      ...data.instituteStudentUpdates?.[student.id],
-    }));
+    const { student } = await mockAdapter.read();
+    return student.id ? [student] : [];
   },
 };
 export const campusService = {
@@ -461,13 +383,18 @@ export const campusService = {
       studentId === data.student.id ? data : { contests: [], history: [] },
     );
   },
-  getPlacementAnalytics: async () => [
-    { name: 'CSE', ready: 88, placed: 72 },
-    { name: 'IT', ready: 82, placed: 64 },
-    { name: 'ECE', ready: 74, placed: 58 },
-    { name: 'EE', ready: 68, placed: 46 },
-    { name: 'ME', ready: 62, placed: 40 },
-  ],
+  getPlacementAnalytics: async () => {
+    const { student, history, offers } = await mockAdapter.read();
+    return student.id
+      ? [
+          {
+            name: student.branch || student.course,
+            ready: readiness(student, history).score,
+            placed: offers.some((offer) => offer.status === 'Joined') ? 1 : 0,
+          },
+        ]
+      : [];
+  },
 };
 export const notificationService = {
   markRead: (id?: string) =>
@@ -549,11 +476,3 @@ export const learningService = {
       if (!d.learning.includes(step)) d.learning.push(step);
     }),
 };
-export const demoService = {
-  reset: () => mockAdapter.reset(),
-  resolveConflict: () =>
-    mockAdapter.update((d) => {
-      d.conflictResolved = true;
-    }),
-};
-// Adapter boundary: replace mockAdapter methods with /api/v1 requests when the backend is ready.

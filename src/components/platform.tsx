@@ -1,41 +1,42 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowUpRight, Bell, Check, CheckCheck } from 'lucide-react';
-import { Landing, PublicPage } from '@/components/public';
 import { AppShell } from '@/components/app-shell';
+import { Loader } from '@/components/loader';
+import { Landing, PublicPage } from '@/components/public';
+import { Badge, Button, EmptyState, PageHeader, Toast } from '@/components/ui';
+import { AssessmentSession, AssessmentsPage, ContestsPage } from '@/features/assessments';
 import { AuthPage } from '@/features/auth';
-import { usePlatform } from '@/hooks/use-platform';
 import { StudentDashboard, TeamDashboard } from '@/features/dashboard';
-import { AssessmentsPage, AssessmentSession, ContestsPage } from '@/features/assessments';
 import {
-  ProfilePage,
-  SkillsPage,
-  ReadinessPage,
-  LearningPage,
-  DocumentsPage,
-} from '@/features/profile';
-import { OpportunitiesPage, ApplicationsPage, OffersPage } from '@/features/opportunities';
-import { InterviewsPage, AIInterview } from '@/features/interviews';
-import { PeoplePage, AnalyticsPage, RecruitersPage, CompanyPage } from '@/features/team';
-import {
-  DrivesPage,
   CampusDiscovery,
-  PlacementCalendar,
   CareerPointsPage,
+  DrivesPage,
+  PlacementCalendar,
 } from '@/features/drives';
-import { Badge, Button, EmptyState, FormField, Modal, PageHeader, Toast } from '@/components/ui';
-import { notificationService, studentService, demoService } from '@/services/platform.service';
+import { AIInterview, InterviewsPage } from '@/features/interviews';
+import { ApplicationsPage, OffersPage, OpportunitiesPage } from '@/features/opportunities';
+import {
+  DocumentsPage,
+  LearningPage,
+  ProfilePage,
+  ReadinessPage,
+  SkillsPage,
+} from '@/features/profile';
+import { AnalyticsPage, CompanyPage, PeoplePage, RecruitersPage } from '@/features/team';
+import { usePlatform } from '@/hooks/use-platform';
+import { notificationService } from '@/services/platform.service';
+import { ArrowUpRight, Bell, Check, CheckCheck } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { DemoData, Role } from '@/types';
-import { motion } from 'framer-motion';
-import { BackendTools, AuthLinkPage } from './backend-tools';
-import { backendEnabled } from '@/services/api/remote';
-import { PublicSessionProvider } from './public-session';
-import { AdminDashboard } from '@/features/admin';
 import { ActionCenter } from '@/features/action-center';
+import { AdminDashboard } from '@/features/admin';
 import { CommunicationPractice } from '@/features/communication';
+import { useSession } from '@/store/session';
+import { WorkspaceData, Role } from '@/types';
+import { motion } from 'framer-motion';
+import { AuthLinkPage, BackendTools } from './backend-tools';
+import { PublicSessionProvider } from './public-session';
 export function Platform() {
   const path = usePathname();
   if (path === '/admin' || path.startsWith('/admin/')) return <AdminDashboard />;
@@ -70,18 +71,7 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
   }, [toast]);
   const props = data ? { data, role, id, refresh, notify } : null;
   let content: React.ReactNode;
-  if (isLoading)
-    content = (
-      <div className="loading-layout">
-        <div className="skeleton heading-skeleton" />
-        <div className="three-columns">
-          {[1, 2, 3].map((i) => (
-            <div className="skeleton panel" key={i} />
-          ))}
-        </div>
-        <p>Opening your next chapter…</p>
-      </div>
-    );
+  if (isLoading) content = <Loader label="Loading your workspace…" />;
   else if (error || !props)
     content = (
       <EmptyState
@@ -150,7 +140,7 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <DocumentsPage {...props} />;
         break;
       case 'membership':
-        content = <Membership notify={notify} />;
+        content = <Membership />;
         break;
       case 'notifications':
         content = <Notifications {...props} />;
@@ -159,7 +149,7 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <SettingsPage {...props} />;
         break;
       case 'company':
-        content = <CompanyPage notify={notify} />;
+        content = <CompanyPage />;
         break;
       case 'drives':
         content = <DrivesPage {...props} />;
@@ -223,7 +213,7 @@ function Notifications({
   refresh,
   notify,
 }: {
-  data: DemoData;
+  data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
 }) {
@@ -288,22 +278,17 @@ function Notifications({
   );
 }
 function SettingsPage({
-  data,
   refresh,
   notify,
 }: {
-  data: DemoData;
+  data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
 }) {
-  const [reset, setReset] = useState(false);
-  const [email, setEmail] = useState(data.student.email);
-  const [emailUpdates, setEmailUpdates] = useState(true);
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('campuslink-preferences') || '{}');
-      setEmailUpdates(saved.emailUpdates !== false);
       setReduced(!!saved.reduced);
     } catch {}
   }, []);
@@ -311,33 +296,19 @@ function SettingsPage({
     <>
       <PageHeader
         title="Make this space yours."
-        description="Your account, preferences, and local demo data."
+        description="Your account and display preferences."
       />
       <form
         className="panel form-stack settings-form"
         onSubmit={async (e) => {
           e.preventDefault();
-          await studentService.updateStudent({ email });
-          localStorage.setItem('campuslink-preferences', JSON.stringify({ emailUpdates, reduced }));
+          localStorage.setItem('campuslink-preferences', JSON.stringify({ reduced }));
           refresh();
           notify('Your preferences are saved.');
         }}
       >
         <h3>Account & preferences</h3>
-        <FormField label="Email address">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </FormField>
-        <label className="setting-toggle">
-          <span>
-            <b>Email updates</b>
-            <small>Future notifications about applications and interviews.</small>
-          </span>
-          <input
-            type="checkbox"
-            checked={emailUpdates}
-            onChange={(e) => setEmailUpdates(e.target.checked)}
-          />
-        </label>
+        <p>Signed in as {useSession.getState().user?.email}</p>
         <label className="setting-toggle">
           <span>
             <b>Reduce motion</b>
@@ -359,98 +330,27 @@ function SettingsPage({
           Save preferences <Check size={16} />
         </Button>
       </form>
-      {!backendEnabled && (
-        <section className="panel">
-          <h3>Local demo data</h3>
-          <p>
-            This workspace uses mock data stored in this browser. Resetting restores the sample
-            profile, drives, and assessment history.
-          </p>
-          <Button kind="outline" onClick={() => setReset(true)}>
-            Reset demo data
-          </Button>
-        </section>
-      )}
-      {reset && (
-        <Modal title="Start a fresh demo?" onClose={() => setReset(false)}>
-          <p>
-            Your local profile changes, assessments, and applications will be replaced by the sample
-            data.
-          </p>
-          <Button
-            onClick={() => {
-              demoService.reset();
-              refresh();
-              setReset(false);
-              notify('Demo restored to a fresh start.');
-            }}
-          >
-            Reset local data
-          </Button>
-        </Modal>
-      )}
     </>
   );
 }
-function Membership({ notify }: { notify: (s: string) => void }) {
-  const [selected, setSelected] = useState('Free');
+function Membership() {
   return (
     <>
       <PageHeader
-        title="A little more support for your future."
-        description="Core placement access is always included. Choose the support that fits you."
+        title="Your CampusLink access."
+        description="Manage your career profile, preparation, and campus placement applications."
       />
-      <div className="pricing-grid">
-        {['Free', 'Premium'].map((tier, i) => (
-          <section className={`panel ${i ? 'lavender' : ''}`} key={tier}>
-            <Badge>{selected === tier ? 'YOUR DEMO PLAN' : 'EXTRA PREPARATION'}</Badge>
-            <h2>{tier}</h2>
-            <div className="plan-price">
-              {i ? '₹499' : '₹0'}
-              <small>{i ? '/ month' : 'forever'}</small>
-            </div>
-            <p>
-              {i
-                ? 'Go a little further with your preparation.'
-                : 'Everything you need to start your journey.'}
-            </p>
-            <div className="check-list">
-              {[
-                'Career profile',
-                'Skill verification & assessments',
-                'Opportunity access',
-                'Basic mock interviews',
-                ...(i
-                  ? [
-                      'Advanced preparation material',
-                      'Additional practice interviews',
-                      'Detailed demo career insights',
-                    ]
-                  : []),
-              ].map((s) => (
-                <span key={s}>
-                  <Check size={16} />
-                  {s}
-                </span>
-              ))}
-            </div>
-            <Button
-              disabled={selected === tier}
-              onClick={() => {
-                setSelected(tier);
-                notify(`${tier} selected for this demo. No payment has been taken.`);
-              }}
-            >
-              {selected === tier ? 'Your current plan' : `Try ${tier} in demo`}{' '}
-              <ArrowUpRight size={16} />
-            </Button>
-          </section>
-        ))}
-      </div>
-      <p className="muted">
-        Demo plans only. No payment processing is connected, and opportunity access stays available
-        on every plan.
-      </p>
+      <section className="panel settings-form">
+        <Badge>INCLUDED ACCESS</Badge>
+        <h2>Career and placement workspace</h2>
+        <p>
+          Profile, skill assessments, interview practice, campus opportunities, and application
+          tracking are available through your account.
+        </p>
+        <Link href="/student/dashboard" className="button dark">
+          Open your workspace <ArrowUpRight size={16} />
+        </Link>
+      </section>
     </>
   );
 }

@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { configurePersistence } from '../src/mocks/adapter';
 import { initialData } from '../src/mocks/data';
-import type { DemoData, Drive, Student, Campus, InterviewTemplate } from '../src/types';
+import type { WorkspaceData, Drive, Student, Campus, InterviewTemplate } from '../src/types';
 import { Database } from './db';
 import { Account } from './auth';
 import { requireCondition } from './errors';
@@ -11,16 +11,16 @@ import { checkEligibility } from '../src/utils/placement';
 import type { AdminAssessment, AdminContest } from '../src/types/admin';
 
 export type StoredDrive = Drive & { recruiterId: string };
-export function emptyWorkspace(account?: Account, campusName = ''): DemoData {
+export function emptyWorkspace(account?: Account, campusName = ''): WorkspaceData {
   return {
     student: {
       id: account?.id || '',
       name: account?.role === 'student' ? account.name : 'Select a student',
       email: account?.role === 'student' ? account.email : '',
       campus: campusName,
-      course: 'B.Tech · Computer Science',
-      branch: 'Computer Science',
-      year: '2027',
+      course: '',
+      branch: '',
+      year: '',
       cgpa: 0,
       activeBacklogs: 0,
       bio: '',
@@ -34,11 +34,7 @@ export function emptyWorkspace(account?: Account, campusName = ''): DemoData {
     applications: [],
     assessments: structuredClone(initialData.assessments),
     history: [],
-    contests: structuredClone(initialData.contests).map((c) => ({
-      ...c,
-      joined: false,
-      completed: false,
-    })),
+    contests: [],
     interviews: [],
     offers: [],
     drives: [],
@@ -66,7 +62,7 @@ export const currentContext = () => {
 export async function candidates(db: Database, actor: Account) {
   const accounts = await db.list<Account>('account');
   const drives = await db.list<StoredDrive>('drive');
-  const profiles = await db.list<DemoData>('workspace');
+  const profiles = await db.list<WorkspaceData>('workspace');
   return accounts
     .filter((a) => a.role === 'student' && a.approved)
     .filter((a) => {
@@ -105,16 +101,17 @@ export async function runWorkspace<T>(
   }
   return context.run({ db, actor, target }, fn);
 }
-export async function readWorkspace(): Promise<DemoData> {
+export async function readWorkspace(): Promise<WorkspaceData> {
   const { db, actor, target } = currentContext();
   const campuses = await db.list<Campus>('campus');
-  const own = target ? await db.get<DemoData>('workspace', target.id) : undefined;
+  const own = target ? await db.get<WorkspaceData>('workspace', target.id) : undefined;
   const data = structuredClone(
     own || emptyWorkspace(target, campuses.find((c) => c.id === target?.campusId)?.name),
   );
   data.campuses = campuses;
   const assessments = await db.list<AdminAssessment>('admin-assessment');
   const contests = await db.list<AdminContest>('admin-contest');
+  const campusWorkspaces = await db.list<WorkspaceData>('workspace', actor.campusId);
   const visible = (row: { status: string; campusId: string }) =>
     row.status === 'published' && (!row.campusId || row.campusId === actor.campusId);
   data.assessments = [
@@ -132,7 +129,6 @@ export async function readWorkspace(): Promise<DemoData> {
       })),
   ];
   data.contests = [
-    ...data.contests.filter((c) => !contests.some((row) => row.id === c.id)),
     ...contests.filter(visible).map(({ id, name, type, duration, points, difficulty, prompt }) => {
       const progress = own?.contests.find((c) => c.id === id);
       return {
@@ -143,7 +139,9 @@ export async function readWorkspace(): Promise<DemoData> {
         points,
         difficulty,
         prompt,
-        participants: 0,
+        participants: campusWorkspaces.filter((workspace) =>
+          workspace.contests.some((contest) => contest.id === id && contest.joined),
+        ).length,
         joined: !!progress?.joined,
         completed: !!progress?.completed,
       };
@@ -223,7 +221,7 @@ export async function notify(
   );
   await queueMail(db, account.email, title, body, `notice-${id}`);
 }
-async function writeWorkspace(action: (data: DemoData) => void) {
+async function writeWorkspace(action: (data: WorkspaceData) => void) {
   const { db, actor, target } = currentContext();
   return db.transaction(async () => {
     const before = await readWorkspace();
@@ -231,7 +229,7 @@ async function writeWorkspace(action: (data: DemoData) => void) {
     action(data);
     if (target) {
       const stored =
-        (await db.get<DemoData>('workspace', target.id)) ||
+        (await db.get<WorkspaceData>('workspace', target.id)) ||
         emptyWorkspace(target, data.student.campus);
       for (const key of [
         'student',
@@ -282,7 +280,7 @@ async function writeWorkspace(action: (data: DemoData) => void) {
       if (drive.status === 'ACTIVE' && old?.status !== 'ACTIVE') {
         for (const a of await db.list<Account>('account', drive.campusId)) {
           if (a.role !== 'student') continue;
-          const profile = await db.get<DemoData>('workspace', a.id);
+          const profile = await db.get<WorkspaceData>('workspace', a.id);
           if (profile && checkEligibility(profile.student, drive).passed)
             await notify(
               db,
@@ -333,7 +331,7 @@ export async function studentProfiles(db: Database, actor: Account): Promise<Stu
   const allowed = await candidates(db, actor);
   const result: Student[] = [];
   for (const a of allowed) {
-    const data = await db.get<DemoData>('workspace', a.id);
+    const data = await db.get<WorkspaceData>('workspace', a.id);
     const campus = await db.get<Campus>('campus', a.campusId);
     result.push((data || emptyWorkspace(a, campus?.name)).student);
   }

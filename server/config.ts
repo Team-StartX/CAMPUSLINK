@@ -20,8 +20,10 @@ export const config = {
   ai: process.env.AI_PROVIDER || 'local',
   aiKey: process.env.OPENAI_API_KEY || '',
   aiModel: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+  speech: process.env.SPEECH_PROVIDER || 'disabled',
+  speechModel: process.env.OPENAI_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe',
   modelPath: process.env.ML_MODEL_PATH || 'server/models/placement.json',
-  mlApiUrl: process.env.ML_API_URL || 'https://campuslink-ml-demo.onrender.com',
+  mlApiUrl: process.env.ML_API_URL || '',
   mlApiToken: process.env.ML_API_TOKEN || '',
 };
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535)
@@ -32,6 +34,10 @@ if (!['outbox', 'resend'].includes(config.email))
   throw new Error('EMAIL_PROVIDER must be outbox or resend.');
 if (!['local', 'openai'].includes(config.ai))
   throw new Error('AI_PROVIDER must be local or openai.');
+if (!['disabled', 'openai'].includes(config.speech))
+  throw new Error('SPEECH_PROVIDER must be disabled or openai.');
+if (config.speech === 'openai' && !config.aiKey)
+  throw new Error('OPENAI_API_KEY is required when SPEECH_PROVIDER is openai.');
 if (
   config.production &&
   (!config.database || config.email === 'outbox' || config.storage === 'local')

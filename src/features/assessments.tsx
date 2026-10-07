@@ -1,23 +1,24 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
+import { ContestProgress } from '@/components/contest-progress';
+import { Loader } from '@/components/loader';
+import { Badge, Button, EmptyState, formatDate, PageHeader, Progress } from '@/components/ui';
+import { assessmentService, contestService } from '@/services/platform.service';
+import { AssessmentAttempt, WorkspaceData, Role } from '@/types';
+import { contestAchievements } from '@/utils/contest-achievements';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowUpRight,
   ArrowRight,
+  ArrowUpRight,
   Check,
-  Clock,
-  Trophy,
-  CircleCheck,
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
+  Clock,
+  Trophy,
 } from 'lucide-react';
-import { assessmentService, contestService } from '@/services/platform.service';
-import { AssessmentAttempt, DemoData, Role } from '@/types';
-import { Button, PageHeader, Progress, Badge, EmptyState, formatDate } from '@/components/ui';
-import { ContestProgress } from '@/components/contest-progress';
-import { contestAchievements } from '@/utils/contest-achievements';
-export function AssessmentsPage({ data, role = 'student' }: { data: DemoData; role?: Role }) {
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+export function AssessmentsPage({ data, role = 'student' }: { data: WorkspaceData; role?: Role }) {
   const [tab, setTab] = useState('Available');
   const [filter, setFilter] = useState('All');
   return (
@@ -163,7 +164,7 @@ export function AssessmentSession({
   useEffect(() => {
     if (started && !result && seconds >= (data?.assessment.duration || 10) * 60) void finish(true);
   }, [seconds, started, result, finish, data?.assessment.duration]);
-  if (isLoading) return <div className="skeleton panel">Loading your assessment…</div>;
+  if (isLoading) return <Loader label="Loading your assessment…" />;
   if (error || !data)
     return (
       <EmptyState
@@ -380,7 +381,7 @@ export function ContestsPage({
   notify,
   role = 'student',
 }: {
-  data: DemoData;
+  data: WorkspaceData;
   id?: string;
   refresh: () => void;
   notify: (s: string) => void;
@@ -391,6 +392,17 @@ export function ContestsPage({
     queryFn: contestService.getLeaderboard,
   });
   const [tab, setTab] = useState('Student leaderboard');
+  const campusGroups = new Map<string, { name: string; xp: number; count: number }>();
+  for (const person of leaderboard || []) {
+    const group = campusGroups.get(person.campus) || { name: person.campus, xp: 0, count: 0 };
+    group.xp += person.xp;
+    group.count++;
+    campusGroups.set(person.campus, group);
+  }
+  const campusLeaderboard = [...campusGroups.values()]
+    .sort((a, b) => b.xp - a.xp)
+    .map((campus) => ({ ...campus, sub: `${campus.count} student(s)` }));
+
   const selected = data.contests.find((c) => c.id === id);
   const [participating, setParticipating] = useState(false);
   const [answer, setAnswer] = useState('');
@@ -419,8 +431,8 @@ export function ContestsPage({
             {selected.points} XP on completion
           </p>
           <p>
-            Demo contest: solve the practice challenge below. Your participation is recorded in
-            assessment history.
+            Solve the published challenge below. Your participation is recorded in assessment
+            history.
           </p>
           {!selected.joined ? (
             <Button onClick={() => void join(selected.id)}>
@@ -510,11 +522,7 @@ export function ContestsPage({
       <div className="panel leaderboard">
         {(tab === 'Student leaderboard'
           ? leaderboard?.map((p) => ({ name: p.name, xp: p.xp, sub: p.campus }))
-          : [
-              { name: 'Delhi Technological University', xp: 124800, sub: '1,248 active students' },
-              { name: 'IIT Delhi', xp: 112400, sub: '982 active students' },
-              { name: 'NSUT', xp: 98300, sub: '842 active students' },
-            ]
+          : campusLeaderboard
         )?.map((p, i) => (
           <div key={p.name}>
             <span className={`rank ${i === 0 ? 'yellow' : ''}`}>{i + 1}</span>

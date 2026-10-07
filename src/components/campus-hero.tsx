@@ -1,14 +1,13 @@
 'use client';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
 
-import Image from 'next/image';
-import { CompanyLoop } from './home-extras';
-import Link from 'next/link';
+import { interactionSpring } from '@/utils/motion';
 import { AnimatePresence, motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { ArrowDown, ArrowUpRight, Check, Code2, ShieldCheck, Trophy } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { PublicStartLink } from './public-session';
-import { interactionSpring } from '@/utils/motion';
 
 const words = ['STAND OUT.', 'GET HIRED.', 'GO FURTHER.'];
 const pathways = [
@@ -30,7 +29,7 @@ const pathways = [
     href: '/student/opportunities',
     action: 'Explore opportunities',
     tag: '02 / MAKE YOUR MOVE',
-    rows: ['Approved campus visits', 'Eligibility before demo matching', 'Application tracking'],
+    rows: ['Approved campus visits', 'Eligibility before matching', 'Application tracking'],
   },
   {
     label: 'Earn your place',
@@ -216,7 +215,6 @@ export function CampusHero() {
           ))}
         </div>
       </div>
-      <CompanyLoop />
       <section className="career-playground content-width" id="career-pathways">
         <div className="career-playground-heading">
           <div>

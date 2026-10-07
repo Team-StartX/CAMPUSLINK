@@ -1,12 +1,11 @@
 'use client';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
-import Link from 'next/link';
-import Image from 'next/image';
-import { AnimatePresence, motion, useInView } from 'framer-motion';
-import { useRef, useState } from 'react';
 import { interactionSpring, interactionTransition } from '@/utils/motion';
-import { MobileCardSlider } from './mobile-card-slider';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
 import { ArrowUpRight, Code2, GraduationCap, Minus, Plus, ShieldCheck, Trophy } from 'lucide-react';
+import Link from 'next/link';
+import { useRef, useState } from 'react';
+import { MobileCardSlider } from './mobile-card-slider';
 
 const names = [
   'Build projects',
@@ -16,74 +15,6 @@ const names = [
   'Keep learning',
   'Get placement ready',
 ];
-export function CompanyLoop() {
-  return (
-    <section className="company-loop" aria-label="Company and university logo showcase">
-      <p>BIG AMBITIONS. FAMILIAR NAMES.</p>
-      <div className="company-loop-window">
-        <div className="company-loop-track" aria-hidden="true">
-          {[0, 1].map((i) => (
-            <div className="company-loop-group" key={i}>
-              <span className="loop-razor">
-                <b>↗</b> Razorpay
-              </span>
-              <span className="loop-google">
-                {'Google'.split('').map((c, j) => (
-                  <i
-                    key={j}
-                    style={{
-                      color: ['#4285f4', '#ea4335', '#fbbc05', '#4285f4', '#34a853', '#ea4335'][j],
-                    }}
-                  >
-                    {c}
-                  </i>
-                ))}
-              </span>
-              <span className="loop-atlassian">
-                <b>▲</b> ATLASSIAN
-              </span>
-              <span className="loop-microsoft">
-                <i>
-                  <b />
-                  <b />
-                  <b />
-                  <b />
-                </i>
-                Microsoft
-              </span>
-              <span className="loop-tcs">tcs</span>
-              <span className="loop-notion">
-                <b>N</b>Notion
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="university-loop-label">FROM CAMPUS TO CAREER.</div>
-      <div className="company-loop-window university-loop-window">
-        <div className="company-loop-track university-loop-track" aria-hidden="true">
-          {[0, 1].map((i) => (
-            <div className="university-loop-group" key={i}>
-              {[
-                { name: 'IIT Bhubaneswar', src: 'iit-bhubaneswar.png' },
-                { name: 'NIT Rourkela', src: 'nit-rourkela.png' },
-                { name: 'Utkal University', src: 'utkal.png' },
-                { name: 'IIIT Bangalore', src: 'iiit-bangalore.png' },
-              ].map((u) => (
-                <div className="university-wordmark" key={u.name}>
-                  <Image src={`/logos/${u.src}`} alt="" width={170} height={50} />
-                  <span>{u.name}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-      <small>Explore opportunities across companies and campuses.</small>
-    </section>
-  );
-}
-
 export function MomentumSection() {
   const reduced = useHydratedReducedMotion();
   const section = useRef<HTMLElement>(null);
@@ -185,7 +116,7 @@ const faqs = [
   },
   {
     q: 'Can recruiters see my verified skills?',
-    a: 'The recruiter workspace includes student profiles, verified skills, and candidate discovery. The preview uses sample profiles and opportunities so you can explore the workflow.',
+    a: 'The recruiter workspace includes student profiles, verified skills, and candidate discovery. Recruiter access is limited to authorized placement records and applicants to their drives.',
   },
   {
     q: 'How do I start preparing?',

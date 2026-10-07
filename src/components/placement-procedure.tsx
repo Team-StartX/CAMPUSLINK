@@ -1,9 +1,9 @@
 'use client';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
-import Link from 'next/link';
-import { useRef, useState } from 'react';
 import { motion, useMotionValueEvent, useScroll, useSpring } from 'framer-motion';
 import { ArrowUpRight, Check, Code2, GraduationCap, ShieldCheck, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useRef, useState } from 'react';
 
 const steps = [
   {
@@ -26,7 +26,7 @@ const steps = [
     title: 'Apply to an active campus drive.',
     label: 'MAKE YOUR NEXT MOVE',
     description:
-      'Your placement cell reviews and activates campus drives. Pass hard eligibility first, review the demo match, and apply before the deadline.',
+      'Your placement cell reviews and activates campus drives. Pass hard eligibility first, review the evidence fit, and apply before the deadline.',
     icon: Sparkles,
     color: 'yellow',
   },
@@ -40,106 +40,33 @@ const steps = [
   },
 ];
 function StepPreview({ step }: { step: number }) {
+  const stage = steps[step];
+  const Icon = stage.icon;
   return (
     <div className={`procedure-demo demo-${step}`}>
       <div className="procedure-demo-top">
-        <span>campuslink / {['PROFILE', 'VERIFICATION', 'OPPORTUNITIES', 'INTERVIEWS'][step]}</span>
-        <i />
-        <i />
-        <i />
+        <span>campuslink / {stage.label}</span>
       </div>
-      {step === 0 ? (
-        <>
-          <div className="procedure-profile">
-            <span>CS</span>
-            <div>
-              <b>Student profile</b>
-              <small>Computer Science · Class of 2027</small>
-            </div>
-            <GraduationCap size={24} />
-          </div>
-          <div className="procedure-chips">
-            <span>React</span>
-            <span>JavaScript</span>
-            <span>SQL</span>
-          </div>
-          <div className="procedure-progress">
-            <span>Profile, in progress</span>
-            <b>82%</b>
-            <div>
-              <motion.i
-                initial={{ scaleX: 0 }}
-                whileInView={{ scaleX: 1 }}
-                viewport={{ once: true }}
-              />
-            </div>
-          </div>
-        </>
-      ) : step === 1 ? (
-        <>
-          <div className="procedure-result">
-            <ShieldCheck size={33} />
-            <div>
-              <small>REACT SKILL VERIFICATION</small>
-              <b>
-                84<span>/100</span>
-              </b>
-            </div>
-            <span className="procedure-verified">
-              <Check size={12} />
-              Verified
-            </span>
-          </div>
-          <div className="procedure-chips">
-            <span>Assessment complete</span>
-            <span>+120 XP</span>
-          </div>
-          <p>Proof that travels with your profile.</p>
-        </>
-      ) : step === 2 ? (
-        <>
-          <div className="procedure-job">
-            <span>↗</span>
-            <div>
-              <small>RAZORPAY</small>
-              <b>Frontend Engineer</b>
-              <p>Bengaluru · Full time</p>
-            </div>
-            <ArrowUpRight size={22} />
-          </div>
-          <div className="procedure-chips">
-            <span>React</span>
-            <span>JavaScript</span>
-            <span>SQL</span>
-          </div>
-          <div className="procedure-application">
-            <span>
-              <i />
-              Application tracked
-            </span>
-            <b>View opportunity ↗</b>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="procedure-interview">
-            <span className="procedure-wave">
-              {[18, 30, 44, 24, 38, 52, 26, 16, 35, 22].map((h, i) => (
-                <i style={{ height: h }} key={i} />
-              ))}
-            </span>
-            <b>Find your voice.</b>
-            <small>Practice before the conversation that matters.</small>
-          </div>
-          <div className="procedure-chips">
-            <span>Mock interviews</span>
-            <span>Schedule & feedback</span>
-          </div>
-        </>
-      )}
+      <Icon size={48} />
+      <h3>{stage.title}</h3>
+      <p>{stage.description}</p>
+      <Link
+        href={
+          [
+            '/student/profile',
+            '/student/assessments',
+            '/student/opportunities',
+            '/student/interviews',
+          ][step]
+        }
+        className="text-link"
+      >
+        Open workspace <ArrowUpRight size={16} />
+      </Link>
     </div>
   );
 }
+
 export function PlacementProcedure() {
   const target = useRef<HTMLElement>(null);
   const reduced = useHydratedReducedMotion();

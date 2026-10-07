@@ -1,31 +1,39 @@
 'use client';
-import { useState } from 'react';
-import Link from 'next/link';
-import {
-  ArrowUpRight,
-  Plus,
-  CircleCheck,
-  Pencil,
-  Trash2,
-  Code2,
-  Search,
-  Check,
-  GraduationCap,
-  Globe,
-  ShieldCheck,
-  Trophy,
-} from 'lucide-react';
-import { DemoData, Role } from '@/types';
-import { backendEnabled } from '@/services/api/remote';
-import { aiService } from '@/services/platform.service';
 import { CareerIntelligence } from '@/components/backend-tools';
 import { AnalysisSource } from '@/components/external-analysis-setting';
-import { studentService, documentService, learningService } from '@/services/platform.service';
 import { Badge, Button, EmptyState, FormField, Modal, PageHeader, Progress } from '@/components/ui';
-import { CareerID, ReadinessCard, AnalyticsChart } from './dashboard';
+import {
+  aiService,
+  documentService,
+  learningService,
+  studentService,
+} from '@/services/platform.service';
+import { WorkspaceData, Role } from '@/types';
+import { checkEligibility, studentVisible } from '@/utils/placement';
 import { fit } from '@/utils/scoring';
-import { studentVisible, checkEligibility } from '@/utils/placement';
-type Common = { data: DemoData; refresh: () => void; notify: (s: string) => void; role?: Role };
+import {
+  ArrowUpRight,
+  Check,
+  CircleCheck,
+  Code2,
+  Globe,
+  GraduationCap,
+  Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
+  Trash2,
+  Trophy,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { CareerID } from './dashboard';
+type Common = {
+  data: WorkspaceData;
+  refresh: () => void;
+  notify: (s: string) => void;
+  role?: Role;
+};
 export function ProfilePage({ data, refresh, notify }: Common) {
   const [edit, setEdit] = useState(false);
   const [project, setProject] = useState(false);
@@ -497,7 +505,7 @@ export function SkillsPage({ data, refresh, notify }: Common) {
     </>
   );
 }
-export function ReadinessPage({ data }: { data: DemoData }) {
+export function ReadinessPage({ data }: { data: WorkspaceData }) {
   const drives = data.drives.filter(
     (d) => studentVisible(d) && checkEligibility(data.student, d).passed,
   );
@@ -511,9 +519,9 @@ export function ReadinessPage({ data }: { data: DemoData }) {
         title="Ready for your next chapter?"
         description="Know your strengths. See your next steps. Keep moving forward."
       />
-      {backendEnabled && <CareerIntelligence studentId={data.student.id} />}
-      <div className={backendEnabled ? 'readiness-next-steps' : 'two-columns'}>
-        {!backendEnabled && <ReadinessCard full />}
+      {<CareerIntelligence studentId={data.student.id} />}
+      <div className={'readiness-next-steps'}>
+        {false}
         <section className="panel yellow">
           <Badge>YOUR NEXT STEPS</Badge>
           <h2>
@@ -562,9 +570,9 @@ export function ReadinessPage({ data }: { data: DemoData }) {
       <section className="panel">
         <div className="panel-header">
           <h3>Your progress over time</h3>
-          <Badge>{backendEnabled ? 'Recorded assessments' : 'Demo data'}</Badge>
+          <Badge>{'Recorded assessments'}</Badge>
         </div>
-        {backendEnabled ? (
+        {
           <div>
             {data.history.map((h) => (
               <p key={h.id}>
@@ -572,9 +580,7 @@ export function ReadinessPage({ data }: { data: DemoData }) {
               </p>
             ))}
           </div>
-        ) : (
-          <AnalyticsChart />
-        )}
+        }
       </section>
     </>
   );
@@ -700,7 +706,10 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
   const [analysis, setAnalysis] = useState<{
     label: string;
     suggestions: string[];
-    ml?: { status?: string; message: string };
+    ml?: {
+      status?: string;
+      message: string;
+    };
   } | null>(null);
   return (
     <>
@@ -731,11 +740,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
                   try {
                     await documentService.upload(file, type);
                     refresh();
-                    notify(
-                      backendEnabled
-                        ? 'Document securely uploaded.'
-                        : 'Document metadata saved locally.',
-                    );
+                    notify('Document securely uploaded.');
                     setError('');
                   } catch (e) {
                     setError((e as Error).message);
@@ -749,9 +754,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
             </p>
           )}
           <small className="muted">
-            {backendEnabled
-              ? 'Documents are private and accessible to authorized placement staff.'
-              : 'This preview saves document metadata. Files are not uploaded to a server.'}
+            {'Documents are private and accessible to authorized placement staff.'}
           </small>
         </div>
       )}
@@ -779,7 +782,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
             {data.documents.map((d) => (
               <tr key={d.id}>
                 <td>
-                  {backendEnabled && (
+                  {
                     <Button
                       kind="outline"
                       onClick={async () => {
@@ -797,8 +800,8 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
                     >
                       Download
                     </Button>
-                  )}
-                  {backendEnabled && role === 'student' && d.type === 'Resume' && (
+                  }
+                  {role === 'student' && d.type === 'Resume' && (
                     <Button
                       kind="outline"
                       onClick={async () => {
@@ -874,7 +877,7 @@ function ProfileRecords({
   notify,
 }: {
   category: string;
-  data: DemoData;
+  data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
 }) {

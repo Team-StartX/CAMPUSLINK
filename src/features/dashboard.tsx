@@ -1,48 +1,31 @@
 'use client';
-import { PreparationOverview } from '@/components/preparation-overview';
-import Link from 'next/link';
-import { CareerID } from '@/components/student-id';
-import { DashboardActivity } from '@/components/dashboard-activity';
+import { ConnectedAnalytics } from '@/components/backend-tools';
 import { ContestProgress } from '@/components/contest-progress';
+import { DashboardActivity } from '@/components/dashboard-activity';
+import { PreparationOverview } from '@/components/preparation-overview';
+import { CareerID } from '@/components/student-id';
+import { Badge, PageHeader, formatDate } from '@/components/ui';
+import { aiService, studentService } from '@/services/platform.service';
+import { WorkspaceData, Opportunity, Role } from '@/types';
 import { contestAchievements } from '@/utils/contest-achievements';
-export { CareerID } from '@/components/student-id';
-
-import {
-  ArrowUpRight,
-  ArrowRight,
-  Check,
-  CircleCheck,
-  Sparkles,
-  Trophy,
-  CalendarDays,
-  ChevronRight,
-  X,
-  Code2,
-  Plus,
-  Zap,
-  Target,
-  Mic,
-} from 'lucide-react';
-
 import { useQuery } from '@tanstack/react-query';
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  YAxis,
-} from 'recharts';
-import { DemoData, Opportunity, Role } from '@/types';
-import { aiService, studentService, campusService } from '@/services/platform.service';
-import { Badge, Progress, PageHeader, formatDate } from '@/components/ui';
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CircleCheck,
+  Code2,
+  Mic,
+  Sparkles,
+  Trophy,
+  X,
+  Zap,
+} from 'lucide-react';
+import Link from 'next/link';
 import { DriveActivitySummary } from './drives';
-import { statusLabel } from '@/utils/placement';
-import { backendEnabled } from '@/services/api/remote';
-import { ConnectedAnalytics } from '@/components/backend-tools';
+export { CareerID } from '@/components/student-id';
 export function OpportunityCard({ job, compact = false }: { job: Opportunity; compact?: boolean }) {
   return (
     <Link
@@ -55,8 +38,7 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
           {job.company === 'Razorpay' && <ArrowUpRight size={17} />}
         </span>
         <span className="match-tag">
-          <Sparkles size={12} /> {job.match}%{' '}
-          <small>{backendEnabled ? 'Evidence fit' : 'Demo match'}</small>
+          <Sparkles size={12} /> {job.match}% <small>{'Evidence fit'}</small>
         </span>
       </div>
       <p className="company-name">{job.company}</p>
@@ -79,80 +61,26 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
     </Link>
   );
 }
-export function ReadinessCard({ full = false }: { full?: boolean }) {
+export function ReadinessCard({ full: _full = false }: { full?: boolean }) {
   const { data, isPending, isError } = useQuery({
     queryKey: ['readiness'],
     queryFn: aiService.getReadinessScore,
   });
-  if (backendEnabled)
-    return (
-      <section className="panel connected-readiness">
-        <PreparationOverview
-          score={data?.score}
-          categories={data?.categories}
-          loading={isPending}
-          error={isError}
-        />
-        <Link className="text-link" href="/student/readiness">
-          Explore your next steps <ArrowUpRight size={15} />
-        </Link>
-      </section>
-    );
   return (
-    <div className={`readiness-card panel ${full ? 'full-readiness' : ''}`}>
-      <div className="panel-header">
-        <h3>Placement readiness</h3>
-        <Badge>Rule-based score</Badge>
-      </div>
-      <div className="readiness-inner">
-        <div className="gauge">
-          <svg viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e2da" strokeWidth="9" />
-            <circle
-              cx="60"
-              cy="60"
-              r="50"
-              fill="none"
-              stroke="#9380c8"
-              strokeWidth="9"
-              strokeLinecap="round"
-              strokeDasharray="314"
-              strokeDashoffset={314 * (1 - (data?.score ?? 0) / 100)}
-              transform="rotate(-90 60 60)"
-            />
-          </svg>
-          <div>
-            <b>{data?.score ?? '…'}</b>
-            <span>{data?.label || 'Loading'}</span>
-          </div>
-        </div>
-        <div className="readiness-categories">
-          {(data?.categories || []).map((c) => (
-            <div key={c.name}>
-              <span>{c.name}</span>
-              <Progress value={c.score} />
-              <b>{c.score}</b>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="readiness-foot">
-        <p>A little progress makes a big difference.</p>
-        <Link href="/student/readiness" aria-label="View readiness details">
-          <ArrowUpRight size={19} />
-        </Link>
-      </div>
-      {full && (
-        <p className="muted">
-          Based on recorded evidence: verified skills 30%, academics 20%, projects 15%, aptitude
-          15%, communication 10%, and interviews 10%. Missing assessments count as zero. This
-          prototype uses explainable rules; the score is not a hiring prediction.
-        </p>
-      )}
-    </div>
+    <section className="panel connected-readiness">
+      <PreparationOverview
+        score={data?.score}
+        categories={data?.categories}
+        loading={isPending}
+        error={isError}
+      />
+      <Link className="text-link" href="/student/readiness">
+        Explore your next steps <ArrowUpRight size={15} />
+      </Link>
+    </section>
   );
 }
-export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: () => void }) {
+export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refresh: () => void }) {
   const { student } = data;
   const nextSkill = student.skills.find((s) => !s.verified);
   const nextAssessment = data.assessments.find((a) => a.skill === nextSkill?.name);
@@ -167,32 +95,30 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
           : student.skills.length
             ? 1
             : 0;
-  const upcoming = backendEnabled
-    ? [
-        ...data.interviews
-          .filter((i) => i.status === 'Scheduled')
-          .map((i) => ({
-            date: i.date,
-            day: i.date.slice(-2),
-            month: new Date(i.date + 'T12:00:00').toLocaleString('en', { month: 'short' }),
-            name: `${i.company} ${i.round}`,
-            sub: `${i.time} · ${i.mode}`,
-            color: 'lavender',
-            href: '/student/interviews',
-          })),
-        ...data.opportunities.map((o) => ({
-          date: o.deadline,
-          day: o.deadline.slice(-2),
-          month: new Date(o.deadline + 'T12:00:00').toLocaleString('en', { month: 'short' }),
-          name: `${o.company} application deadline`,
-          sub: o.role,
-          color: 'pink',
-          href: `/student/opportunities/${o.id}`,
-        })),
-      ]
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 3)
-    : undefined;
+  const upcoming = [
+    ...data.interviews
+      .filter((i) => i.status === 'Scheduled')
+      .map((i) => ({
+        date: i.date,
+        day: i.date.slice(-2),
+        month: new Date(i.date + 'T12:00:00').toLocaleString('en', { month: 'short' }),
+        name: `${i.company} ${i.round}`,
+        sub: `${i.time} · ${i.mode}`,
+        color: 'lavender',
+        href: '/student/interviews',
+      })),
+    ...data.opportunities.map((o) => ({
+      date: o.deadline,
+      day: o.deadline.slice(-2),
+      month: new Date(o.deadline + 'T12:00:00').toLocaleString('en', { month: 'short' }),
+      name: `${o.company} application deadline`,
+      sub: o.role,
+      color: 'pink',
+      href: `/student/opportunities/${o.id}`,
+    })),
+  ]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 3);
   return (
     <div className="student-dashboard">
       <PageHeader
@@ -377,34 +303,7 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
             <h3>On your horizon</h3>
             <CalendarDays size={19} />
           </div>
-          {(
-            upcoming || [
-              {
-                day: '06',
-                month: 'OCT',
-                name: 'Google technical interview',
-                sub: '11:00 AM · Placement Block',
-                color: 'lavender',
-                href: '/student/interviews/google',
-              },
-              {
-                day: '08',
-                month: 'OCT',
-                name: 'Weekly coding contest',
-                sub: '6:00 PM · 60 minutes',
-                color: 'yellow',
-                href: '/student/contests/weekly',
-              },
-              {
-                day: '18',
-                month: 'OCT',
-                name: 'Razorpay application deadline',
-                sub: 'Frontend Engineer',
-                color: 'pink',
-                href: '/student/opportunities/razorpay',
-              },
-            ]
-          ).map((e) => (
+          {upcoming.map((e) => (
             <Link href={e.href} className="upcoming-row" key={`${e.href}-${e.name}`}>
               <span className={`date-tile ${e.color}`}>
                 <b>{e.day}</b>
@@ -485,8 +384,7 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
           </div>
           <div className="points-foot">
             <span>
-              <Trophy size={14} />{' '}
-              {backendEnabled ? 'Keep building your preparation' : 'Demo weekly rank #14'}
+              <Trophy size={14} /> {'Keep building your preparation'}
             </span>
             <Link href="/student/contests">
               Keep the momentum <ArrowUpRight size={15} />
@@ -519,242 +417,23 @@ export function StudentDashboard({ data, refresh }: { data: DemoData; refresh: (
     </div>
   );
 }
-const activity = [
-  { name: 'May', value: 34 },
-  { name: 'Jun', value: 45 },
-  { name: 'Jul', value: 41 },
-  { name: 'Aug', value: 63 },
-  { name: 'Sep', value: 72 },
-  { name: 'Oct', value: 86 },
-];
-export function AnalyticsChart({ bar = false }: { bar?: boolean }) {
-  const { data } = useQuery({
-    queryKey: ['analytics'],
-    queryFn: campusService.getPlacementAnalytics,
-  });
-  return (
-    <div className="chart-container">
-      <ResponsiveContainer width="100%" height={240}>
-        {bar ? (
-          <BarChart data={data}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-            <YAxis axisLine={false} tickLine={false} />
-            <Tooltip />
-            <Bar dataKey="ready" fill="#b5a2db" radius={[5, 5, 0, 0]} />
-            <Bar dataKey="placed" fill="#b5c68b" radius={[5, 5, 0, 0]} />
-          </BarChart>
-        ) : (
-          <AreaChart data={activity}>
-            <defs>
-              <linearGradient id="fillProgress" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#b7a3dd" stopOpacity={0.6} />
-                <stop offset="100%" stopColor="#b7a3dd" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-            <Tooltip />
-            <Area
-              type="monotone"
-              dataKey="value"
-              name="Progress"
-              stroke="#9270bf"
-              strokeWidth={3}
-              fill="url(#fillProgress)"
-            />
-          </AreaChart>
-        )}
-      </ResponsiveContainer>
-    </div>
-  );
-}
-export function TeamDashboard({ data, role }: { data: DemoData; role: Role }) {
-  if (backendEnabled)
-    return (
-      <>
-        <PageHeader
-          title={
-            role === 'campus' ? 'Your campus placement overview.' : 'Your recruitment overview.'
-          }
-          description="Current records from your authorized placement workspace."
-          action={
-            <Link
-              href={role === 'campus' ? '/campus/drive-requests' : '/recruiter/drives/request'}
-              className="button dark"
-            >
-              {role === 'campus' ? 'Review drive requests' : 'Request campus drive'}
-            </Link>
-          }
-        />
-        <DriveActivitySummary data={data} role={role} />
-        <ConnectedAnalytics />
-      </>
-    );
-  const campus = role === 'campus';
+export function TeamDashboard({ data, role }: { data: WorkspaceData; role: Role }) {
   return (
     <>
       <PageHeader
-        eyebrow="YOUR PLACEMENT ECOSYSTEM"
-        title={campus ? 'Potential, moving forward.' : 'Great talent. Next chapter.'}
-        description={
-          campus
-            ? 'A clear view of your students’ placement journey.'
-            : 'Your hiring pipeline, with the next steps that matter.'
-        }
+        title={role === 'campus' ? 'Your campus placement overview.' : 'Your recruitment overview.'}
+        description="Current records from your authorized placement workspace."
         action={
           <Link
-            href={campus ? '/campus/drive-requests' : '/recruiter/drives/request'}
+            href={role === 'campus' ? '/campus/drive-requests' : '/recruiter/drives/request'}
             className="button dark"
           >
-            <Plus size={17} />
-            {campus ? 'Review drive requests' : 'Request campus drive'}
+            {role === 'campus' ? 'Review drive requests' : 'Request campus drive'}
           </Link>
         }
       />
-      <div className="metrics-grid">
-        {(campus
-          ? [
-              ['Eligible students', '1,248', 'Ready for the next step', 'lavender'],
-              ['Placement ready', '842', '67% of eligible students', 'sage'],
-              [
-                'New drive requests',
-                `${data.drives.filter((d) => ['SUBMITTED', 'UNDER_REVIEW'].includes(d.status)).length}`,
-                'Review before scheduling',
-                'yellow',
-              ],
-              ['Offers received', '328', '26% placement conversion', 'pink'],
-            ]
-          : [
-              [
-                'Active drives',
-                `${data.drives.filter((d) => ['ACTIVE', 'IN_PROGRESS'].includes(d.status)).length}`,
-                'Open for student participation',
-                'lavender',
-              ],
-              [
-                'Drive requests',
-                `${data.drives.filter((d) => !['ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(d.status)).length}`,
-                'Awaiting campus coordination',
-                'yellow',
-              ],
-              ['Shortlisted', '86', 'Ready for a conversation', 'sage'],
-              [
-                'Upcoming interviews',
-                `${data.interviews.length}`,
-                'Give potential a chance',
-                'pink',
-              ],
-            ]
-        ).map(([label, value, sub, color]) => (
-          <div className={`metric-card ${color}`} key={label}>
-            <span>
-              {label}
-              <ArrowUpRight size={16} />
-            </span>
-            <b>{value}</b>
-            <p>{sub}</p>
-          </div>
-        ))}
-      </div>
       <DriveActivitySummary data={data} role={role} />
-      <div className="two-columns">
-        <section className="panel">
-          <div className="panel-header">
-            <h3>{campus ? 'Branch performance' : 'Hiring momentum'}</h3>
-            <Badge>Demo analytics</Badge>
-          </div>
-          <AnalyticsChart bar={campus} />
-          <p className="muted">
-            {campus
-              ? 'Lavender: readiness · Sage: placements'
-              : 'Applications progressing through your pipeline'}
-          </p>
-        </section>
-        <section className="panel">
-          <div className="panel-header">
-            <h3>{campus ? 'Placement funnel' : 'Your recruitment funnel'}</h3>
-            <Target size={20} />
-          </div>
-          {[
-            ['Applications', 404],
-            ['Eligible', 312],
-            ['Shortlisted', 86],
-            ['Interviewed', 42],
-            ['Offered', 18],
-          ].map(([name, value], i) => (
-            <div className="funnel-row" key={name}>
-              <span>{name}</span>
-              <div
-                style={{ width: `${100 - i * 15}%` }}
-                className={['lavender', 'blue', 'yellow', 'sage', 'pink'][i]}
-              >
-                <b>{value}</b>
-              </div>
-            </div>
-          ))}
-        </section>
-      </div>
-      <div className="section-header">
-        <div>
-          <h2>Drives moving possibility forward.</h2>
-          <p>Give the right opportunity the right attention.</p>
-        </div>
-        <Link className="text-link" href={`/${role}/drives`}>
-          View all <ArrowUpRight size={15} />
-        </Link>
-      </div>
-      <div className="table-wrap panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Company & role</th>
-              <th>Location</th>
-              <th>Applicants</th>
-              <th>Status</th>
-              <th>Next step</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.drives.map((d) => (
-              <tr key={d.id}>
-                <td>
-                  <b>{d.company}</b>
-                  <small>{d.role}</small>
-                </td>
-                <td>{d.location}</td>
-                <td>{d.applicants}</td>
-                <td>
-                  <Badge kind="verified">{statusLabel(d.status)}</Badge>
-                </td>
-                <td>
-                  <Link className="text-link" href={`/${role}/drives/${d.id}`}>
-                    Manage drive <ArrowUpRight size={14} />
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="section-header">
-        <h2>Conversations on the horizon.</h2>
-        <Link href={`/${role}/interviews`} className="text-link">
-          View interviews <ArrowUpRight size={15} />
-        </Link>
-      </div>
-      <div className="three-columns">
-        {data.interviews.map((i) => (
-          <Link key={i.id} href={`/${role}/interviews/${i.id}`} className="panel">
-            <Badge>{i.round}</Badge>
-            <h3>{i.company}</h3>
-            <p>{i.role}</p>
-            <span className="muted">
-              {formatDate(i.date)} · {i.time} · {i.mode}
-            </span>
-          </Link>
-        ))}
-      </div>
+      <ConnectedAnalytics />
     </>
   );
 }

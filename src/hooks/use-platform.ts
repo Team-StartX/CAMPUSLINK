@@ -1,14 +1,13 @@
 'use client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { studentService } from '@/services/platform.service';
 import { useSession } from '@/store/session';
-import { backendEnabled } from '@/services/api/remote';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 export function usePlatform() {
   const user = useSession((s) => s.user);
   const query = useQuery({
     queryKey: ['platform', user?.id],
     queryFn: studentService.getDashboard,
-    enabled: !backendEnabled || Boolean(user && user.onboardingComplete !== false),
+    enabled: Boolean(user && user.onboardingComplete !== false),
     retry: 1,
   });
   const client = useQueryClient();

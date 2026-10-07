@@ -1,9 +1,12 @@
 'use client';
 import { OrganizationPicker } from '@/components/organization-picker';
-
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Loader } from '@/components/loader';
+import { Logo } from '@/components/public';
+import { Badge, Button, EmptyState, FormField, Modal } from '@/components/ui';
+import { apiClient } from '@/services/api/client';
+import { authService, useSession } from '@/store/session';
+import type { User } from '@/types';
+import type { AdminData } from '@/types/admin';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUpRight,
@@ -18,14 +21,9 @@ import {
   Trophy,
   Users,
 } from 'lucide-react';
-import { authService, useSession } from '@/store/session';
-import { apiClient } from '@/services/api/client';
-import { backendEnabled } from '@/services/api/remote';
-import { Logo } from '@/components/public';
-import { Badge, Button, EmptyState, FormField, Modal } from '@/components/ui';
-import type { AdminData } from '@/types/admin';
-import type { User } from '@/types';
-
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 const sections = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['accounts', 'Accounts & approvals', Users],
@@ -37,7 +35,10 @@ const sections = [
 ] as const;
 type Kind = 'contests' | 'questions' | 'assessments' | 'campuses';
 type Draft = Record<string, string>;
-type Editor = { kind: Kind; values: Draft };
+type Editor = {
+  kind: Kind;
+  values: Draft;
+};
 const descriptions: Record<string, string> = {
   dashboard: 'Keep your campus ecosystem moving. Review access and publish the next challenge.',
   accounts: 'Review campus and recruiter requests, and manage access to the platform.',
@@ -47,7 +48,6 @@ const descriptions: Record<string, string> = {
   campuses: 'Maintain the institutions students and placement teams can join.',
   activity: 'Review administrative changes and connected services.',
 };
-
 export function AdminDashboard() {
   const path = usePathname();
   const router = useRouter();
@@ -72,13 +72,6 @@ export function AdminDashboard() {
         <p>Checking your access.</p>
       </div>
     );
-  if (!backendEnabled)
-    return (
-      <EmptyState
-        title="Connect your backend"
-        description="The admin dashboard requires the Express backend. Enable API mode to manage real accounts and content."
-      />
-    );
   if (!user?.isAdmin || !user.approved || !user.verified)
     return (
       <EmptyState
@@ -94,7 +87,6 @@ export function AdminDashboard() {
   const section = path.split('/')[2] || 'dashboard';
   return <AdminWorkspace section={section} user={user} />;
 }
-
 function AdminWorkspace({ section, user }: { section: string; user: User }) {
   const client = useQueryClient();
   const router = useRouter();
@@ -114,7 +106,12 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
     connected: boolean;
     message: string;
     note: string;
-    checks: { name: string; status: string; message: string; ready: boolean }[];
+    checks: {
+      name: string;
+      status: string;
+      message: string;
+      ready: boolean;
+    }[];
   } | null>(null);
   const heading = sections.find((s) => s[0] === section)?.[1] || 'Page not found';
   useEffect(() => {
@@ -359,7 +356,7 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
           </p>
         )}
         {isLoading ? (
-          <div className="panel skeleton">Loading administration data…</div>
+          <Loader label="Loading administration data…" />
         ) : error || !data ? (
           <EmptyState
             title="Unable to load admin data"
@@ -753,7 +750,6 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
     </div>
   );
 }
-
 function ContentEditor({
   editor,
   data,

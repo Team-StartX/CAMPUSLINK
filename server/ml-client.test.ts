@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('./config', () => ({
-  config: { mlApiUrl: 'https://campuslink-ml-demo.onrender.com', mlApiToken: 'test-only-token' },
+  config: { mlApiUrl: 'https://ml.example.invalid', mlApiToken: 'test-only-token' },
 }));
 import { config } from './config';
 import { checkMlConnection, jobResponse, placementResponse, requestMl } from './ml-client';
@@ -16,7 +16,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   config.mlApiToken = 'test-only-token';
-  config.mlApiUrl = 'https://campuslink-ml-demo.onrender.com';
+  config.mlApiUrl = 'https://ml.example.invalid';
 });
 describe('ML connection boundary', () => {
   it('allows admin cold starts while keeping student requests at seven seconds', async () => {
@@ -58,7 +58,7 @@ describe('ML connection boundary', () => {
     const result = await checkMlConnection();
     expect(result.connected).toBe(true);
     const [url, options] = fetch.mock.calls[0];
-    expect(String(url)).toBe('https://campuslink-ml-demo.onrender.com/v1/models/jobs/match');
+    expect(String(url)).toBe('https://ml.example.invalid/v1/models/jobs/match');
     expect(options.redirect).toBe('error');
     expect(options.headers.Authorization).toBe('Bearer test-only-token');
     expect(JSON.parse(options.body).studentProfile.skills).toEqual(['React']);
@@ -137,8 +137,8 @@ describe('ML connection boundary', () => {
     expect(result.checks[3].status).toBe('unverified-model');
     expect(JSON.stringify(result)).not.toContain('outcomeProbability');
   });
-  it('blocks a configured destination that differs from student consent', async () => {
-    config.mlApiUrl = 'https://other-service.example';
+  it('blocks the retired demonstration destination', async () => {
+    config.mlApiUrl = 'https://campuslink-ml-demo.onrender.com';
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     expect((await requestMl('jobs', {}, jobResponse, true)).status).toBe('not-configured');

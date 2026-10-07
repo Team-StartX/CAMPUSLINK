@@ -1,6 +1,14 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { Loader } from '@/components/loader';
+import { Badge, FormField, PageHeader } from '@/components/ui';
+import { useVoicePractice } from '@/hooks/use-voice-practice';
+import { interviewService } from '@/services/platform.service';
+import { useSession } from '@/store/session';
+import {
+  communicationInputSchema,
+  communicationPrompts,
+  type CommunicationFeedback,
+} from '@/utils/communication';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
@@ -13,17 +21,8 @@ import {
   Square,
   TriangleAlert,
 } from 'lucide-react';
-import { PageHeader, Badge, FormField } from '@/components/ui';
-import { useVoicePractice } from '@/hooks/use-voice-practice';
-import { interviewService } from '@/services/platform.service';
-import { useSession } from '@/store/session';
-import { backendEnabled } from '@/services/api/remote';
-import {
-  communicationInputSchema,
-  communicationPrompts,
-  type CommunicationFeedback,
-} from '@/utils/communication';
-
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 export function CommunicationPractice() {
   const voice = useVoicePractice();
   const user = useSession((state) => state.user);
@@ -49,7 +48,6 @@ export function CommunicationPractice() {
   const queryKey = ['communication-history', user?.id];
   const history = useQuery({ queryKey, queryFn: interviewService.getCommunicationHistory });
   const wordCount = (voice.transcript.match(/\b[\w']+\b/g) || []).length;
-
   async function review() {
     const input = communicationInputSchema.safeParse({
       promptId,
@@ -78,7 +76,6 @@ export function CommunicationPractice() {
     setFeedback(null);
     setError('');
   }
-
   return (
     <div className="communication-page">
       <PageHeader
@@ -179,7 +176,7 @@ export function CommunicationPractice() {
           </div>
           {!voice.supported && (
             <p className="communication-notice">
-              Voice recognition is unavailable in this browser or connection. You can still type a
+              Voice input is not available for this workspace or browser. You can still type a
               response for feedback.
             </p>
           )}
@@ -192,9 +189,9 @@ export function CommunicationPractice() {
                 onChange={(event) => setSpeechConsent(event.target.checked)}
               />
               <span>
-                Allow browser speech recognition for this practice. Your browser may send audio to
-                its speech service. CampusLink stores the transcript and feedback, not an audio
-                recording.
+                Allow CampusLink to send this recording to OpenAI for transcription. Audio is
+                uploaded when you stop recording. CampusLink does not save the audio recording.
+                Review the transcript before saving practice feedback.
               </span>
             </label>
           )}
@@ -282,9 +279,7 @@ export function CommunicationPractice() {
           <p className="communication-footnote">
             Grammar and structure checks use your transcript. Speech recognition can change or omit
             words. This practice does not evaluate pronunciation or accent.{' '}
-            {backendEnabled
-              ? 'Optional AI coaching follows your saved AI sharing preference.'
-              : 'Demo mode uses local transcript checks; external AI coaching is not connected.'}
+            {'Optional AI coaching follows your saved AI sharing preference.'}
           </p>
         </section>
       </div>
@@ -416,7 +411,7 @@ export function CommunicationPractice() {
           <Badge>Latest 15 takes</Badge>
         </div>
         {history.isPending ? (
-          <p role="status">Loading your practice history…</p>
+          <Loader compact label="Loading your practice history…" />
         ) : history.isError ? (
           <p role="alert">
             Could not load history.{' '}

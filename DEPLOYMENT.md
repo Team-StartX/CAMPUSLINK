@@ -32,7 +32,7 @@ npm ci --include=dev && npm run server:build
 npm run server:start
 ```
 
-The server creates its database tables during startup. Do not run the local demo seed in production. Check `https://your-api.onrender.com/api/v1/health` after deployment.
+The server creates its database tables during startup. Create real institution and recruiter accounts; automatic sample seeding is removed. Check `https://your-api.onrender.com/api/v1/health` after deployment.
 
 The template selects Render's free plan for a first deployment. Free services sleep when idle, delaying the first request and pausing the email/reminder workers. Use an always-on service when reliable scheduled delivery is needed.
 
@@ -61,7 +61,7 @@ Use your deployed home, privacy, and terms URLs in Google's application branding
 
 ### External ML API
 
-The backend connects to `https://campuslink-ml-demo.onrender.com` through `ML_API_URL`. In the CampusLink Express service's Render Environment settings, set `ML_API_TOKEN` to the ML service's private `CAMPUSLINK_ML_DEV_TOKEN` value. Keep the token on the backend only. Redeploy the backend and frontend, then open Admin → Activity & services → Check ML connection. The check sends only generic sample data, validates authentication and the job-match response, and reports missing configuration, rejected tokens, incompatible responses, or unavailable service without exposing secrets.
+External ML is disabled until a private production service is configured through `ML_API_URL`. The retired demonstration host is rejected. In the CampusLink Express service's Render Environment settings, set `ML_API_TOKEN` to the ML service's private API token. Keep the token on the backend only. Redeploy the backend and frontend, then open Admin → Activity & services → Check ML connection. The check sends only generic sample data, validates authentication and the job-match response, and reports missing configuration, rejected tokens, incompatible responses, or unavailable service without exposing secrets.
 
 The connection adapter uses `Authorization: Bearer <ML_API_TOKEN>`, fixed `/v1/models/...` paths and a seven-second timeout per request. Redirects are rejected and the origin must match the consent destination. Students enable separate ML consent from their dashboard; existing OpenAI consent does not authorize this service. They can withdraw it to stop future requests. Emails and phone numbers are removed from text, but other identifying details may remain. Student workflows retain local analysis if consent is off or the service fails. The admin check tests all four contracts using sample data. The adapter rejects placement predictions from an `unverified_demo` artifact; a historical model is required for probability estimates.
 
@@ -101,6 +101,7 @@ Redeploy both the frontend and Express backend after installing this update. No 
 Local development stays unchanged: frontend port 3000, backend port 8000. Start each in its own terminal with `npm run dev` and `npm run server:dev`.
 
 Official references: [Render Blueprint settings](https://render.com/docs/blueprint-spec), [Render port binding](https://render.com/docs/web-services#port-binding), [Vercel Node.js versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions), [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
+
 # Organization directories
 
 Campus/institute registration, Google onboarding, administrator campus forms, and recruiter company profiles use the backend's public `/api/v1/directory` routes. Deploy both frontend and backend to enable the new controls. No additional environment variables or API keys are needed. The backend needs outbound HTTPS access to `raw.githubusercontent.com` (Hipo university dataset) and `autocomplete.clearbit.com` (company suggestions). Provider coverage and availability vary; users can always type a name manually. Directory selection never grants approval or verifies an organization. Existing campus registration is still required before students can select a campus.

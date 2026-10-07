@@ -1,4 +1,4 @@
-import { AssessmentAttempt, DemoData, Drive, Student } from '@/types';
+import { AssessmentAttempt, WorkspaceData, Drive, Student } from '@/types';
 import { checkEligibility } from './placement';
 
 const average = (values: number[]) =>
@@ -121,7 +121,7 @@ export function fit(student: Student, drive: Drive, history: AssessmentAttempt[]
       })),
   };
 }
-export function placementSummary(data: DemoData) {
+export function placementSummary(data: WorkspaceData) {
   const accepted = data.offers.filter((o) => ['Accepted', 'Joined'].includes(o.status));
   const packages = data.offers
     .map((o) => Number(o.ctc.match(/[\d.]+/)?.[0] || 0))

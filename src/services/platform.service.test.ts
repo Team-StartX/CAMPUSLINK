@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { mockAdapter } from '@/mocks/adapter';
+import { reactQuestions } from '@/mocks/data';
+import { canAccess } from '@/utils/permissions';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  assessmentService,
   applicationService,
+  assessmentService,
   contestService,
   interviewService,
+  offerService,
   recruiterService,
   studentService,
-  offerService,
-} from './platform.service';
-import { authService, useSession } from '@/store/session';
-import { reactQuestions } from '@/mocks/data';
+} from './platform.domain';
 beforeEach(() => mockAdapter.reset());
 describe('critical placement workflows', () => {
   it('tracks deferred acceptance, withdrawal and notifications without invalid transitions', async () => {
@@ -42,13 +42,6 @@ describe('critical placement workflows', () => {
       studentService.updatePhoto('data:image/png;base64,' + 'A'.repeat(2000001)),
     ).rejects.toThrow('2 MB');
     expect((await studentService.getDashboard()).student.photo).toBeUndefined();
-  });
-  it('routes the three demo roles and rejects invalid login', async () => {
-    for (const role of ['student', 'recruiter', 'campus'])
-      expect((await authService.login(`${role}@campuslink.demo`, 'demo123')).role).toBe(role);
-    await expect(authService.login('invalid', 'x')).rejects.toThrow();
-    authService.logout();
-    expect(useSession.getState().user).toBeNull();
   });
   it('creates an unverified skill and a unified verification assessment', async () => {
     const data = await studentService.addSkill('Docker', 'Beginner');
@@ -100,8 +93,14 @@ describe('critical placement workflows', () => {
       }),
     ).rejects.toThrow('conflict');
   });
-  it('submits a campus request without publishing and records interview practice', async () => {
+  it('submits a complete campus request without publishing', async () => {
     await recruiterService.createDrive({
+      campusId: 'dtu',
+      courses: 'B.Tech',
+      branches: 'CSE',
+      graduationYear: '2027',
+      deadline: '2026-10-12',
+      preferredDates: ['2026-10-18'],
       company: 'Acme',
       role: 'Engineer',
       location: 'Remote',
@@ -112,25 +111,16 @@ describe('critical placement workflows', () => {
       skills: 'React',
       status: 'SUBMITTED',
     });
-    await interviewService.completePractice();
+    await expect(interviewService.completePractice()).rejects.toThrow(
+      'authenticated practice session',
+    );
     const d = await mockAdapter.read();
     expect(d.drives.at(-1)?.status).toBe('SUBMITTED');
     expect(d.opportunities.some((o) => o.company === 'Acme')).toBe(false);
-    expect(d.history[0].type).toBe('Interview');
-    expect(d.student.xp).toBe(2555);
+    expect(d.student.xp).toBe(2480);
   });
 });
-import { canAccess } from '@/utils/permissions';
 describe('profile and access integration', () => {
-  it('creates role-specific mock registration sessions', async () => {
-    const user = await authService.register(
-      'Campus Coordinator',
-      'coordinator@example.edu',
-      'campus',
-    );
-    expect(user.role).toBe('campus');
-    expect(useSession.getState().user?.email).toBe('coordinator@example.edu');
-  });
   it('guards workspaces by role', () => {
     const user = {
       id: 'u1',

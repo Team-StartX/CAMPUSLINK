@@ -1,4 +1,4 @@
-import { DemoData, Role } from '@/types';
+import { WorkspaceData, Role } from '@/types';
 
 export interface WorkspaceAction {
   id: string;
@@ -10,7 +10,11 @@ export interface WorkspaceAction {
   priority: 'High' | 'Normal';
 }
 
-export function workspaceActions(data: DemoData, role: Role, today: string): WorkspaceAction[] {
+export function workspaceActions(
+  data: WorkspaceData,
+  role: Role,
+  today: string,
+): WorkspaceAction[] {
   const items: WorkspaceAction[] = [];
   const add = (item: WorkspaceAction) => items.push(item);
   if (role === 'student') {
@@ -63,7 +67,7 @@ export function workspaceActions(data: DemoData, role: Role, today: string): Wor
         }),
       );
   } else {
-    const steps: Partial<Record<DemoData['drives'][number]['status'], string>> =
+    const steps: Partial<Record<WorkspaceData['drives'][number]['status'], string>> =
       role === 'campus'
         ? {
             SUBMITTED: 'Review drive request',

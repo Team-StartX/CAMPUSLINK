@@ -232,7 +232,7 @@ export interface InterviewTemplate {
   questions: string[];
   audience: string;
 }
-export interface DemoData {
+export interface WorkspaceData {
   instituteStudentUpdates?: Record<string, import('@/utils/student-records').InstituteStudentPatch>;
   communicationPractice?: import('@/utils/communication').CommunicationFeedback[];
   placementVersion?: number;

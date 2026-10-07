@@ -1,106 +1,166 @@
 'use client';
+import { apiClient } from '@/services/api/client';
+import { setCsrf } from '@/services/api/remote';
 import { useEffect, useRef, useState } from 'react';
-import { createVoiceSession, type VoiceRecognitionConstructor } from '@/utils/voice-recognition';
 
 export function useVoicePractice() {
   const [supported, setSupported] = useState(false);
   const [status, setStatus] = useState<'idle' | 'requesting' | 'listening' | 'stopping'>('idle');
   const [transcript, setTranscript] = useState('');
-  const [interim, setInterim] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [voiceSeconds, setVoiceSeconds] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const constructor = useRef<VoiceRecognitionConstructor | null>(null);
-  const session = useRef<ReturnType<typeof createVoiceSession> | null>(null);
-  const began = useRef(0);
-  const stopped = useRef(0);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const shutdown = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function clearTimers() {
+  const generation = useRef(0);
+  const active = useRef(false);
+  const request = useRef<AbortController | null>(null);
+  function release() {
     if (timer.current) clearInterval(timer.current);
-    if (shutdown.current) clearTimeout(shutdown.current);
-    timer.current = shutdown.current = null;
+    timer.current = null;
+    stream.current?.getTracks().forEach((track) => track.stop());
+    stream.current = null;
+  }
+  function cancel() {
+    generation.current++;
+    active.current = false;
+    request.current?.abort();
+    if (recorder.current) {
+      recorder.current.onstop = null;
+      recorder.current.ondataavailable = null;
+      recorder.current.onerror = null;
+      if (recorder.current.state !== 'inactive') recorder.current.stop();
+      recorder.current = null;
+    }
+    release();
   }
   useEffect(() => {
-    const browser = window as Window & {
-      SpeechRecognition?: VoiceRecognitionConstructor;
-      webkitSpeechRecognition?: VoiceRecognitionConstructor;
-    };
-    constructor.current = browser.SpeechRecognition || browser.webkitSpeechRecognition || null;
-    setSupported(Boolean(constructor.current) && window.isSecureContext);
+    let mounted = true;
+    if (window.isSecureContext && navigator.mediaDevices && typeof MediaRecorder !== 'undefined') {
+      void apiClient
+        .get('/voice/capabilities')
+        .then(({ data }) => {
+          if (mounted) setSupported(data.available === true);
+        })
+        .catch(() => {
+          if (mounted) setSupported(false);
+        });
+    }
     return () => {
-      clearTimers();
-      session.current?.dispose();
+      mounted = false;
+      cancel();
     };
+    // Resource refs handle cancellation independently of rendered state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function finish() {
-    const duration = began.current
-      ? Math.min(180, ((stopped.current || Date.now()) - began.current) / 1000)
-      : 0;
-    setVoiceSeconds(duration >= 1 ? duration : null);
-    setSeconds(Math.floor(duration));
-    setStatus('idle');
-    setInterim('');
-    clearTimers();
-    session.current?.dispose();
-    session.current = null;
-  }
   function stop() {
-    if (!session.current) return;
-    stopped.current = Date.now();
+    if (active.current && !recorder.current) {
+      cancel();
+      setStatus('idle');
+      return;
+    }
+    if (!active.current || !recorder.current || recorder.current.state !== 'recording') return;
     setStatus('stopping');
     if (timer.current) clearInterval(timer.current);
-    if (shutdown.current) clearTimeout(shutdown.current);
-    shutdown.current = setTimeout(finish, 5000);
-    try {
-      session.current.stop();
-    } catch {
-      finish();
-    }
+    recorder.current.stop();
+    release();
   }
-  function start() {
-    if (!constructor.current || status !== 'idle') return;
-    clearTimers();
-    session.current?.dispose();
+  async function start() {
+    if (!supported || active.current) return;
+    active.current = true;
+    const take = ++generation.current;
     setError('');
-    setTranscript('');
-    setInterim('');
+    setStatus('requesting');
     setSeconds(0);
     setVoiceSeconds(null);
-    began.current = 0;
-    stopped.current = 0;
-    setStatus('requesting');
-    session.current = createVoiceSession(new constructor.current(), {
-      started: () => {
-        began.current = Date.now();
-        if (shutdown.current) clearTimeout(shutdown.current);
-        setStatus('listening');
-        timer.current = setInterval(() => {
-          const elapsed = Math.floor((Date.now() - began.current) / 1000);
-          setSeconds(Math.min(180, elapsed));
-          if (elapsed >= 180) stop();
-        }, 250);
-      },
-      ended: finish,
-      result: (final, pending) => {
-        setTranscript(final.slice(0, 6000));
-        setInterim(pending);
-      },
-      error: (message) => {
-        setError(message);
-        finish();
-      },
-    });
-    shutdown.current = setTimeout(() => {
-      setError('The microphone did not start. Check browser permissions or type your response.');
-      finish();
-    }, 20000);
     try {
-      session.current.start();
-    } catch {
-      setError('Unable to start the microphone. Check permissions or type your response.');
-      finish();
+      const { data } = await apiClient.get('/auth/me');
+      if (generation.current !== take) return;
+      setCsrf(data.csrf);
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (generation.current !== take) {
+        audioStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stream.current = audioStream;
+      const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'].find(
+        (mime) => MediaRecorder.isTypeSupported(mime),
+      );
+      const recording = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
+      recorder.current = recording;
+      const chunks: Blob[] = [];
+      let bytes = 0;
+      const began = Date.now();
+      recording.ondataavailable = ({ data: chunk }) => {
+        if (generation.current !== take || !chunk.size) return;
+        chunks.push(chunk);
+        bytes += chunk.size;
+        if (bytes > 11 * 1024 * 1024 && recording.state === 'recording') stop();
+      };
+      recording.onerror = () => {
+        if (generation.current !== take) return;
+        cancel();
+        setStatus('idle');
+        setError('Audio recording failed. Check microphone permissions and try again.');
+      };
+      recording.onstop = async () => {
+        release();
+        if (generation.current !== take) return;
+        setStatus('stopping');
+        const duration = Math.min(180, (Date.now() - began) / 1000);
+        const audio = new Blob(chunks, { type: recording.mimeType });
+        if (!audio.size || duration < 1) {
+          active.current = false;
+          setStatus('idle');
+          setError('Record at least one second of speech before stopping.');
+          return;
+        }
+        const form = new FormData();
+        form.append('file', audio, 'practice-audio');
+        form.append('consent', 'true');
+        const controller = new AbortController();
+        request.current = controller;
+        try {
+          const { data: result } = await apiClient.post('/voice/transcriptions', form, {
+            timeout: 60000,
+            signal: controller.signal,
+          });
+          if (generation.current !== take) return;
+          setTranscript(result.text);
+          setVoiceSeconds(duration);
+          setSeconds(Math.floor(duration));
+        } catch (failure) {
+          if (generation.current === take)
+            setError(
+              failure instanceof Error
+                ? failure.message
+                : 'Could not transcribe your recording. Please try again.',
+            );
+        } finally {
+          if (generation.current === take) {
+            active.current = false;
+            recorder.current = null;
+            setStatus('idle');
+          }
+        }
+      };
+      recording.start(1000);
+      setStatus('listening');
+      timer.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - began) / 1000);
+        setSeconds(Math.min(180, elapsed));
+        if (elapsed >= 180) stop();
+      }, 250);
+    } catch (failure) {
+      if (generation.current !== take) return;
+      cancel();
+      setStatus('idle');
+      setError(
+        failure instanceof DOMException && failure.name === 'NotAllowedError'
+          ? 'Microphone access was denied. Allow it in your browser or type a response.'
+          : 'Unable to start recording. Check your microphone and try again.',
+      );
     }
   }
   function edit(text: string) {
@@ -109,13 +169,9 @@ export function useVoicePractice() {
     setError('');
   }
   function reset() {
-    clearTimers();
-    session.current?.dispose();
-    session.current = null;
-    began.current = 0;
+    cancel();
     setStatus('idle');
     setTranscript('');
-    setInterim('');
     setSeconds(0);
     setVoiceSeconds(null);
     setError('');
@@ -124,7 +180,7 @@ export function useVoicePractice() {
     supported,
     status,
     transcript,
-    interim,
+    interim: '',
     seconds,
     voiceSeconds,
     error,

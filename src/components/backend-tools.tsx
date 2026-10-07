@@ -1,18 +1,18 @@
 'use client';
+import { Loader } from '@/components/loader';
+import { apiClient } from '@/services/api/client';
+import { rpc, setTargetStudent } from '@/services/api/remote';
+import { recruiterService } from '@/services/platform.service';
+import { authService, useSession } from '@/store/session';
+import type { Role, User } from '@/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useState } from 'react';
+import { AnalysisSource, ExternalAnalysisSetting } from './external-analysis-setting';
 import { OrganizationPicker } from './organization-picker';
 import { PreparationOverview, type PreparationCategory } from './preparation-overview';
-import { ExternalAnalysisSetting, AnalysisSource } from './external-analysis-setting';
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSession, authService } from '@/store/session';
-import { apiClient } from '@/services/api/client';
-import { backendEnabled, rpc, setTargetStudent } from '@/services/api/remote';
-import { recruiterService } from '@/services/platform.service';
 import { Badge, Button, FormField } from './ui';
-import type { Role, User } from '@/types';
 export function BackendTools({ role }: { role: Role }) {
-  if (!backendEnabled) return null;
   return <ConnectedTools role={role} />;
 }
 function ConnectedTools({ role }: { role: Role }) {
@@ -118,6 +118,7 @@ function ConnectedTools({ role }: { role: Role }) {
       )}
       {role === 'student' && consent?.mlConfigured && (
         <ExternalAnalysisSetting
+          destination={consent.mlDestination}
           enabled={Boolean(consent.mlConsent)}
           busy={mlSaving}
           onChange={async (enabled) => {
@@ -180,11 +181,33 @@ interface Analytics {
   active: number;
   average: number;
   highest: number;
-  branches: { name: string; total: number; placed: number; conversion: number }[];
-  skills: { name: string; total: number; placed: number; conversion: number }[];
-  support: { id: string; name: string; score: number; factors: string[] }[];
-  recruiters: { name: string; drives: number; repeatHiring: boolean }[];
-  documents: { total: number; verified: number };
+  branches: {
+    name: string;
+    total: number;
+    placed: number;
+    conversion: number;
+  }[];
+  skills: {
+    name: string;
+    total: number;
+    placed: number;
+    conversion: number;
+  }[];
+  support: {
+    id: string;
+    name: string;
+    score: number;
+    factors: string[];
+  }[];
+  recruiters: {
+    name: string;
+    drives: number;
+    repeatHiring: boolean;
+  }[];
+  documents: {
+    total: number;
+    verified: number;
+  };
 }
 export function ConnectedAnalytics() {
   const { data, error, isLoading } = useQuery<Analytics>({
@@ -192,7 +215,7 @@ export function ConnectedAnalytics() {
     queryFn: async () => (await apiClient.get('/analytics')).data,
     refetchInterval: 15000,
   });
-  if (isLoading) return <p>Loading placement records…</p>;
+  if (isLoading) return <Loader label="Loading placement records…" />;
   if (error || !data) return <p role="alert">{error?.message || 'Analytics unavailable.'}</p>;
   const metrics = [
     ['Registered students', data.registered],
@@ -342,7 +365,10 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
     factors: string[];
     score?: number;
     categories?: PreparationCategory[];
-    ml?: { status: string; message: string };
+    ml?: {
+      status: string;
+      message: string;
+    };
     model: {
       available: boolean;
       label: string;
@@ -445,7 +471,7 @@ export function ConnectedCompany() {
     queryKey: ['organization'],
     queryFn: async () => (await apiClient.get('/organization')).data,
   });
-  if (!data) return <p>Loading your company profile…</p>;
+  if (!data) return <Loader label="Loading your company profile…" />;
   return (
     <section className="panel">
       <h1>Your company profile</h1>

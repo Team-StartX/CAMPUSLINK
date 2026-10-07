@@ -53,7 +53,26 @@ export interface MlResult<T> {
   status: MlStatus;
   message: string;
 }
-export const mlConfigured = () => Boolean(config.mlApiUrl && config.mlApiToken);
+export function mlDestination() {
+  try {
+    const url = new URL(config.mlApiUrl);
+    if (url.hostname === 'campuslink-ml-demo.onrender.com') return '';
+    if (
+      url.protocol !== 'https:' &&
+      !(
+        url.protocol === 'http:' &&
+        !config.production &&
+        ['localhost', '127.0.0.1'].includes(url.hostname)
+      )
+    )
+      return '';
+    if (url.username || url.password || url.search || url.hash || url.pathname !== '/') return '';
+    return url.origin;
+  } catch {
+    return '';
+  }
+}
+export const mlConfigured = () => Boolean(mlDestination() && config.mlApiToken);
 export function redactMlText(text: string) {
   return text
     .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[email removed]')
@@ -92,11 +111,6 @@ export async function requestMl<T>(
       base.hash
     )
       return fail('not-configured', 'Use an HTTPS ML service origin.');
-    if (!['campuslink-ml-demo.onrender.com', 'localhost', '127.0.0.1'].includes(base.hostname))
-      return fail(
-        'not-configured',
-        'The ML origin does not match the student consent destination.',
-      );
     const response = await fetch(new URL(paths[operation], base), {
       method: 'POST',
       redirect: 'error',

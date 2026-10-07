@@ -1,25 +1,23 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { OrganizationPicker } from '@/components/organization-picker';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { ArrowUpRight, ArrowLeft, GraduationCap, Building2, BriefcaseBusiness } from 'lucide-react';
-import { Logo } from '@/components/public';
 import { AuthBrandPanel } from '@/components/auth/auth-brand-panel';
 import { AuthInput, PasswordInput } from '@/components/auth/auth-input';
 import { useAuthCharacterState } from '@/components/auth/use-auth-character';
-import { authService } from '@/store/session';
-import { studentService } from '@/services/platform.service';
-import { Role } from '@/types';
-import { backendEnabled } from '@/services/api/remote';
+import { OrganizationPicker } from '@/components/organization-picker';
+import { Logo } from '@/components/public';
+import { Button, FormField, Modal } from '@/components/ui';
 import { apiClient } from '@/services/api/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authService } from '@/store/session';
 import type { Campus } from '@/types';
-import { FormField, Modal, Button } from '@/components/ui';
+import { Role } from '@/types';
 import { authSchema } from '@/utils/auth-validation';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ArrowUpRight, BriefcaseBusiness, Building2, GraduationCap } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 type Values = z.infer<ReturnType<typeof authSchema>>;
 export function AuthPage({ registering = false }: { registering?: boolean }) {
   const [hydrated, setHydrated] = useState(false);
@@ -33,7 +31,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
   } = useQuery<Campus[]>({
     queryKey: ['registration-campuses'],
     queryFn: async () => (await apiClient.get('/campuses')).data,
-    enabled: backendEnabled && registering,
+    enabled: registering,
     retry: false,
   });
   const [role, setRole] = useState<Role>('student');
@@ -59,10 +57,13 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
     setShow(false);
     setShowConfirm(false);
   }, [registering]);
-  const { data: google } = useQuery<{ enabled: boolean; message: string }>({
+  const { data: google } = useQuery<{
+    enabled: boolean;
+    message: string;
+  }>({
     queryKey: ['google-provider'],
     queryFn: async () => (await apiClient.get('/auth/google/status')).data,
-    enabled: backendEnabled,
+    enabled: true,
     retry: false,
   });
   useEffect(() => {
@@ -83,7 +84,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
     formState: { errors },
     setValue,
     watch,
-  } = useForm<Values>({ resolver: zodResolver(authSchema(registering, backendEnabled)) });
+  } = useForm<Values>({ resolver: zodResolver(authSchema(registering, true)) });
   const submit = handleSubmit(
     async (values) => {
       character.reset();
@@ -108,15 +109,6 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
               year: values.year,
             })
           : await authService.login(values.email, values.password, remember);
-        if (registering && role === 'student' && !backendEnabled)
-          await studentService.updateStudent({
-            name: values.name!,
-            email: values.email,
-            campus: values.institution!,
-            course: `${values.course || 'B.Tech'} · ${values.branch || 'Computer Science'}`,
-            branch: values.branch || 'Computer Science',
-            year: values.year || '2027',
-          });
         client.clear();
         character.succeed();
         router.push(user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`);
@@ -171,7 +163,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
               ))}
             </div>
           )}
-          {backendEnabled && (!registering || selected) && (
+          {(!registering || selected) && (
             <div className="google-sign-in">
               <button
                 type="button"
@@ -256,11 +248,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                 inputProps={{
                   ...register('password', { onBlur: character.blur }),
                   onFocus: () => character.focus('password'),
-                  placeholder: registering
-                    ? backendEnabled
-                      ? 'At least 10 characters'
-                      : 'At least 6 characters'
-                    : 'Enter your password',
+                  placeholder: registering ? 'At least 10 characters' : 'Enter your password',
                   autoComplete: registering ? 'new-password' : 'current-password',
                 }}
               />
@@ -317,14 +305,14 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                             : 'Organization name'
                         }
                       />
-                      {role === 'student' && backendEnabled && (
+                      {role === 'student' && true && (
                         <datalist id="registration-campuses">
                           {campuses?.map((c) => (
                             <option key={c.id} value={c.name} />
                           ))}
                         </datalist>
                       )}
-                      {backendEnabled && (
+                      {
                         <small>
                           {campusesError
                             ? campusesError.message
@@ -334,7 +322,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                                 ? 'Choose your registered college from the suggestions. If it is missing, ask your campus team to register first.'
                                 : 'Your campus team must register the college before students can sign up.'}
                         </small>
-                      )}
+                      }
                     </FormField>
                   )}
                   {errors.institution && (
@@ -403,7 +391,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                   {error}
                 </p>
               )}
-              <Button type="submit" disabled={loading || !hydrated}>
+              <Button type="submit" loading={loading} disabled={!hydrated}>
                 {loading
                   ? 'Opening your next chapter…'
                   : registering
@@ -411,28 +399,6 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
                     : 'Sign in'}{' '}
                 <ArrowUpRight size={17} />
               </Button>
-              {!registering && !backendEnabled && (
-                <div className="demo-accounts">
-                  <span className="eyebrow">TAKE A LOOK AROUND</span>
-                  <p>Try a demo account. No signup needed.</p>
-                  <div>
-                    {(['student', 'recruiter', 'campus'] as const).map((r) => (
-                      <button
-                        type="button"
-                        key={r}
-                        onClick={() => {
-                          setRole(r);
-                          setValue('email', `${r}@campuslink.demo`);
-                          setValue('password', 'demo123');
-                        }}
-                      >
-                        {r === 'campus' ? 'Campus' : r[0].toUpperCase() + r.slice(1)} ↗
-                      </button>
-                    ))}
-                  </div>
-                  <small>Mock authentication · Passwords are never stored.</small>
-                </div>
-              )}
             </form>
           )}
           <p className="auth-switch">

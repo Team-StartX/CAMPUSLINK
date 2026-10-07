@@ -1,31 +1,32 @@
 'use client';
-import { useCallback, useState } from 'react';
-import Link from 'next/link';
+import { Loader } from '@/components/loader';
+import { ConnectedCompany } from '@/components/backend-tools';
+import { ContestProgress } from '@/components/contest-progress';
+import { Badge, Button, EmptyState, PageHeader } from '@/components/ui';
+import { usePlatform } from '@/hooks/use-platform';
+import { apiClient } from '@/services/api/client';
+import { rpc } from '@/services/api/remote';
+import { campusService, recruiterService } from '@/services/platform.service';
+import { useSession } from '@/store/session';
+import { WorkspaceData, Role, Student } from '@/types';
+import { checkEligibility } from '@/utils/placement';
+import { fit } from '@/utils/scoring';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUpRight,
-  Plus,
-  Search,
   Check,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
+  Plus,
+  Search,
 } from 'lucide-react';
-import { DemoData, Role, Student } from '@/types';
-import { recruiterService, campusService, demoService } from '@/services/platform.service';
-import { Badge, Button, EmptyState, FormField, PageHeader } from '@/components/ui';
-import { AnalyticsChart, CareerID } from './dashboard';
-import { checkEligibility } from '@/utils/placement';
-import { fit } from '@/utils/scoring';
-import { backendEnabled, rpc } from '@/services/api/remote';
-import { apiClient } from '@/services/api/client';
-import { ConnectedCompany } from '@/components/backend-tools';
-import { useSession } from '@/store/session';
+import Link from 'next/link';
+import { useCallback, useState } from 'react';
+import { CareerID } from './dashboard';
 import { InstituteStudentEditor } from './institute-student-editor';
-import { ContestProgress } from '@/components/contest-progress';
 type Props = {
-  data: DemoData;
+  data: WorkspaceData;
   role: Role;
   id?: string;
   refresh: () => void;
@@ -77,18 +78,24 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
   );
   const selectedDrive = data.drives.find((d) => d.id === driveId);
   const { data: ranking } = useQuery<
-    { student: { id: string }; hybridScore: number; nlpSimilarity: number }[]
+    {
+      student: {
+        id: string;
+      };
+      hybridScore: number;
+      nlpSimilarity: number;
+    }[]
   >({
     queryKey: ['candidate-ranking', driveId],
     queryFn: async () => (await apiClient.get(`/drives/${driveId}/matches`)).data,
-    enabled: backendEnabled && Boolean(driveId),
+    enabled: Boolean(driveId),
   });
   const shortlisted = data.shortlisted || [];
   const setShortlisted = async (action: (s: string[]) => string[]) => {
     const next = action(shortlisted);
     const id = next.find((id) => !shortlisted.includes(id));
     if (id) {
-      if (backendEnabled) {
+      {
         try {
           await rpc('studentService', 'getDashboard');
           await apiClient.post(
@@ -100,7 +107,7 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           notify((e as Error).message);
           return;
         }
-      } else await recruiterService.shortlistStudent(id);
+      }
     }
     refresh();
   };
@@ -109,7 +116,7 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     return (
       <EmptyState title="Student records are unavailable" description={(error as Error).message} />
     );
-  if (id && isLoading) return <p role="status">Opening student record…</p>;
+  if (id && isLoading) return <Loader label="Opening student record…" />;
   if (id && !person)
     return (
       <EmptyState
@@ -217,8 +224,8 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           )
         ) : (
           <section className="panel">
-            <h3>Assessment performance · Demo analytics</h3>
-            <AnalyticsChart />
+            <h3>Assessment performance</h3>
+            <p>No assessment records are available for this student.</p>
           </section>
         )}
         {editor}
@@ -294,19 +301,16 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
               )
               .sort((a, b) =>
                 selectedDrive
-                  ? backendEnabled
-                    ? (ranking?.find((r) => r.student.id === b.id)?.hybridScore || 0) -
-                      (ranking?.find((r) => r.student.id === a.id)?.hybridScore || 0)
-                    : fit(b, selectedDrive, b.id === data.student.id ? data.history : []).score -
-                      fit(a, selectedDrive, a.id === data.student.id ? data.history : []).score
+                  ? (ranking?.find((r) => r.student.id === b.id)?.hybridScore || 0) -
+                    (ranking?.find((r) => r.student.id === a.id)?.hybridScore || 0)
                   : b.cgpa - a.cgpa,
               )
               .map((p) => (
                 <tr key={p.id}>
                   <td>
-                      <Link
-                        className="student-record-link"
-                        href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
+                    <Link
+                      className="student-record-link"
+                      href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
                     >
                       <b>{p.name}</b>
                       <small>
@@ -319,9 +323,7 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                   <td>{p.xp.toLocaleString()} XP</td>
                   <td>
                     {selectedDrive
-                      ? backendEnabled
-                        ? `${ranking?.find((r) => r.student.id === p.id)?.hybridScore || 0}% hybrid fit`
-                        : `${fit(p, selectedDrive, p.id === data.student.id ? data.history : []).score}%`
+                      ? `${ranking?.find((r) => r.student.id === p.id)?.hybridScore || 0}% hybrid fit`
                       : 'Select a drive'}
                   </td>
                   <td>
@@ -357,11 +359,10 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
   );
 }
 export { PlacementAnalytics as AnalyticsPage } from './placement-analytics';
-export function SchedulingPage({ data, role, notify, refresh: propsRefresh }: Props) {
+export function SchedulingPage({ data, role }: Props) {
   const [view, setView] = useState('Month');
   const [month, setMonth] = useState(9);
   const [day, setDay] = useState(6);
-  const resolved = !!data.conflictResolved;
   const label = new Date(2026, month, 1).toLocaleDateString('en-IN', {
     month: 'long',
     year: 'numeric',
@@ -378,27 +379,6 @@ export function SchedulingPage({ data, role, notify, refresh: propsRefresh }: Pr
           </Link>
         }
       />
-      {!resolved && (
-        <div className="info-banner yellow">
-          <ClockIcon />
-          <div>
-            <b>Demo schedule conflict · STU-20482</b>
-            <p>
-              TCS interview at 10:00 and Infosys at 10:30. Suggested alternative: Infosys at 12:00.
-            </p>
-          </div>
-          <Button
-            kind="outline"
-            onClick={async () => {
-              await demoService.resolveConflict();
-              propsRefresh();
-              notify('Demo conflict resolved. Infosys moved to 12:00.');
-            }}
-          >
-            Use suggested time
-          </Button>
-        </div>
-      )}
       <div className="panel calendar">
         <div className="panel-header">
           <div className="calendar-controls">
@@ -491,11 +471,10 @@ export function SchedulingPage({ data, role, notify, refresh: propsRefresh }: Pr
     </>
   );
 }
-function ClockIcon() {
-  return <CalendarDays size={25} />;
-}
 export function RecruitersPage() {
   const [search, setSearch] = useState('');
+  const { data, isLoading, error } = usePlatform();
+  const companies = [...new Set(data?.drives.map((drive) => drive.company) || [])];
   return (
     <>
       <PageHeader
@@ -510,15 +489,27 @@ export function RecruitersPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </label>
+      {isLoading ? (
+        <Loader compact label="Loading recruiters…" />
+      ) : error ? (
+        <p role="alert">Could not load recruiter records.</p>
+      ) : companies.length === 0 ? (
+        <EmptyState
+          title="No recruiters yet"
+          description="Recruiters appear here when they submit a drive to your campus."
+        />
+      ) : null}
       <div className="three-columns">
-        {['Razorpay', 'Google', 'Atlassian', 'TCS']
+        {companies
           .filter((s) => s.toLowerCase().includes(search.toLowerCase()))
           .map((company) => (
             <section className="panel" key={company}>
               <span className="company-logo lavender">{company[0]}</span>
               <h3>{company}</h3>
-              <Badge kind="verified">Campus partner</Badge>
-              <p>Graduate engineering opportunities · 2027 cohort</p>
+              <Badge>Campus drive recruiter</Badge>
+              <p>
+                {data?.drives.filter((drive) => drive.company === company).length} campus drive(s)
+              </p>
               <Link href="/campus/drives" className="text-link">
                 View placement drives <ArrowUpRight size={16} />
               </Link>
@@ -528,88 +519,6 @@ export function RecruitersPage() {
     </>
   );
 }
-export function CompanyPage(props: { notify: (s: string) => void }) {
-  return backendEnabled ? <ConnectedCompany /> : <DemoCompanyPage {...props} />;
-}
-function DemoCompanyPage({ notify }: { notify: (s: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(() => {
-    if (typeof window === 'undefined') return 'Razorpay';
-    try {
-      return JSON.parse(localStorage.getItem('campuslink-company') || '{}').name || 'Razorpay';
-    } catch {
-      return 'Razorpay';
-    }
-  });
-  const [description, setDescription] = useState(() => {
-    const fallback =
-      'Building the financial backbone for businesses in India. Our teams create simple, powerful products that help businesses grow.';
-    if (typeof window === 'undefined') return fallback;
-    try {
-      return JSON.parse(localStorage.getItem('campuslink-company') || '{}').description || fallback;
-    } catch {
-      return fallback;
-    }
-  });
-  return (
-    <>
-      <PageHeader
-        title="Your company’s next chapter."
-        description="Help candidates understand the team they could join."
-        action={
-          <Button kind="outline" onClick={() => setEditing(!editing)}>
-            {editing ? 'Cancel' : 'Edit company profile'}
-          </Button>
-        }
-      />
-      <section className="panel">
-        {editing ? (
-          <form
-            className="form-stack"
-            onSubmit={(e) => {
-              e.preventDefault();
-              localStorage.setItem('campuslink-company', JSON.stringify({ name, description }));
-              setEditing(false);
-              notify('Company profile saved.');
-            }}
-          >
-            <FormField label="Company name">
-              <input required value={name} onChange={(e) => setName(e.target.value)} />
-            </FormField>
-            <FormField label="About your company">
-              <textarea
-                required
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </FormField>
-            <Button type="submit">
-              Save company profile <Check size={16} />
-            </Button>
-          </form>
-        ) : (
-          <>
-            <span className="company-logo lavender">{name[0]}</span>
-            <h2>{name}</h2>
-            <p>{description}</p>
-            <div className="detail-list">
-              <span>
-                Industry<b>Financial technology</b>
-              </span>
-              <span>
-                Headquarters<b>Bengaluru, India</b>
-              </span>
-              <span>
-                Campus hiring<b>2027 graduates</b>
-              </span>
-            </div>
-            <Link href="/recruiter/drives" className="button outline">
-              View your drives <ArrowUpRight size={15} />
-            </Link>
-          </>
-        )}
-      </section>
-    </>
-  );
+export function CompanyPage() {
+  return <ConnectedCompany />;
 }

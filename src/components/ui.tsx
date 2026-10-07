@@ -1,26 +1,31 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { X, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { LoadingSpinner } from './loader';
 export function Button({
   children,
   onClick,
   kind = '',
   type = 'button',
   disabled = false,
+  loading = false,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   kind?: string;
   type?: 'button' | 'submit';
   disabled?: boolean;
+  loading?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`button ${kind || 'dark'}`}
     >
+      {loading && <LoadingSpinner />}
       {children}
     </button>
   );

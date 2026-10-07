@@ -8,7 +8,7 @@ vi.mock('@/services/api/remote', () => ({
   setCsrf: vi.fn(),
   setTargetStudent: vi.fn(),
 }));
-vi.mock('@/services/api/client', () => ({ apiClient: { get: vi.fn() } }));
+vi.mock('@/services/api/client', () => ({ apiClient: { get: vi.fn(), post: vi.fn() } }));
 const user: User = { id: 'user', name: 'Test', email: 'test@example.com', role: 'student' };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -16,6 +16,22 @@ beforeEach(() => {
 });
 
 describe('session restoration', () => {
+  it('never creates a local account when server login fails', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(new Error('Invalid email or password.'));
+    await expect(authService.login('campus@example.edu', 'incorrect-password')).rejects.toThrow(
+      'Invalid email or password.',
+    );
+    expect(useSession.getState().user).toBeNull();
+  });
+  it('uses the server-issued role instead of inferring a role from the email', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { user, csrf: 'token' } });
+    expect(await authService.login(' CAMPUS@example.edu ', 'correct-password')).toEqual(user);
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/login', {
+      email: 'campus@example.edu',
+      password: 'correct-password',
+      remember: false,
+    });
+  });
   it('restores a cookie session for a public-page visitor', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { user, csrf: 'token' } });
     expect(await authService.restore()).toEqual(user);

@@ -1,11 +1,9 @@
 'use client';
-import { useEffect, useId, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
-import { backendEnabled } from '@/services/api/remote';
 import type { DirectoryOption, DirectoryResponse } from '@/types/directory';
 import { mergeDirectoryOptions, searchBuiltInDirectory } from '@/utils/directory';
-
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useId, useState } from 'react';
 export function OrganizationPicker({
   kind,
   label,
@@ -47,7 +45,7 @@ export function OrganizationPicker({
           signal,
         })
       ).data,
-    enabled: backendEnabled && open && search.length >= 2,
+    enabled: open && search.length >= 2,
     staleTime: 1800000,
     retry: false,
   });
@@ -130,7 +128,7 @@ export function OrganizationPicker({
       />
       {open && text.trim().length >= 2 && (
         <div className="directory-results">
-          {backendEnabled && (!current || isFetching) && <p role="status">Searching…</p>}
+          {(!current || isFetching) && <p role="status">Searching…</p>}
           <div id={`${id}-list`} role="listbox" aria-label={`${label} suggestions`}>
             {options.map((option, i) => (
               <div
@@ -149,7 +147,7 @@ export function OrganizationPicker({
               </div>
             ))}
           </div>
-          {!isFetching && options.length === 0 && (current || !backendEnabled) && (
+          {!isFetching && options.length === 0 && (current || false) && (
             <p role="status">
               {error || data?.unavailable
                 ? 'More suggestions are unavailable. Enter the name manually.'

@@ -46,24 +46,24 @@ export interface CareerPoints {
 }
 export interface SkillGapResult {
   studentId: string;
-  label: 'Demo skill gaps';
+  label: 'Skill gaps';
   gaps: { skill: string; currentLevel: number; targetLevel: number; recommendation: string }[];
 }
 export interface AIInterviewResult {
   interviewId: string;
-  label: 'Demo feedback';
+  label: 'Practice feedback';
   scores: { category: string; score: number }[];
   feedback: string[];
 }
 export interface PlacementRiskResult {
   studentId: string;
-  label: 'Demo risk preview';
+  label: 'Preparation support';
   risk: 'Low' | 'Moderate' | 'High';
   factors: string[];
 }
 export interface ResumeAnalysisResult {
   documentId: string;
-  label: 'Demo resume analysis';
+  label: 'Resume analysis';
   suggestions: string[];
 }
 export interface APIResponse<T> {

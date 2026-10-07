@@ -1,12 +1,5 @@
 'use client';
 import { AnalysisSource } from '@/components/external-analysis-setting';
-import { backendEnabled } from '@/services/api/remote';
-import { useState } from 'react';
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, ArrowLeft, Check, Search, Sparkles, CircleCheck, Gift } from 'lucide-react';
-import { DemoData, Role } from '@/types';
-import { applicationService, matchingService, offerService } from '@/services/platform.service';
 import {
   Badge,
   Button,
@@ -17,11 +10,17 @@ import {
   Progress,
   formatDate,
 } from '@/components/ui';
-import { OpportunityCard } from './dashboard';
-import { checkEligibility, driveOpportunity } from '@/utils/placement';
+import { applicationService, matchingService, offerService } from '@/services/platform.service';
+import { WorkspaceData, Role } from '@/types';
 import type { MlAnnotation } from '@/types/ml';
+import { checkEligibility, driveOpportunity } from '@/utils/placement';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, ArrowUpRight, Check, CircleCheck, Gift, Search, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { OpportunityCard } from './dashboard';
 type Props = {
-  data: DemoData;
+  data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
   id?: string;
@@ -160,7 +159,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
             <section className={`panel ${job.color}`}>
               <div className="panel-header">
                 <Sparkles size={20} />
-                <Badge>{backendEnabled ? 'Evidence-based fit' : 'Demo match'}</Badge>
+                <Badge>{'Evidence-based fit'}</Badge>
               </div>
               <div className="match-large">
                 {job.match}
@@ -178,9 +177,9 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 </div>
               ))}
               <small className="muted">
-                {backendEnabled
-                  ? 'Computed from eligibility, skills, academics and recorded evidence. Placement teams make selection decisions.'
-                  : 'Mock matching data shown for the standalone demonstration.'}
+                {
+                  'Computed from eligibility, skills, academics and recorded evidence. Placement teams make selection decisions.'
+                }
               </small>
             </section>
             <section className="panel">
@@ -305,8 +304,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
         </select>
       </div>
       <p className="muted">
-        {jobs.length} opportunities ·{' '}
-        {backendEnabled ? 'Evidence-based fit estimates' : 'Demo match insights'}
+        {jobs.length} opportunities · {'Evidence-based fit estimates'}
       </p>
       <div className="three-columns">
         {jobs.map((j) => (
@@ -447,7 +445,10 @@ export function ApplicationsPage({ data, role = 'student', refresh, notify }: Pr
   );
 }
 export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
-  const [pending, setPending] = useState<{ id: string; status: string } | null>(null);
+  const [pending, setPending] = useState<{
+    id: string;
+    status: string;
+  } | null>(null);
   const [creating, setCreating] = useState(false);
   return (
     <>
@@ -568,7 +569,7 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
               </select>
             </FormField>
             <FormField label="Company">
-              <input name="company" required defaultValue="Razorpay" />
+              <input name="company" required />
             </FormField>
             <FormField label="Role">
               <input name="role" required placeholder="Frontend Engineer" />
@@ -577,7 +578,7 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
               <input name="ctc" required placeholder="₹14 LPA" />
             </FormField>
             <FormField label="Joining date">
-              <input name="joining" required type="date" min="2026-10-02" />
+              <input name="joining" required type="date" />
             </FormField>
             <FormField label="Offer type">
               <select name="kind">

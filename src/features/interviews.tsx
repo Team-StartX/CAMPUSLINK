@@ -1,23 +1,5 @@
 'use client';
 import { AnalysisSource } from '@/components/external-analysis-setting';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { backendEnabled } from '@/services/api/remote';
-import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowUpRight,
-  Plus,
-  Check,
-  Video,
-  CalendarDays,
-  Clock,
-  Sparkles,
-  Mic,
-  Send,
-} from 'lucide-react';
-import { DemoData, Role } from '@/types';
-import { interviewService } from '@/services/platform.service';
-import type { MlAnnotation } from '@/types/ml';
 import {
   Badge,
   Button,
@@ -28,8 +10,25 @@ import {
   Progress,
   formatDate,
 } from '@/components/ui';
+import { interviewService } from '@/services/platform.service';
+import { WorkspaceData, Role } from '@/types';
+import type { MlAnnotation } from '@/types/ml';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Check,
+  Clock,
+  Mic,
+  Plus,
+  Send,
+  Sparkles,
+  Video,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 type Props = {
-  data: DemoData;
+  data: WorkspaceData;
   role: Role;
   id?: string;
   refresh: () => void;
@@ -42,7 +41,9 @@ export function InterviewsPage({
   refresh,
   notify,
   practiceOnly = false,
-}: Props & { practiceOnly?: boolean }) {
+}: Props & {
+  practiceOnly?: boolean;
+}) {
   const [tab, setTab] = useState(practiceOnly || id === 'mock' ? 'Mock interviews' : 'Upcoming');
   const [schedule, setSchedule] = useState(id === 'create');
   const [error, setError] = useState('');
@@ -52,7 +53,7 @@ export function InterviewsPage({
       <PageHeader
         eyebrow="A CONVERSATION CAN CHANGE EVERYTHING"
         title={item ? `${item.company} · ${item.round}` : 'Walk in a little more ready.'}
-        description="Real interviews take place during physical campus drives. Mock and demo AI interviews are preparation tools."
+        description="Real interviews take place during physical campus drives. Practice interviews are preparation tools."
         action={
           role !== 'student' &&
           !practiceOnly && (
@@ -144,9 +145,7 @@ export function InterviewsPage({
                   'Behavioral Interview Prep',
                 ].map((t, n) => (
                   <section className={`panel ${['yellow', 'blue', 'sage'][n]}`} key={t}>
-                    <Badge>
-                      {n === 1 ? 'Created by Razorpay engineering' : 'Platform practice'}
-                    </Badge>
+                    <Badge>Platform practice</Badge>
                     <h3>{t}</h3>
                     <p>
                       Technical fundamentals, projects, and communication. Intermediate · 25
@@ -199,11 +198,10 @@ export function InterviewsPage({
                 <Sparkles size={30} />
               </span>
               <div>
-                <Badge>DEMO INTERVIEW</Badge>
+                <Badge>INTERVIEW PRACTICE</Badge>
                 <h2>A safe space to find your voice.</h2>
                 <p>
-                  Practice with a simulated interviewer. Get a feel for the questions before the
-                  real conversation.
+                  Answer preparation questions and review feedback before the real conversation.
                 </p>
               </div>
               <Link href="/student/interviews/ai" className="button dark">
@@ -239,7 +237,7 @@ export function InterviewsPage({
           >
             <div className="form-row">
               <FormField label="Company">
-                <input name="company" required defaultValue="Razorpay" />
+                <input name="company" required />
               </FormField>
               <FormField label="Role">
                 <input name="role" required placeholder="Frontend Engineer" />
@@ -247,7 +245,7 @@ export function InterviewsPage({
             </div>
             <div className="form-row">
               <FormField label="Date">
-                <input name="date" type="date" required min="2026-10-02" />
+                <input name="date" type="date" required />
               </FormField>
               <FormField label="Time (IST)">
                 <input name="time" type="time" required />
@@ -321,11 +319,9 @@ export function AIInterview({
         eyebrow="PRACTICE WITHOUT THE PRESSURE"
         title="Find your interview voice."
         description={
-          backendEnabled
-            ? 'Practice with role-specific questions and get feedback on your written answers.'
-            : 'A simulated conversation to help you prepare. No real AI or voice processing is connected.'
+          'Practice with role-specific questions and get feedback on your written answers.'
         }
-        action={<Badge>{backendEnabled ? 'Interview preparation' : 'Demo Interview'}</Badge>}
+        action={<Badge>{'Interview preparation'}</Badge>}
       />
       {done ? (
         <div className="panel interview-result">
@@ -347,9 +343,9 @@ export function AIInterview({
           <p>{feedback?.advice}</p>
           {feedback?.ml && <AnalysisSource status={feedback.ml.status} />}
           <p className="muted">
-            {backendEnabled
-              ? 'Feedback uses your submitted answers and supports preparation; it is not a validated hiring assessment.'
-              : `These are sample feedback values. Your ${answers.length} responses were used only in this local practice session.`}
+            {
+              'Feedback uses your submitted answers and supports preparation; it is not a validated hiring assessment.'
+            }
           </p>
           <Link href="/student/interviews" className="button dark">
             Back to interview hub <ArrowUpRight size={16} />
@@ -403,7 +399,7 @@ export function AIInterview({
             <div className="interviewer-avatar">
               <Sparkles size={54} />
             </div>
-            <Badge>Demo Interviewer</Badge>
+            <Badge>Practice questions</Badge>
             <h2>
               A little preparation.
               <br />A lot more confidence.
@@ -483,7 +479,7 @@ function InterviewTemplates({
   refresh,
   notify,
 }: {
-  data: DemoData;
+  data: WorkspaceData;
   role: Role;
   refresh: () => void;
   notify: (s: string) => void;
@@ -557,7 +553,7 @@ function InterviewTemplates({
               });
               refresh();
               setOpen(false);
-              notify('Interview template published to the demo workspace.');
+              notify('Interview template published.');
             }}
           >
             <FormField label="Mock interview name">

@@ -1,4 +1,4 @@
-import type { Contest, DemoData } from '@/types';
+import type { Contest, WorkspaceData } from '@/types';
 
 // Calendar days are shared by the client and server, regardless of device timezone.
 export function contestDay(date = new Date()): string {
@@ -12,7 +12,7 @@ export function contestDay(date = new Date()): string {
 const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / 86400000;
 
 export function recordContestCompletion(
-  data: DemoData,
+  data: WorkspaceData,
   contest: Contest,
   points: number,
   seconds: number,
@@ -77,7 +77,7 @@ const badgeRules = [
 ] as const;
 
 export function contestAchievements(
-  data: Pick<DemoData, 'contests' | 'history'>,
+  data: Pick<WorkspaceData, 'contests' | 'history'>,
   now = new Date(),
 ) {
   const seen = new Set<string>();

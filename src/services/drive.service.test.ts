@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { mockAdapter } from '@/mocks/adapter';
-import { driveService } from './drive.service';
-import { applicationService, matchingService, studentService } from './platform.service';
-import { checkEligibility } from '@/utils/placement';
 import { DriveSchedule } from '@/types';
+import { checkEligibility } from '@/utils/placement';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { driveService } from './drive.domain';
+import { applicationService, matchingService, studentService } from './platform.domain';
 
 beforeEach(() => mockAdapter.reset());
 const schedule: DriveSchedule = {

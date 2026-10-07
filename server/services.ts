@@ -31,7 +31,7 @@ import {
 import { downloadFile, uploadFile, detectFile } from './storage';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { randomUUID } from 'node:crypto';
-import type { DemoData, Question, Student } from '../src/types';
+import type { WorkspaceData, Question, Student } from '../src/types';
 import { assessmentQuestions } from './admin';
 import type { AdminContest } from '../src/types/admin';
 import { POINTS } from '../src/config/points.config';
@@ -267,7 +267,8 @@ export async function dispatch(service: string, method: string, input: unknown[]
       );
       const campus = await db.get<{ name: string }>('campus', account.campusId);
       const workspace =
-        (await db.get<DemoData>('workspace', account.id)) || emptyWorkspace(account, campus?.name);
+        (await db.get<WorkspaceData>('workspace', account.id)) ||
+        emptyWorkspace(account, campus?.name);
       if (key === 'campusService.getStudentAchievements') return contestAchievements(workspace);
       const patch = args[1] as InstituteStudentPatch;
       Object.assign(workspace.student, patch);
@@ -771,7 +772,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
     requireCondition(target, 400, 'Select a student first.');
     if (actor.role === 'recruiter') (args[0] as { company: string }).company = actor.organization;
     const slot = args[0] as { date: string; time: string; company: string };
-    const all = await db.list<DemoData>('workspace', target.campusId);
+    const all = await db.list<WorkspaceData>('workspace', target.campusId);
     requireCondition(
       !all.some((w) =>
         w.interviews.some(
@@ -907,7 +908,7 @@ export async function analytics(
   campusId: string,
   recruiterId?: string,
 ) {
-  const profiles = await db.list<DemoData>('workspace', recruiterId ? undefined : campusId);
+  const profiles = await db.list<WorkspaceData>('workspace', recruiterId ? undefined : campusId);
   const drives = (await db.list<StoredDrive>('drive', recruiterId ? undefined : campusId)).filter(
     (d) => !recruiterId || d.recruiterId === recruiterId,
   );
@@ -920,13 +921,13 @@ export async function analytics(
       (o) => !recruiterId || (o as typeof o & { recruiterId?: string }).recruiterId === recruiterId,
     ),
   );
-  const placed = (p: DemoData) =>
+  const placed = (p: WorkspaceData) =>
     p.offers.some(
       (o) =>
         ['Accepted', 'Joined'].includes(o.status) &&
         (!recruiterId || (o as typeof o & { recruiterId?: string }).recruiterId === recruiterId),
     );
-  const breakdown = (values: string[], test: (p: DemoData, name: string) => boolean) =>
+  const breakdown = (values: string[], test: (p: WorkspaceData, name: string) => boolean) =>
     [...new Set(values)].map((name) => {
       const pool = students.filter((p) => test(p, name));
       return {
@@ -997,7 +998,7 @@ export async function rankedCandidates(drive: StoredDrive) {
   const results = [];
   for (let i = 0; i < profiles.length; i++) {
     const s = profiles[i],
-      workspace = await db.get<DemoData>('workspace', s.id),
+      workspace = await db.get<WorkspaceData>('workspace', s.id),
       rule = fit(s, drive, workspace?.history);
     results.push({
       student: s,

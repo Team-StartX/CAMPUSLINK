@@ -5,7 +5,7 @@ import { Database } from './db';
 import { emptyWorkspace, StoredDrive } from './workspace';
 import { defaultDrive } from '../src/mocks/placement';
 import { Account } from './auth';
-import type { DemoData } from '../src/types';
+import type { WorkspaceData } from '../src/types';
 import { similarity, parseRequirements, interviewFeedback } from './nlp';
 import { train, predict, features, OutcomeRow } from './ml';
 import { promises as fs } from 'node:fs';
@@ -51,6 +51,9 @@ describe('Express placement backend', () => {
       await runtime.auth.save(a);
       if (role === 'student') {
         const w = emptyWorkspace(a, campusId);
+        w.student.course = 'B.Tech · Computer Science';
+        w.student.branch = 'CSE';
+        w.student.year = '2027';
         w.student.cgpa = 8;
         w.student.skills = [{ id: 'react', name: 'React', level: 'Advanced', verified: false }];
         await db.put('workspace', a.id, w, campusId, a.id);
@@ -94,7 +97,7 @@ describe('Express placement backend', () => {
     for (const response of responses) expect(response.headers['cache-control']).toBe('no-store');
   });
   it('lets an institute edit its own student, preserves progress, and records the actor', async () => {
-    const before = (await db.get<DemoData>('workspace', student.id))!;
+    const before = (await db.get<WorkspaceData>('workspace', student.id))!;
     const response = await rpc('campus', 'campusService', 'updateStudent', [
       student.id,
       {
@@ -138,7 +141,7 @@ describe('Express placement backend', () => {
     await runtime.auth.save(student);
   });
   it('blocks institute edits and achievements outside its campus, other roles, and protected fields', async () => {
-    const before = await db.get<DemoData>('workspace', other.id);
+    const before = await db.get<WorkspaceData>('workspace', other.id);
     expect(
       (await rpc('campus', 'campusService', 'updateStudent', [other.id, { cgpa: 10 }])).status,
     ).toBe(403);
@@ -180,7 +183,7 @@ describe('Express placement backend', () => {
     ]);
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ id: sibling.id, cgpa: 9.25 });
-    expect((await db.get<DemoData>('workspace', student.id))?.student.cgpa).toBe(8);
+    expect((await db.get<WorkspaceData>('workspace', student.id))?.student.cgpa).toBe(8);
     expect((await rpc('campus', 'campusService', 'getStudents')).body).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: sibling.id, cgpa: 9.25 })]),
     );
@@ -188,12 +191,29 @@ describe('Express placement backend', () => {
     await db.remove('workspace', sibling.id);
   });
   it('unlocks a contest badge on correct completion and prevents concurrent award replay', async () => {
-    const before = (await db.get<DemoData>('workspace', student.id))!;
-    const contest = before.contests[0];
+    await db.put(
+      'admin-contest',
+      'test-published-contest',
+      {
+        id: 'test-published-contest',
+        name: 'Campus challenge',
+        type: 'Aptitude',
+        campusId: student.campusId,
+        status: 'published',
+        duration: 15,
+        points: 150,
+        difficulty: 'Easy',
+        prompt: 'Double 16.',
+        answer: '32',
+      },
+      student.campusId,
+    );
+    const before = (await rpc('student', 'studentService', 'getDashboard')).body as WorkspaceData;
+    const contest = before.contests.find((c) => c.id === 'test-published-contest')!;
     expect((await rpc('student', 'contestService', 'joinContest', [contest.id])).status).toBe(200);
     expect(
       (await rpc('student', 'contestService', 'submitContest', [contest.id, 'wrong'])).status,
-    ).toBe(422);
+    ).toBe(400);
     expect(
       (await rpc('campus', 'campusService', 'getStudentAchievements', [student.id])).body.completed,
     ).toBe(0);
@@ -201,7 +221,7 @@ describe('Express placement backend', () => {
       [1, 2].map(() => rpc('student', 'contestService', 'submitContest', [contest.id, '32'])),
     );
     expect(results.every((r) => r.status === 200)).toBe(true);
-    const updated = (await db.get<DemoData>('workspace', student.id))!;
+    const updated = (await db.get<WorkspaceData>('workspace', student.id))!;
     expect(updated.student.xp).toBe(before.student.xp + contest.points);
     expect(updated.history.filter((h) => h.activity === 'contest')).toHaveLength(1);
     const progress = await rpc('campus', 'campusService', 'getStudentAchievements', [student.id]);
@@ -379,7 +399,10 @@ describe('Express placement backend', () => {
     };
     const response = await request(runtime.app).post('/api/v1/auth/register').send(registration);
     expect(response.status).toBe(201);
-    const data = await db.get<import('../src/types').DemoData>('workspace', response.body.user.id);
+    const data = await db.get<import('../src/types').WorkspaceData>(
+      'workspace',
+      response.body.user.id,
+    );
     expect(data?.student.skills).toEqual([]);
     expect(data?.student.xp).toBe(0);
     const staff = await request(runtime.app)
@@ -557,7 +580,7 @@ describe('Express placement backend', () => {
     ).toBe(409);
   });
   it('tracks offers and requires campus verification before joining', async () => {
-    const data = await db.get<import('../src/types').DemoData>('workspace', student.id);
+    const data = await db.get<import('../src/types').WorkspaceData>('workspace', student.id);
     const application = data!.applications[0];
     for (let i = 0; i < 5; i++)
       expect(
@@ -584,7 +607,7 @@ describe('Express placement backend', () => {
         )
       ).status,
     ).toBe(200);
-    const updated = await db.get<import('../src/types').DemoData>('workspace', student.id),
+    const updated = await db.get<import('../src/types').WorkspaceData>('workspace', student.id),
       offer = updated!.offers[0];
     expect(offer.company).toBe('Test Company');
     expect(offer.kind).toBe('PPO');

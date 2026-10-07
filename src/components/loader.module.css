@@ -1,0 +1,127 @@
+.loader {
+  display: flex;
+  min-height: 240px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 22px;
+  padding: 32px 20px;
+  color: var(--ink, #20221f);
+}
+
+.fullPage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--cream, #f8f7f1);
+}
+
+.mark {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 56px;
+}
+
+.ring {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--lavender, #e1d7f1);
+  border-top-color: var(--ink, #20221f);
+  border-radius: 50%;
+  animation: orbit 1.6s linear infinite;
+}
+
+.ring:nth-child(2) {
+  left: 28px;
+  border-color: var(--sage, #dde6c9);
+  border-bottom-color: var(--ink, #20221f);
+  animation-direction: reverse;
+}
+
+.dot {
+  position: absolute;
+  top: 23px;
+  left: 33px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink, #20221f);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.compact {
+  min-height: 0;
+  flex-direction: row;
+  gap: 12px;
+  padding: 18px 0;
+}
+
+.compact .mark {
+  width: 38px;
+  height: 28px;
+}
+
+.compact .ring {
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.compact .ring:nth-child(2) {
+  left: 14px;
+}
+
+.compact .dot {
+  top: 12px;
+  left: 17px;
+  width: 4px;
+  height: 4px;
+}
+
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: orbit 0.8s linear infinite;
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(0.65);
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring,
+  .dot,
+  .spinner {
+    animation: none;
+  }
+}
+
+:global(.reduce-motion) .ring,
+:global(.reduce-motion) .dot,
+:global(.reduce-motion) .spinner {
+  animation: none;
+}

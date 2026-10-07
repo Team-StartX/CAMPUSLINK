@@ -1,42 +1,42 @@
 'use client';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  LayoutDashboard,
-  UserRound,
-  ShieldCheck,
-  ClipboardCheck,
-  Trophy,
-  BriefcaseBusiness,
-  Files,
-  Video,
-  Sparkles,
-  BookOpen,
-  Gift,
-  Bell,
-  Settings,
-  Search,
-  Menu,
-  X,
-  ArrowUpRight,
-  ChevronDown,
-  LogOut,
-  Building2,
-  Users,
-  CalendarDays,
-  BarChart3,
-  Mic,
-} from 'lucide-react';
-import { Logo } from './public';
-import { Modal } from './ui';
-import { useSession, authService } from '@/store/session';
 import { usePlatform } from '@/hooks/use-platform';
+import { authService, useSession } from '@/store/session';
 import { Role } from '@/types';
 import { canAccess } from '@/utils/permissions';
-import { backendEnabled } from '@/services/api/remote';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowUpRight,
+  BarChart3,
+  Bell,
+  BookOpen,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  ChevronDown,
+  ClipboardCheck,
+  Files,
+  Gift,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Mic,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  UserRound,
+  Users,
+  Video,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccountOnboarding } from './account-onboarding';
+import { Loader } from './loader';
+import { Logo } from './public';
+import { Modal } from './ui';
 const studentNav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['actions', 'Action center', ClipboardCheck],
@@ -161,8 +161,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
   }, []);
   const nav = role === 'student' ? studentNav : role === 'recruiter' ? recruiterNav : campusNav;
   useEffect(() => {
-    if (backendEnabled) void authService.restore().finally(() => setReady(true));
-    else setReady(true);
+    void authService.restore().finally(() => setReady(true));
   }, []);
   useEffect(() => {
     if (ready && !user) router.replace('/login');
@@ -179,13 +178,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
     return () => window.removeEventListener('keydown', handler);
   }, []);
   const closeSearch = useCallback(() => setSearch(false), []);
-  if (!ready || !canAccess(user, role))
-    return (
-      <div className="empty-state">
-        <h2>Opening your workspace…</h2>
-        <p>Checking your session.</p>
-      </div>
-    );
+  if (!ready || !canAccess(user, role)) return <Loader fullPage label="Opening your workspace…" />;
   const unread = data?.notifications.filter((n) => !n.read).length || 0;
   const links = nav.filter(([, label]) => label.toLowerCase().includes(term.toLowerCase()));
   return (
@@ -347,7 +340,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               <kbd>Ctrl K</kbd>
             </button>
             <span className="demo-label">
-              <i /> {backendEnabled ? 'CONNECTED WORKSPACE' : 'DEMO WORKSPACE'}
+              <i /> {'CONNECTED WORKSPACE'}
             </span>
             <Link
               href={`/${role}/notifications`}
@@ -395,15 +388,11 @@ export function AppShell({ role, children }: { role: Role; children: React.React
           </div>
         </header>
         <main className="dashboard-content">
-          {backendEnabled && user?.onboardingComplete === false ? <AccountOnboarding /> : children}
+          {user?.onboardingComplete === false ? <AccountOnboarding /> : children}
         </main>
         <footer className="app-footer">
           <span>CampusLink · Made for what comes next.</span>
-          <span>
-            {backendEnabled
-              ? 'Connected workspace · Changes are saved on the server'
-              : 'Mock workspace · Your changes are saved in this browser'}
-          </span>
+          <span>{'Connected workspace · Changes are saved on the server'}</span>
         </footer>
       </div>
       {search && (

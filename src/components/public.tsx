@@ -1,31 +1,31 @@
 'use client';
-import Link from 'next/link';
-import {
-  ArrowUpRight,
-  ArrowRight,
-  Sparkles,
-  Check,
-  GraduationCap,
-  Building2,
-  ShieldCheck,
-  BriefcaseBusiness,
-  Menu,
-  X,
-  CircleCheck,
-  Play,
-} from 'lucide-react';
-import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
-import { usePathname } from 'next/navigation';
-import { CampusHero } from './campus-hero';
-import { MobileCardSlider } from './mobile-card-slider';
-import { TeamStartX } from './team-startx';
-import { MomentumSection, CommunityAndFAQ } from './home-extras';
-import { PlacementJourney } from './placement-journey';
-import { CampusOperation } from './campus-operation';
-import { useEffect, useRef, useState } from 'react';
-import type { MouseEventHandler } from 'react';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
+import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BriefcaseBusiness,
+  Building2,
+  Check,
+  CircleCheck,
+  GraduationCap,
+  Menu,
+  Play,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { MouseEventHandler } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { CampusHero } from './campus-hero';
+import { CampusOperation } from './campus-operation';
+import { CommunityAndFAQ, MomentumSection } from './home-extras';
+import { MobileCardSlider } from './mobile-card-slider';
+import { PlacementJourney } from './placement-journey';
 import { PublicStartLink, usePublicSession } from './public-session';
+import { TeamStartX } from './team-startx';
 export function Logo({
   dark = false,
   collapsible = false,
@@ -120,10 +120,7 @@ export function JourneyIllustration() {
         </div>
         <div className="art-profile-bottom">
           <span>Profile strength</span>
-          <b>82%</b>
-        </div>
-        <div className="progress">
-          <span style={{ width: '82%' }} />
+          <b>Add your evidence</b>
         </div>
       </motion.div>
       <motion.div
@@ -135,12 +132,8 @@ export function JourneyIllustration() {
           <Sparkles size={19} />
         </span>
         <span>PLACEMENT READINESS</span>
-        <div>
-          <strong>78</strong>
-          <span>/ 100</span>
-        </div>
-        <p>You’re getting closer.</p>
-        <span className="mini-demo">Demo readiness</span>
+        <p>Skills, academics, projects, and practice results.</p>
+        <Link href="/student/readiness">Review your preparation</Link>
       </motion.div>
       <motion.div
         className="journey-match"
@@ -151,11 +144,11 @@ export function JourneyIllustration() {
           R<span>↗</span>
         </div>
         <div>
-          <b>It’s a good match.</b>
-          <p>Frontend Engineer · Razorpay</p>
+          <b>Find your next opportunity.</b>
+          <p>Active drives at your campus</p>
         </div>
         <span className="match-bubble">
-          92%<small>Demo match</small>
+          <small>Review eligibility</small>
         </span>
       </motion.div>
       <motion.div
@@ -168,7 +161,7 @@ export function JourneyIllustration() {
         </span>
         <div>
           <b>Your next chapter.</b>
-          <p>Offer received. Future unlocked.</p>
+          <p>Track offers and joining progress.</p>
         </div>
         <span>✦</span>
       </motion.div>
@@ -407,17 +400,17 @@ export function Landing() {
                   <span className="avatar-circle">01</span>
                   <span>
                     <b>Verified candidate</b>
-                    <small>6 verified skills</small>
+                    <small>Review verified skills</small>
                   </span>
                   <span className="talent-match">
-                    96%<small>Demo match</small>
+                    <small>Evidence-based fit</small>
                   </span>
                 </div>
                 <div>
                   <span className="avatar-circle pink">02</span>
                   <span>
                     <b>Eligible applicant</b>
-                    <small>5 verified skills</small>
+                    <small>Review eligibility</small>
                   </span>
                   <CircleCheck size={18} />
                 </div>
@@ -479,7 +472,7 @@ export function Landing() {
               <div className="verification-flow">
                 <span>React</span>
                 <ArrowRight size={15} />
-                <span>84%</span>
+                <span>Assessment</span>
                 <ArrowRight size={15} />
                 <b>
                   <CircleCheck size={14} /> Verified
@@ -504,7 +497,7 @@ export function Landing() {
               <div className="opportunity-preview">
                 <b>Frontend Engineer</b>
                 <span>
-                  92% <small>Demo match</small>
+                  <small>Skills and eligibility</small>
                 </span>
               </div>
               <ArrowUpRight className="feature-arrow" />
@@ -681,10 +674,9 @@ export function PublicPage({ slug }: { slug: string }) {
         </div>
         {slug === 'about' && (
           <p className="muted">
-            Preview terms: this is a local frontend demo. Account sessions and profile edits are
-            stored in your browser. No documents, passwords, or interview responses are sent to an
-            external service. Reset demo data from Settings. Production privacy and legal terms will
-            be provided before a public launch.
+            Your account and placement records are stored by CampusLink. Authorized campus and
+            recruiter teams access records relevant to their placement work. Optional external AI
+            analysis follows your saved sharing preferences.
           </p>
         )}
       </main>

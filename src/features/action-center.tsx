@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, CalendarDays, Download, Search, CheckCircle2, ListTodo } from 'lucide-react';
-import { DemoData, Role } from '@/types';
+import { WorkspaceData, Role } from '@/types';
 import { actionCalendar, workspaceActions } from '@/utils/workspace-actions';
 import { Badge, Button, EmptyState, PageHeader } from '@/components/ui';
 
-export function ActionCenter({ data, role }: { data: DemoData; role: Role }) {
+export function ActionCenter({ data, role }: { data: WorkspaceData; role: Role }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All');
   const today = new Intl.DateTimeFormat('en-CA', {

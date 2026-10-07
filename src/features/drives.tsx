@@ -1,10 +1,24 @@
 'use client';
-import { backendEnabled } from '@/services/api/remote';
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { ContestProgress } from '@/components/contest-progress';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FormField,
+  PageHeader,
+  Progress,
+  formatDate,
+} from '@/components/ui';
+import {
+  driveRequestSchema,
+  driveService,
+  scheduleConflicts,
+  scheduleSchema,
+} from '@/services/drive.service';
+import { aiService } from '@/services/platform.service';
+import { WorkspaceData, Drive, DriveSchedule, DriveStatus, Role } from '@/types';
+import { contestAchievements } from '@/utils/contest-achievements';
+import { checkEligibility, driveStatuses, statusLabel } from '@/utils/placement';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import {
@@ -18,29 +32,13 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { DemoData, Drive, DriveSchedule, DriveStatus, Role } from '@/types';
-import {
-  driveService,
-  driveRequestSchema,
-  scheduleConflicts,
-  scheduleSchema,
-} from '@/services/drive.service';
-import { aiService } from '@/services/platform.service';
-import { statusLabel, driveStatuses, checkEligibility } from '@/utils/placement';
-import { ContestProgress } from '@/components/contest-progress';
-import { contestAchievements } from '@/utils/contest-achievements';
-import {
-  Badge,
-  Button,
-  EmptyState,
-  FormField,
-  PageHeader,
-  Progress,
-  formatDate,
-} from '@/components/ui';
-
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 type Props = {
-  data: DemoData;
+  data: WorkspaceData;
   role: Role;
   id?: string;
   refresh: () => void;
@@ -71,7 +69,7 @@ export function CampusDiscovery({ data }: Props) {
           <section className="panel" key={c.id}>
             <div className="panel-header">
               <Building2 />
-              <Badge>{backendEnabled ? 'Registered campus' : 'Demo campus pool'}</Badge>
+              <Badge>{'Registered campus'}</Badge>
             </div>
             <h2>{c.name}</h2>
             <p>
@@ -100,7 +98,11 @@ export function CampusDiscovery({ data }: Props) {
     </>
   );
 }
-export function DrivesPage(props: Props & { requestsOnly?: boolean }) {
+export function DrivesPage(
+  props: Props & {
+    requestsOnly?: boolean;
+  },
+) {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const { data, role, id, requestsOnly } = props;
@@ -224,7 +226,14 @@ export function DrivesPage(props: Props & { requestsOnly?: boolean }) {
     </>
   );
 }
-function DriveRequestWizard({ data, refresh, notify, existing }: Props & { existing?: Drive }) {
+function DriveRequestWizard({
+  data,
+  refresh,
+  notify,
+  existing,
+}: Props & {
+  existing?: Drive;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [search, setSearch] = useState('');
@@ -239,17 +248,17 @@ function DriveRequestWizard({ data, refresh, notify, existing }: Props & { exist
     return (
       existing ||
       driveService.getRequestDefaults({
-        company: 'Razorpay',
+        company: '',
         role: '',
         description: '',
         campusId: campusId || '',
         campus: campus?.name || '',
-        courses: campus?.courses[0] || 'B.Tech',
-        branches: campus?.branches.join(', ') || 'CSE, IT, ECE',
+        courses: campus?.courses[0] || '',
+        branches: campus?.branches.join(', ') || '',
         ctc: '',
         skills: '',
-        preferredDates: ['2026-10-26', '2026-10-27', '2026-10-28'],
-        deadline: '2026-10-20',
+        preferredDates: [],
+        deadline: '',
       })
     );
   });
@@ -389,7 +398,7 @@ function DriveRequestWizard({ data, refresh, notify, existing }: Props & { exist
                     <div>
                       <b>{c.name}</b>
                       <small>
-                        {c.location} · {c.studentPool} students · Demo pool
+                        {c.location} · {c.studentPool} students
                       </small>
                       <span>
                         {c.courses.join(' / ')} · {c.branches.join(', ')}
@@ -477,7 +486,7 @@ function DriveRequestWizard({ data, refresh, notify, existing }: Props & { exist
                 notify('Extraction complete. Review the suggested skills before continuing.');
               }}
             >
-              Extract requirements · {backendEnabled ? 'Local NLP' : 'Demo NLP'}
+              Extract requirements · {'Local NLP'}
             </Button>
           </>
         )}
@@ -831,7 +840,15 @@ function DriveSummary({ drive }: { drive: Drive }) {
     </div>
   );
 }
-function DriveDetail({ drive, data, role, refresh, notify }: Props & { drive: Drive }) {
+function DriveDetail({
+  drive,
+  data,
+  role,
+  refresh,
+  notify,
+}: Props & {
+  drive: Drive;
+}) {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -1108,7 +1125,7 @@ function ScheduleProposal({
   notify,
 }: {
   drive: Drive;
-  data: DemoData;
+  data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
 }) {
@@ -1121,15 +1138,15 @@ function ScheduleProposal({
   } = useForm<DriveSchedule>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: drive.schedule || {
-      date: drive.preferredDates?.[0] || '2026-10-26',
+      date: drive.preferredDates?.[0] || '',
       reporting: '08:30',
       talk: '09:00',
       assessment: '10:00',
       interviews: '13:00',
       end: '17:00',
-      venue: 'Placement Block · Hall 1',
-      lab: 'Computer Lab 1',
-      rooms: 'Interview Rooms 1–3',
+      venue: '',
+      lab: '',
+      rooms: '',
       systems: drive.systems || 0,
     },
   });
@@ -1448,7 +1465,7 @@ export function PlacementCalendar({ data, role }: Props) {
       </div>
       <div className="section-header">
         <h2>Physical resource allocations</h2>
-        <Badge>{backendEnabled ? 'Placement calendar' : 'Demo calendar'}</Badge>
+        <Badge>{'Placement calendar'}</Badge>
       </div>
       <div className="two-columns">
         {visits.map((d) => (
@@ -1466,7 +1483,7 @@ export function PlacementCalendar({ data, role }: Props) {
     </>
   );
 }
-export function DriveActivitySummary({ data, role }: { data: DemoData; role: Role }) {
+export function DriveActivitySummary({ data, role }: { data: WorkspaceData; role: Role }) {
   const needs = data.drives.filter((d) =>
     role === 'campus'
       ? ['SUBMITTED', 'UNDER_REVIEW', 'SCHEDULING', 'CONFIRMED'].includes(d.status)

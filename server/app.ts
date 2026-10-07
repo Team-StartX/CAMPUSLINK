@@ -24,14 +24,15 @@ import { queueMail } from './mail';
 import { mockAdapter } from '../src/mocks/adapter';
 import { scheduleConflicts, scheduleSchema } from '../src/services/drive.domain';
 import { loadModel } from './ml';
-import type { Campus, DemoData } from '../src/types';
+import type { Campus, WorkspaceData } from '../src/types';
 import { checkEligibility as requireEligibility } from '../src/utils/placement';
 import { mountGoogleAuth } from './google';
 import { mountAdmin } from './admin';
-import { mlConfigured } from './ml-client';
+import { mlConfigured, mlDestination } from './ml-client';
 import { mountDirectory } from './directory';
 import { DomainError } from '../src/utils/domain-error';
 import { trustedOrigin } from './origin';
+import { mountSpeech } from './speech';
 
 const registration = z
   .object({
@@ -112,7 +113,7 @@ export async function createApp(db = new Database()) {
   app.get(`${base}/capabilities`, (_req, res) =>
     res.json({
       aiProvider: config.ai,
-      modelAvailable: Boolean(loadModel()),
+      modelAvailable: loadModel()?.provenance === 'historical',
       emailDelivery: config.email,
       fileStorage: config.storage,
     }),
@@ -231,6 +232,7 @@ export async function createApp(db = new Database()) {
     }
   });
   mountAdmin(app, db, auth);
+  mountSpeech(app);
   app.get(`${base}/auth/me`, (req, res) =>
     res.json({ user: publicUser(res.locals.account), csrf: res.locals.session.csrf }),
   );
@@ -330,6 +332,7 @@ export async function createApp(db = new Database()) {
       provider: config.ai,
       mlConsent: Boolean(res.locals.account.mlConsent),
       mlConfigured: mlConfigured(),
+      mlDestination: mlDestination(),
     }),
   );
   app.put(`${base}/account/ml-consent`, async (req, res) => {
@@ -619,7 +622,7 @@ export async function createApp(db = new Database()) {
       storage: config.storage,
       email: config.email,
       ai: config.ai,
-      ml: loadModel()?.provenance || 'not-trained',
+      ml: loadModel()?.provenance === 'historical' ? 'historical' : 'not-trained',
       endpoints: Object.entries(policy).flatMap(([s, methods]) =>
         Object.keys(methods).map((m) => `${s}/${m}`),
       ),
@@ -627,11 +630,17 @@ export async function createApp(db = new Database()) {
   });
   app.use((_req, _res, next) => next(new HttpError(404, 'Endpoint not found.')));
   app.use(
-    (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    (error: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
       if (error instanceof ZodError)
         return res.status(400).json({ message: error.issues[0]?.message || 'Invalid input.' });
       if (error instanceof multer.MulterError)
-        return res.status(400).json({ message: 'Upload one supported file under 10 MB.' });
+        return res
+          .status(400)
+          .json({
+            message: req.path.startsWith('/api/v1/voice/')
+              ? 'Upload one audio recording under 12 MB.'
+              : 'Upload one supported file under 10 MB.',
+          });
       const status =
         error instanceof HttpError
           ? error.status

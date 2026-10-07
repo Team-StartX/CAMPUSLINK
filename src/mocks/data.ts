@@ -1,5 +1,5 @@
-import { DemoData, Question } from '@/types';
-export const initialData: DemoData = {
+import { WorkspaceData, Question } from '@/types';
+export const initialData: WorkspaceData = {
   student: {
     id: 'STU-20482',
     name: 'Diptiprav Dash',

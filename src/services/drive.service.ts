@@ -1,4 +1,7 @@
-import { driveService as local } from './drive.domain';
 import { remoteService } from './api/remote';
-export { driveRequestSchema, scheduleSchema, scheduleConflicts } from './drive.domain';
-export const driveService = remoteService('driveService', local, ['getRequestDefaults']);
+import { defaultDrive } from './drive.defaults';
+import type { driveService as domain } from './drive.domain';
+export { driveRequestSchema, scheduleConflicts, scheduleSchema } from './drive.validation';
+export const driveService = remoteService<typeof domain>('driveService', {
+  getRequestDefaults: defaultDrive,
+});

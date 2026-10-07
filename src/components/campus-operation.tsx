@@ -1,8 +1,8 @@
 'use client';
 import { useHydratedReducedMotion } from '@/hooks/use-hydrated-reduced-motion';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
 const stages = [
   {
     title: 'Company requests a visit.',
@@ -23,7 +23,7 @@ const stages = [
   {
     title: 'Eligible students take their shot.',
     description:
-      'After campus finalization and activation, eligibility is checked before demo matching. Students can then apply.',
+      'After campus finalization and activation, eligibility is checked before matching. Students can then apply.',
     color: 'yellow',
     href: '/for-students',
     action: 'For students',

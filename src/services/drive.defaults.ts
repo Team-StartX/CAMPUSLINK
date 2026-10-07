@@ -1,0 +1,52 @@
+import type { Drive } from '@/types';
+export function defaultDrive(d: Partial<Drive> = {}): Drive {
+  const date = d.preferredDates?.[0] || '';
+  return {
+    id: '',
+    company: '',
+    role: '',
+    location: '',
+    ctc: '',
+    vacancies: 20,
+    description: '',
+    cgpa: 7,
+    skills: '',
+    status: 'SUBMITTED',
+    applicants: 0,
+    campusId: '',
+    campus: '',
+    courses: '',
+    branches: '',
+    graduationYear: '',
+    allowedBacklogs: 0,
+    backlogRules: 'No active backlogs',
+    preferredSkills: '',
+    workType: 'Full-time',
+    department: '',
+    preferredDates: date ? [date] : [],
+    deadline: '',
+    teamSize: 4,
+    hall: true,
+    labs: 1,
+    rooms: 3,
+    systems: 60,
+    otherRequirements: '',
+    rounds: [
+      'Pre-placement talk',
+      'Aptitude assessment',
+      'Coding assessment',
+      'Technical interview',
+      'HR interview',
+    ].map((name, i) => ({
+      id: `round-${i}`,
+      name,
+      duration: i === 0 ? 30 : 60,
+      capacity: 60,
+      requirements: i === 2 ? 'Computer lab' : 'Seminar hall / interview rooms',
+      cleared: 0,
+    })),
+    selectionProcess:
+      'Pre-placement talk → Aptitude assessment → Coding assessment → Technical interview → HR interview',
+    ...d,
+  };
+}

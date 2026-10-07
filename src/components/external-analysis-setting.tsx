@@ -3,10 +3,12 @@ import { ShieldCheck, Sparkles } from 'lucide-react';
 
 export function ExternalAnalysisSetting({
   enabled,
+  destination,
   busy,
   onChange,
 }: {
   enabled: boolean;
+  destination: string;
   busy: boolean;
   onChange: (value: boolean) => void;
 }) {
@@ -40,7 +42,7 @@ export function ExternalAnalysisSetting({
       </div>
       <p id="external-analysis-description" className="analysis-setting-description">
         Optional analysis of your resume, skills, projects, preparation scores and practice answers
-        by <strong>campuslink-ml-demo.onrender.com</strong>.
+        by <strong>{destination}</strong>.
       </p>
       <details>
         <summary>What is shared & how to turn it off</summary>

@@ -121,18 +121,15 @@ export function modelInsight(row: OutcomeRow) {
       label: 'Historical outcome model not trained',
       reason: 'Provide labelled historical outcomes to train and evaluate the model.',
     };
-  if (config.production && model.provenance === 'synthetic')
+  if (model.provenance !== 'historical')
     return {
       available: false,
       label: 'Historical outcome model not trained',
-      reason: 'Synthetic models are disabled for production predictions.',
+      reason: 'Only models trained on historical outcomes can produce predictions.',
     };
   return {
     available: true,
-    label:
-      model.provenance === 'synthetic'
-        ? 'Synthetic model demonstration'
-        : 'Historical model estimate',
+    label: 'Historical model estimate',
     probability: Math.round(predict(model, row) * 100),
     provenance: model.provenance,
     metrics: model.metrics,

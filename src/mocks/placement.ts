@@ -1,4 +1,4 @@
-import { Campus, DemoData, Drive, DriveStatus } from '@/types';
+import { Campus, WorkspaceData, Drive, DriveStatus } from '@/types';
 
 export const campuses: Campus[] = [
   {
@@ -86,7 +86,7 @@ export function defaultDrive(d: Partial<Drive>): Drive {
   };
 }
 /** Add the campus workflow to older browser demos without deleting saved profile data. */
-export function migratePlacement(data: DemoData) {
+export function migratePlacement(data: WorkspaceData) {
   if (data.placementVersion === 1) return;
   data.campuses = campuses;
   data.student.branch ||= data.student.course.split('·')[1]?.trim() || 'CSE';

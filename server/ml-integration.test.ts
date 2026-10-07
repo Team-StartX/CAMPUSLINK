@@ -6,7 +6,7 @@ import { config } from './config';
 import { emptyWorkspace } from './workspace';
 import type { Account } from './auth';
 import { defaultDrive } from '../src/mocks/placement';
-import type { DemoData } from '../src/types';
+import type { WorkspaceData } from '../src/types';
 
 describe('consented ML workflows', () => {
   const db = new Database('', ':memory:');
@@ -23,7 +23,7 @@ describe('consented ML workflows', () => {
   };
   beforeAll(async () => {
     config.mlApiToken = 'test-only-token';
-    config.mlApiUrl = 'https://campuslink-ml-demo.onrender.com';
+    config.mlApiUrl = 'https://ml.example.invalid';
     config.ai = 'local';
     config.email = 'outbox';
     runtime = await createApp(db);
@@ -46,7 +46,15 @@ describe('consented ML workflows', () => {
         await db.put(
           'workspace',
           account.id,
-          emptyWorkspace(account),
+          {
+            ...emptyWorkspace(account),
+            student: {
+              ...emptyWorkspace(account).student,
+              course: 'B.Tech',
+              branch: 'CSE',
+              year: '2027',
+            },
+          },
           account.campusId,
           account.id,
         );
@@ -105,7 +113,7 @@ describe('consented ML workflows', () => {
   });
   it('adds keyword matching without changing eligibility or evidence-based fit', async () => {
     const account = clients.student.account;
-    const workspace = await db.get<DemoData>('workspace', account.id);
+    const workspace = await db.get<WorkspaceData>('workspace', account.id);
     workspace!.student.cgpa = 8;
     workspace!.student.campus = 'Test campus';
     workspace!.student.skills = [
