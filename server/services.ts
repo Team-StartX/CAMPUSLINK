@@ -35,6 +35,8 @@ import type { WorkspaceData, Question, Student } from '../src/types';
 import { assessmentQuestions } from './admin';
 import type { AdminContest } from '../src/types/admin';
 import { POINTS } from '../src/config/points.config';
+import { recruitmentDispatch, recruitmentPolicy } from './recruitment';
+import type { Relationship } from '../src/types/recruitment';
 import {
   requestMl,
   placementResponse,
@@ -47,6 +49,7 @@ import {
 } from './ml-client';
 
 export const policy: Record<string, Record<string, string[]>> = {
+  recruitmentService: recruitmentPolicy,
   studentService: {
     getDashboard: ['student', 'campus', 'recruiter'],
     updateStudent: ['student'],
@@ -178,12 +181,19 @@ const schemas: Record<string, z.ZodTypeAny> = {
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         joining: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         kind: z.enum(['Full-time', 'PPO', 'Internship conversion']).optional(),
+        applicationId: id.optional(),
+        deadline: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        location: z.string().max(300).optional(),
+        letterUrl: z.union([z.literal(''), z.string().url().startsWith('https://')]).optional(),
       })
       .strict(),
   ]),
   'offerService.respond': z.tuple([
     id,
-    z.enum(['Accepted', 'Declined', 'Deferred', 'Withdrawn', 'Joined']),
+    z.enum(['Viewed', 'Accepted', 'Declined', 'Deferred', 'Withdrawn', 'Joined']),
   ]),
   'recruiterService.shortlistStudent': z.tuple([id]),
   'recruiterService.shortlistCandidate': z.tuple([id]),
@@ -243,10 +253,37 @@ export async function dispatch(service: string, method: string, input: unknown[]
     'Your role cannot perform this action.',
   );
   requireCondition(actor.approved, 403, 'Your organization account is waiting for approval.');
+  if (service === 'recruitmentService') return recruitmentDispatch(method, input);
   const schema = schemas[key];
   let args = schema ? schema.parse(input) : input;
   // JSON arrays turn undefined optional arguments into null.
   const data = await readWorkspace();
+  if (key === 'applicationService.apply') {
+    const job = data.drives.find((d) => (d.opportunityId || d.id) === args[0]);
+    if (job?.workflowVersion === 2)
+      throw new (await import('./errors')).HttpError(
+        409,
+        'Review the opportunity, show interest, and submit the application confirmation.',
+      );
+  }
+  if (
+    [
+      'applicationService.advance',
+      'applicationService.reject',
+      'recruiterService.shortlistCandidate',
+      'recruiterService.shortlistStudent',
+    ].includes(key)
+  ) {
+    const application =
+      data.applications.find((a) => a.id === args[0]) ||
+      data.applications.find((a) => a.stage === 'Applied');
+    const job = data.drives.find((d) => (d.opportunityId || d.id) === application?.opportunityId);
+    requireCondition(
+      job?.workflowVersion !== 2,
+      409,
+      'Use the job recruitment process to publish individual round results.',
+    );
+  }
   if (key === 'studentService.getDashboard') {
     const result = await platform.studentService.getDashboard();
     result.pointsSummary = data.pointsSummary;
@@ -761,12 +798,45 @@ export async function dispatch(service: string, method: string, input: unknown[]
     );
   }
   if (key === 'offerService.create') {
-    requireCondition(
-      target && data.applications.some((a) => a.stage === 'Offer'),
-      409,
-      'Select a candidate whose application has reached the Offer stage.',
+    const offer = args[0] as {
+      applicationId?: string;
+      deadline?: string;
+      company: string;
+      role: string;
+      location?: string;
+    };
+    const selected = data.applications.filter(
+      (a) =>
+        ['Selected', 'Offer'].includes(a.stage) &&
+        (!offer.applicationId || offer.applicationId === a.id) &&
+        data.drives.some(
+          (d) => (d.opportunityId || d.id) === a.opportunityId && d.role === offer.role,
+        ),
     );
-    (args[0] as { company: string }).company = actor.organization;
+    requireCondition(
+      target && selected.length === 1,
+      409,
+      'Select a candidate whose application has reached final selection.',
+    );
+    offer.applicationId = selected[0].id;
+    const job = data.drives.find((d) => (d.opportunityId || d.id) === selected[0].opportunityId)!;
+    if (job.workflowVersion === 2)
+      requireCondition(
+        offer.deadline && offer.deadline >= new Date().toISOString().slice(0, 10),
+        400,
+        'Set an offer acceptance deadline.',
+      );
+    requireCondition(
+      !data.offers.some(
+        (o) =>
+          o.applicationId === offer.applicationId &&
+          !['Declined', 'Expired', 'Withdrawn'].includes(o.status),
+      ),
+      409,
+      'An active offer already exists for this application.',
+    );
+    offer.location ||= job.location;
+    offer.company = actor.organization;
   }
   if (key === 'interviewService.schedule') {
     requireCondition(target, 400, 'Select a student first.');
@@ -824,9 +894,26 @@ export async function dispatch(service: string, method: string, input: unknown[]
         'opportunityId',
         'recruiterId',
         'campus',
+        'workflowVersion',
+        'companyDetails',
+        'eligibilityApprovals',
+        'requestedSlot',
       ])
         delete clean[field];
       clean.company = actor.organization;
+      clean.workflowVersion = 2;
+      const relationship = await db.get<Relationship>(
+        'campus-recruiter',
+        `${clean.campusId}:${actor.id}`,
+      );
+      requireCondition(
+        relationship?.status === 'Accepted',
+        403,
+        'The campus must accept your recruitment request before you post an opportunity.',
+      );
+      clean.companyDetails = await db.get('organization', actor.id);
+      if (Array.isArray(clean.rounds))
+        clean.rounds = clean.rounds.map((r: Record<string, unknown>) => ({ ...r, cleared: 0 }));
       if (!args[1])
         driveRequestSchema.parse({ ...driveService.getRequestDefaults(clean), ...clean });
       args = [clean, Boolean(args[1])];
@@ -844,9 +931,28 @@ export async function dispatch(service: string, method: string, input: unknown[]
         'recruiterId',
         'campusId',
         'campus',
+        'workflowVersion',
+        'companyDetails',
+        'eligibilityApprovals',
+        'requestedSlot',
       ])
         requireCondition(!Object.hasOwn(patch, field), 400, 'This field cannot be edited.');
       patch.company = actor.organization;
+    }
+    if (method === 'transition' && args[1] === 'complete') {
+      const job = data.drives.find((d) => d.id === args[0]);
+      if (job?.workflowVersion === 2) {
+        const profiles = await db.list<WorkspaceData>('workspace', job.campusId);
+        requireCondition(
+          profiles.every((w) =>
+            w.applications
+              .filter((a) => a.opportunityId === (job.opportunityId || job.id))
+              .every((a) => ['Selected', 'Rejected', 'Absent'].includes(a.stage)),
+          ),
+          409,
+          'Publish all candidate round results before completing the drive.',
+        );
+      }
     }
     if (method === 'transition') {
       args = [
@@ -861,6 +967,8 @@ export async function dispatch(service: string, method: string, input: unknown[]
             'request-change',
             'finalize',
             'activate',
+            'close',
+            'reschedule',
             'start',
             'complete',
             'cancel',
@@ -873,6 +981,13 @@ export async function dispatch(service: string, method: string, input: unknown[]
           .max(3000)
           .parse(args[3] || ''),
       ];
+    }
+    if (method === 'updateRound') {
+      requireCondition(
+        data.drives.find((d) => d.id === args[0])?.workflowVersion !== 2,
+        409,
+        'Publish candidate results in Recruitment Process instead of aggregate counts.',
+      );
     }
   }
   if (service === 'driveService' && method === 'proposeSchedule') {
@@ -944,7 +1059,9 @@ export async function analytics(
     placed: students.filter(placed).length,
     offers: offers.length,
     accepted: offers.filter((o) => ['Accepted', 'Joined'].includes(o.status)).length,
-    pending: offers.filter((o) => ['Received', 'Deferred'].includes(o.status)).length,
+    pending: offers.filter((o) =>
+      ['Offer Sent', 'Viewed', 'Received', 'Deferred'].includes(o.status),
+    ).length,
     joined: offers.filter((o) => o.status === 'Joined').length,
     active: drives.filter((d) => ['ACTIVE', 'IN_PROGRESS'].includes(d.status)).length,
     average: packages.length

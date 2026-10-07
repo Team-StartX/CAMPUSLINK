@@ -102,6 +102,17 @@ describe('critical placement workflows', () => {
       deadline: '2026-10-12',
       preferredDates: ['2026-10-18'],
       company: 'Acme',
+      rounds: [
+        {
+          id: 'interview',
+          name: 'Interview',
+          type: 'Technical Interview',
+          duration: 30,
+          capacity: 30,
+          requirements: '',
+          cleared: 0,
+        },
+      ],
       role: 'Engineer',
       location: 'Remote',
       ctc: '12 LPA',

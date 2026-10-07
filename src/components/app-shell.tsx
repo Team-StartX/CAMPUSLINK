@@ -42,7 +42,8 @@ const studentNav = [
   ['actions', 'Action center', ClipboardCheck],
   ['profile', 'My career profile', UserRound],
   ['skills', 'Skills & verification', ShieldCheck],
-  ['assessments', 'Assessments', ClipboardCheck],
+  ['campus-assessments', 'Campus Assessments', ClipboardCheck],
+  ['assessments', 'Practice assessments', ClipboardCheck],
   ['contests', 'Contests', Trophy],
   ['opportunities', 'Campus opportunities', BriefcaseBusiness],
   ['applications', 'My applications', Files],
@@ -62,8 +63,6 @@ const recruiterNav = [
   ['drives', 'Placement drives', BriefcaseBusiness],
   ['candidates', 'Candidate discovery', Users],
   ['interviews', 'Interviews', Video],
-  ['mock-interviews', 'Practice interviews', Video],
-  ['assessments', 'Assessments', ClipboardCheck],
   ['offers', 'Offers', Gift],
   ['analytics', 'Hiring analytics', BarChart3],
 ] as const;
@@ -75,7 +74,7 @@ const campusNav = [
   ['drive-requests', 'New drive requests', BriefcaseBusiness],
   ['drives', 'Placement drives', BriefcaseBusiness],
   ['scheduling', 'Scheduling', CalendarDays],
-  ['assessments', 'Assessments', ClipboardCheck],
+  ['campus-assessments', 'Campus Assessments', ClipboardCheck],
   ['contests', 'Contests', Trophy],
   ['applications', 'Applications', Files],
   ['interviews', 'Interviews', Video],
@@ -259,24 +258,6 @@ export function AppShell({ role, children }: { role: Role; children: React.React
           ))}
         </nav>
         <div className="sidebar-bottom">
-          {role === 'student' && (
-            <Link
-              href="/student/membership"
-              className="sidebar-promo"
-              aria-label="Explore Premium"
-              title="Explore Premium"
-            >
-              <Sparkles size={20} />
-              <strong>Give your future a boost.</strong>
-              <p>
-                A little more practice.
-                <br />A lot more confidence.
-              </p>
-              <span>
-                Explore Premium <ArrowUpRight size={14} />
-              </span>
-            </Link>
-          )}
           <Link href={`/${role}/notifications`} aria-label="Notifications" title="Notifications">
             <Bell size={17} /> <span className="nav-label">Notifications</span>{' '}
             {unread > 0 && <span className="nav-count">{unread}</span>}

@@ -1,4 +1,5 @@
 'use client';
+import { CampusAssessments, CampusRelationships, StudentCompanyPage } from '@/features/recruitment';
 import { AppShell } from '@/components/app-shell';
 import { Loader } from '@/components/loader';
 import { Landing, PublicPage } from '@/components/public';
@@ -24,7 +25,7 @@ import {
 import { AnalyticsPage, CompanyPage, PeoplePage, RecruitersPage } from '@/features/team';
 import { usePlatform } from '@/hooks/use-platform';
 import { notificationService } from '@/services/platform.service';
-import { ArrowUpRight, Bell, Check, CheckCheck } from 'lucide-react';
+import { Bell, Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -95,6 +96,14 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
       case 'skills':
         content = <SkillsPage {...props} />;
         break;
+      case 'campus-assessments':
+        content =
+          role === 'recruiter' ? (
+            <EmptyState title="Campus assessments are managed by the campus team." />
+          ) : (
+            <CampusAssessments role={role} />
+          );
+        break;
       case 'assessments':
         content = id ? (
           <AssessmentSession key={id} id={id} onComplete={refresh} role={role} />
@@ -139,9 +148,7 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
       case 'documents':
         content = <DocumentsPage {...props} />;
         break;
-      case 'membership':
-        content = <Membership />;
-        break;
+
       case 'notifications':
         content = <Notifications {...props} />;
         break;
@@ -149,7 +156,8 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <SettingsPage {...props} />;
         break;
       case 'company':
-        content = <CompanyPage />;
+        content =
+          role === 'student' ? <StudentCompanyPage data={props.data} id={id} /> : <CompanyPage />;
         break;
       case 'drives':
         content = <DrivesPage {...props} />;
@@ -171,7 +179,12 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <PeoplePage {...props} />;
         break;
       case 'recruiters':
-        content = <RecruitersPage />;
+        content = (
+          <>
+            <CampusRelationships role={role} data={props.data} />
+            <RecruitersPage />
+          </>
+        );
         break;
       case 'scheduling':
         content = <PlacementCalendar {...props} />;
@@ -330,27 +343,6 @@ function SettingsPage({
           Save preferences <Check size={16} />
         </Button>
       </form>
-    </>
-  );
-}
-function Membership() {
-  return (
-    <>
-      <PageHeader
-        title="Your CampusLink access."
-        description="Manage your career profile, preparation, and campus placement applications."
-      />
-      <section className="panel settings-form">
-        <Badge>INCLUDED ACCESS</Badge>
-        <h2>Career and placement workspace</h2>
-        <p>
-          Profile, skill assessments, interview practice, campus opportunities, and application
-          tracking are available through your account.
-        </p>
-        <Link href="/student/dashboard" className="button dark">
-          Open your workspace <ArrowUpRight size={16} />
-        </Link>
-      </section>
     </>
   );
 }

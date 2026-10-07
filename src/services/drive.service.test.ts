@@ -98,7 +98,7 @@ describe('campus-controlled placement lifecycle', () => {
       driveService.proposeSchedule('request-acme', { ...schedule, systems: 1 }),
     ).rejects.toThrow('60');
     await expect(
-      driveService.proposeSchedule('request-acme', { ...schedule, assessment: '07:00' }),
+      driveService.proposeSchedule('request-acme', { ...schedule, end: '07:00' }),
     ).rejects.toThrow();
   });
   it('removes cancelled drives from both opportunities and matching', async () => {

@@ -467,6 +467,9 @@ export function ConnectedCompany() {
     description: string;
     industry: string;
     headquarters: string;
+    website?: string;
+    logo?: string;
+    size?: string;
   }>({
     queryKey: ['organization'],
     queryFn: async () => (await apiClient.get('/organization')).data,
@@ -486,10 +489,9 @@ export function ConnectedCompany() {
             await apiClient.put(
               '/organization',
               Object.fromEntries(
-                ['name', 'description', 'industry', 'headquarters'].map((k) => [
-                  k,
-                  String(form.get(k)),
-                ]),
+                ['name', 'description', 'industry', 'headquarters', 'website', 'logo', 'size'].map(
+                  (k) => [k, String(form.get(k))],
+                ),
               ),
             );
             void client.invalidateQueries({ queryKey: ['organization'] });
@@ -499,7 +501,7 @@ export function ConnectedCompany() {
           }
         }}
       >
-        {(['name', 'industry', 'headquarters'] as const).map((k) =>
+        {(['name', 'industry', 'headquarters', 'website', 'logo', 'size'] as const).map((k) =>
           k === 'name' ? (
             <OrganizationPicker
               key={k}

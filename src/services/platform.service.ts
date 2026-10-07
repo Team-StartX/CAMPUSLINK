@@ -30,9 +30,10 @@ export const documentService = {
     form.append('type', type);
     return (await apiClient.post('/documents', form)).data;
   },
-  download: async (id: string) => {
+  download: async (id: string, studentId?: string) => {
     const { data } = await apiClient.get('/documents/' + id + '/download', {
       responseType: 'blob',
+      ...(studentId ? { headers: { 'X-Student-ID': studentId } } : {}),
     });
     return URL.createObjectURL(data);
   },

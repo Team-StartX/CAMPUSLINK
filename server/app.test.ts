@@ -424,6 +424,29 @@ describe('Express placement backend', () => {
       courses: 'B.Tech',
       systems: 0,
     });
+    expect(
+      (await rpc('recruiter', 'recruitmentService', 'requestCampus', ['campus-a'])).status,
+    ).toBe(200);
+    expect(
+      (
+        await rpc('campus', 'recruitmentService', 'reviewCampus', [
+          `campus-a:${recruiter.id}`,
+          'Accepted',
+          '',
+        ])
+      ).status,
+    ).toBe(200);
+    input.rounds = [
+      {
+        id: 'interview',
+        name: 'Interview',
+        type: 'Technical Interview',
+        duration: 30,
+        capacity: 10,
+        requirements: '',
+        cleared: 0,
+      },
+    ];
     const created = await rpc('recruiter', 'driveService', 'createDriveRequest', [input, false]);
     expect(created.status).toBe(200);
     const drives = await db.list<StoredDrive>('drive');
@@ -474,8 +497,21 @@ describe('Express placement backend', () => {
       (await rpc('campus', 'driveService', 'transition', [drive.id, 'activate', 'campus', '']))
         .status,
     ).toBe(200);
-    expect((await rpc('student', 'applicationService', 'apply', [drive.id])).status).toBe(200);
-    expect((await rpc('student', 'applicationService', 'apply', [drive.id])).status).toBe(422);
+    const uploaded = await clients.student.agent
+      .post('/api/v1/documents')
+      .set('X-CSRF-Token', clients.student.csrf)
+      .field('type', 'Resume')
+      .attach('file', Buffer.from('%PDF-1.4\nfixture'), 'application-resume.pdf');
+    expect(uploaded.status).toBe(201);
+    expect(
+      (await rpc('student', 'recruitmentService', 'interest', [drive.id, 'Interested'])).status,
+    ).toBe(200);
+    expect((await rpc('student', 'recruitmentService', 'apply', [drive.id, true])).status).toBe(
+      200,
+    );
+    expect((await rpc('student', 'recruitmentService', 'apply', [drive.id, true])).status).toBe(
+      409,
+    );
     expect(
       (await rpc('recruiter', 'recruiterService', 'getCandidates')).body.some(
         (s: { id: string }) => s.id === student.id,
@@ -582,11 +618,25 @@ describe('Express placement backend', () => {
   it('tracks offers and requires campus verification before joining', async () => {
     const data = await db.get<import('../src/types').WorkspaceData>('workspace', student.id);
     const application = data!.applications[0];
-    for (let i = 0; i < 5; i++)
-      expect(
-        (await rpc('recruiter', 'applicationService', 'advance', [application.id], student.id))
-          .status,
-      ).toBe(200);
+    const drive = (await db.list<StoredDrive>('drive')).find(
+      (d) => (d.opportunityId || d.id) === application.opportunityId,
+    )!;
+    expect(
+      (await rpc('campus', 'driveService', 'transition', [drive.id, 'start', 'campus'])).status,
+    ).toBe(200);
+    expect(
+      (
+        await rpc('recruiter', 'recruitmentService', 'saveResults', [
+          drive.id,
+          'interview',
+          [{ applicationId: application.id, status: 'Qualified', feedback: 'Selected' }],
+        ])
+      ).status,
+    ).toBe(200);
+    expect(
+      (await rpc('recruiter', 'recruitmentService', 'publishResults', [drive.id, 'interview']))
+        .status,
+    ).toBe(200);
     expect(
       (
         await rpc(
@@ -601,6 +651,7 @@ describe('Express placement backend', () => {
               date: '2090-01-06',
               joining: '2090-07-15',
               kind: 'PPO',
+              deadline: '2090-06-01',
             },
           ],
           student.id,
@@ -624,6 +675,8 @@ describe('Express placement backend', () => {
       (await rpc('campus', 'documentService', 'verify', [updated!.documents[0].id], student.id))
         .status,
     ).toBe(200);
+    for (const document of updated!.documents)
+      await rpc('campus', 'documentService', 'verify', [document.id], student.id);
     expect(
       (await rpc('campus', 'offerService', 'respond', [offer.id, 'Joined'], student.id)).status,
     ).toBe(200);

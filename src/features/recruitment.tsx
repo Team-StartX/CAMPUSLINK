@@ -1,0 +1,1188 @@
+'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Badge, Button, EmptyState, FormField, Modal } from '@/components/ui';
+import { recruitmentService as service } from '@/services/recruitment.service';
+import { documentService } from '@/services/platform.service';
+import type { Drive, Role, WorkspaceData } from '@/types';
+import type { CandidateResult, RecruitmentAssignment } from '@/types/recruitment';
+import { ScheduleSummary } from './drives';
+const fieldLabel = (key: string) =>
+  key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+const localDateInput = (value: string) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? ''
+    : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
+export function JobInformation({
+  drive,
+  student = false,
+  initialTab = 'Overview',
+}: {
+  drive: Drive;
+  student?: boolean;
+  initialTab?: string;
+}) {
+  const [tab, setTab] = useState(initialTab);
+  const company = drive.companyDetails;
+  return (
+    <section className="panel">
+      <div className="filter-bar" role="tablist">
+        {['Overview', 'Company', 'Eligibility', 'Recruitment Process', 'Schedule'].map((t) => (
+          <Button key={t} kind={tab === t ? 'dark' : 'outline'} onClick={() => setTab(t)}>
+            {t}
+          </Button>
+        ))}
+      </div>
+      {tab === 'Overview' && (
+        <>
+          <h2>{drive.role}</h2>
+          <p>{drive.description}</p>
+          <h3>Roles and responsibilities</h3>
+          <p>{drive.responsibilities || 'Not specified'}</p>
+          <div className="detail-list">
+            {Object.entries({
+              'Employment type': drive.workType,
+              'Work mode': drive.workMode,
+              Location: drive.location,
+              'Salary / CTC': drive.ctc,
+              'Internship stipend': drive.stipend || 'Not applicable',
+              'Bond / service agreement': drive.bond || 'None specified',
+              Openings: drive.vacancies,
+              'Expected joining': drive.joiningDate || 'Not specified',
+              'Application deadline': drive.deadline,
+              'Documents required': drive.requiredDocuments || 'Resume',
+            }).map(([k, v]) => (
+              <span key={k}>
+                {k}
+                <b>{v}</b>
+              </span>
+            ))}
+          </div>
+          <h3>Required skills</h3>
+          <p>{drive.skills}</p>
+          <h3>Preferred skills</h3>
+          <p>{drive.preferredSkills || 'None specified'}</p>
+        </>
+      )}
+      {tab === 'Company' && (
+        <>
+          <h2>{drive.company}</h2>
+          {company?.logo && (
+            <Image
+              unoptimized
+              src={company.logo}
+              alt={`${drive.company} logo`}
+              width={80}
+              height={80}
+            />
+          )}
+          <p>{company?.description || 'Company description has not been provided.'}</p>
+          {company?.website && /^https:\/\//.test(company.website) && (
+            <a href={company.website} target="_blank" rel="noreferrer">
+              Company website
+            </a>
+          )}
+          <p>Industry: {company?.industry || 'Not specified'}</p>
+          <p>Headquarters: {company?.headquarters || 'Not specified'}</p>
+          <p>Company size: {company?.size || 'Not specified'}</p>
+        </>
+      )}
+      {tab === 'Eligibility' && (
+        <>
+          <h2>Eligibility criteria</h2>
+          <p>
+            {drive.campus} · {drive.courses} · {drive.branches}
+          </p>
+          <p>Graduation batch: {drive.graduationYear}</p>
+          <p>
+            Minimum CGPA: {drive.cgpa} · Maximum active backlogs: {drive.allowedBacklogs ?? 0}
+          </p>
+          <p>
+            {drive.requireSkills
+              ? 'All required skills must be on your profile.'
+              : 'Skills inform matching; academic eligibility is checked separately.'}
+          </p>
+          <p>Additional rules: {drive.additionalEligibility || 'None specified'}</p>
+        </>
+      )}
+      {tab === 'Recruitment Process' && (
+        <>
+          <h2>Recruitment Process</h2>
+          {!drive.rounds?.length && <p>No rounds defined yet.</p>}
+          <ol className="drive-audit">
+            {drive.rounds?.map((r) => (
+              <li key={r.id}>
+                <h3>{r.name}</h3>
+                <Badge>{r.type || 'Custom Round'}</Badge>
+                <p>{r.description}</p>
+                <p>
+                  {r.duration} min · {r.mode || 'Offline'} ·{' '}
+                  {r.elimination === false ? 'Non-elimination' : 'Elimination'} round
+                </p>
+                <p>{r.instructions}</p>
+                {r.maximumScore !== undefined && (
+                  <p>
+                    Maximum score {r.maximumScore} · Passing score{' '}
+                    {r.passingScore ?? 'Not specified'}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+          {student && (
+            <p>Assignments and interview slots appear only after you reach their round.</p>
+          )}
+        </>
+      )}
+      {tab === 'Schedule' &&
+        (drive.schedule ? (
+          <>
+            <h2>{drive.schedule.date}</h2>
+            <ScheduleSummary schedule={drive.schedule} />
+            <p>Building: {drive.schedule.building || 'Not specified'}</p>
+            <p>Coordinator: {drive.schedule.coordinator || 'Not specified'}</p>
+            <p>{drive.schedule.instructions}</p>
+            {drive.schedule.meetingLink && /^https:\/\//.test(drive.schedule.meetingLink) && (
+              <a href={drive.schedule.meetingLink}>Online meeting</a>
+            )}
+          </>
+        ) : (
+          <p>Campus scheduling is pending.</p>
+        ))}
+    </section>
+  );
+}
+
+export function StudentCompanyPage({ data, id }: { data: WorkspaceData; id?: string }) {
+  const drive = data.drives.find((d) => d.id === id);
+  if (!drive) return <EmptyState title="Company details are unavailable for this opportunity." />;
+  const jobs = data.drives.filter((d) => d.company === drive.company);
+  return (
+    <>
+      <Link
+        className="back-link"
+        href={`/student/opportunities/${drive.opportunityId || drive.id}`}
+      >
+        ← Job details
+      </Link>
+      <JobInformation drive={drive} student initialTab="Company" />
+      <section className="panel">
+        <h2>Active job openings</h2>
+        {jobs
+          .filter((d) => d.status === 'ACTIVE')
+          .map((d) => (
+            <p key={d.id}>
+              <Link href={`/student/opportunities/${d.opportunityId || d.id}`}>{d.role}</Link> ·{' '}
+              {d.location} · {d.ctc}
+            </p>
+          ))}
+        <h2>Previous drives in your campus</h2>
+        {jobs
+          .filter((d) => d.status === 'COMPLETED')
+          .map((d) => (
+            <p key={d.id}>
+              {d.role} · {d.schedule?.date}
+            </p>
+          ))}
+      </section>
+    </>
+  );
+}
+
+export function RecruitmentDashboard({ role, data }: { role: Role; data: WorkspaceData }) {
+  const query = useQuery({
+    queryKey: ['recruitment-dashboard', role],
+    queryFn: service.dashboard,
+    refetchInterval: 15000,
+  });
+  if (query.isLoading) return <p>Loading recruitment overview…</p>;
+  if (query.error || !query.data)
+    return <p role="alert">{query.error?.message || 'Recruitment overview unavailable.'}</p>;
+  const overview = query.data;
+  return (
+    <>
+      <div className="metrics-grid">
+        {Object.entries(overview.metrics).map(([label, value]) => (
+          <div className="metric-card" key={label}>
+            <span>{label}</span>
+            <b>{value}</b>
+          </div>
+        ))}
+      </div>
+      <div className="two-columns">
+        <section className="panel">
+          <h2>Recent applications</h2>
+          {overview.applications.map((a) => (
+            <p key={a.id}>
+              <Link href={`/${role}/drives/${a.driveId}`}>
+                {a.name} · {a.company} · {a.role}
+              </Link>{' '}
+              <Badge>{a.stage}</Badge>
+            </p>
+          ))}
+          {!overview.applications.length && <p>No student applications yet.</p>}
+        </section>
+        <section className="panel">
+          <h2>Recent round results</h2>
+          {overview.results.map((r, i) => (
+            <p key={i}>
+              {r.name} · {r.company} · {r.round} <Badge>{r.status}</Badge>
+            </p>
+          ))}
+          {!overview.results.length && <p>No published round results yet.</p>}
+        </section>
+        <section className="panel">
+          <h2>Offers</h2>
+          {overview.offers.map((o) => (
+            <p key={o.id}>
+              {o.name} · {o.company} · {o.role} <Badge>{o.status}</Badge>
+            </p>
+          ))}
+          {!overview.offers.length && <p>No offers released yet.</p>}
+          <Link href={`/${role}/offers`}>Manage offers</Link>
+        </section>
+        <section className="panel">
+          <h2>Notifications</h2>
+          {data.notifications.slice(0, 5).map((n) => (
+            <p key={n.id}>
+              <b>{n.title}</b>
+              <br />
+              {n.body}
+            </p>
+          ))}
+          {!data.notifications.length && <p>No new notifications.</p>}
+          <Link href={`/${role}/notifications`}>All notifications</Link>
+        </section>
+      </div>
+    </>
+  );
+}
+
+export function RecruitmentPanel({
+  drive,
+  role,
+  refresh,
+}: {
+  drive: Drive;
+  role: Role;
+  refresh: () => void;
+}) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [roundId, setRoundId] = useState(drive.rounds?.[0]?.id || '');
+  const [checked, setChecked] = useState<string[]>([]);
+  const [assignment, setAssignment] = useState(false);
+  const [interview, setInterview] = useState(false);
+  const [publish, setPublish] = useState(false);
+  const query = useQuery({
+    queryKey: ['recruitment', drive.id, role],
+    queryFn: () => service.overview(drive.id),
+  });
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+      await query.refetch();
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const overview = query.data;
+  const round = drive.rounds?.find((r) => r.id === roundId);
+  const current =
+    overview?.candidates.filter(
+      (c) => c.currentRoundId === roundId && !['Selected', 'Rejected', 'Absent'].includes(c.stage),
+    ) || [];
+  return (
+    <section className="panel">
+      <h2>{role === 'student' ? 'My recruitment progress' : 'Candidates & round results'}</h2>
+      {(error || query.error) && (
+        <p role="alert" className="field-error">
+          {error || query.error?.message}
+        </p>
+      )}
+      {query.isLoading && <p>Loading recruitment records…</p>}
+      {overview && (
+        <>
+          {role !== 'student' && (
+            <div className="detail-list">
+              {Object.entries(overview.counts).map(([key, count]) => (
+                <span key={key}>
+                  {key}
+                  <b>{count}</b>
+                </span>
+              ))}
+            </div>
+          )}
+          {role === 'student' &&
+            overview.candidates.map((c) => (
+              <p key={c.applicationId}>
+                Current stage: <b>{c.stage}</b>
+                {c.currentRoundId && (
+                  <> · {drive.rounds?.find((r) => r.id === c.currentRoundId)?.name}</>
+                )}
+              </p>
+            ))}
+          {role !== 'student' && (
+            <>
+              <h3>Recruitment timeline</h3>
+              <div className="filter-bar">
+                {drive.rounds?.map((r, i) => (
+                  <Button
+                    kind={r.id === roundId ? 'dark' : 'outline'}
+                    key={r.id}
+                    onClick={() => {
+                      setRoundId(r.id);
+                      setChecked([]);
+                    }}
+                  >
+                    {String(i + 1).padStart(2, '0')} {r.name}
+                  </Button>
+                ))}
+              </div>
+              {round && (
+                <>
+                  <h3>{round.name}</h3>
+                  <p>{round.description}</p>
+                  {role === 'recruiter' && round.type === 'Assignment' && (
+                    <Button kind="outline" onClick={() => setAssignment(true)}>
+                      Add / edit assignment
+                    </Button>
+                  )}
+                  {round.type?.includes('Interview') && (
+                    <Button kind="outline" onClick={() => setInterview(true)}>
+                      Schedule individual interview
+                    </Button>
+                  )}
+                  {current.length ? (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Select</th>
+                            <th>Candidate</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                            <th>Feedback</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {current.map((c) => {
+                            const result = overview.results.find(
+                              (r) => r.applicationId === c.applicationId && r.roundId === roundId,
+                            );
+                            return (
+                              <tr key={c.applicationId}>
+                                <td>
+                                  <input
+                                    aria-label={`Select ${c.name}`}
+                                    type="checkbox"
+                                    checked={checked.includes(c.applicationId)}
+                                    onChange={(e) =>
+                                      setChecked((v) =>
+                                        e.target.checked
+                                          ? [...v, c.applicationId]
+                                          : v.filter((id) => id !== c.applicationId),
+                                      )
+                                    }
+                                  />
+                                </td>
+                                <td>{c.name}</td>
+                                <td colSpan={4}>
+                                  <form
+                                    key={`${c.applicationId}:${result?.status}:${result?.score}:${result?.feedback}`}
+                                    className="form-row"
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      const f = new FormData(e.currentTarget);
+                                      void run(() =>
+                                        service.saveResults(drive.id, roundId, [
+                                          {
+                                            applicationId: c.applicationId,
+                                            status: String(
+                                              f.get('status'),
+                                            ) as CandidateResult['status'],
+                                            score: f.get('score')
+                                              ? Number(f.get('score'))
+                                              : undefined,
+                                            feedback: String(f.get('feedback')),
+                                          },
+                                        ]),
+                                      );
+                                    }}
+                                  >
+                                    <select
+                                      name="status"
+                                      defaultValue={result?.status || 'Pending'}
+                                    >
+                                      {[
+                                        'Pending',
+                                        'Qualified',
+                                        'Rejected',
+                                        'Absent',
+                                        'Under Review',
+                                      ].map((s) => (
+                                        <option key={s}>{s}</option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      name="score"
+                                      aria-label="Score"
+                                      type="number"
+                                      min={0}
+                                      max={round.maximumScore}
+                                      step="any"
+                                      defaultValue={result?.score}
+                                      placeholder="Score"
+                                    />
+                                    <input
+                                      name="feedback"
+                                      aria-label="Feedback"
+                                      defaultValue={result?.feedback}
+                                      placeholder="Feedback"
+                                    />
+                                    <Button
+                                      type="submit"
+                                      disabled={
+                                        busy ||
+                                        drive.status !== 'IN_PROGRESS' ||
+                                        role !== 'recruiter'
+                                      }
+                                    >
+                                      Save
+                                    </Button>
+                                  </form>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p>No candidates currently participating in this round.</p>
+                  )}
+                  {role === 'recruiter' && current.length > 0 && (
+                    <div className="hero-buttons">
+                      {(['Qualified', 'Rejected', 'Absent'] as const).map((status) => (
+                        <Button
+                          key={status}
+                          kind="outline"
+                          disabled={busy || !checked.length || drive.status !== 'IN_PROGRESS'}
+                          onClick={() =>
+                            void run(() =>
+                              service.saveResults(
+                                drive.id,
+                                roundId,
+                                checked.map((applicationId) => ({
+                                  applicationId,
+                                  status,
+                                  feedback: '',
+                                })),
+                              ),
+                            )
+                          }
+                        >
+                          Mark {status}
+                        </Button>
+                      ))}
+                      <Button
+                        disabled={busy || drive.status !== 'IN_PROGRESS'}
+                        onClick={() => setPublish(true)}
+                      >
+                        Publish results
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+              <h3>Candidate pipeline</h3>
+              {overview.candidates.map((c) => (
+                <p key={c.applicationId}>
+                  {c.name} <Badge>{c.stage}</Badge>
+                </p>
+              ))}
+            </>
+          )}
+          {role !== 'student' && (
+            <>
+              <h3>Eligible students</h3>
+              {overview.eligibleCandidates?.map((c) => (
+                <p key={c.studentId}>
+                  {c.name} · {c.branch} <Badge>Eligible</Badge>
+                </p>
+              ))}
+            </>
+          )}
+          {role === 'campus' && !!overview.eligibilityReviews?.length && (
+            <>
+              <h3>Verify additional conditions</h3>
+              <p>{drive.additionalEligibility}</p>
+              {overview.eligibilityReviews.map((c) => (
+                <form
+                  className="form-row"
+                  key={c.studentId}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const f = new FormData(e.currentTarget);
+                    void run(() =>
+                      service.verifyEligibility(
+                        drive.id,
+                        c.studentId,
+                        f.get('approved') === 'yes',
+                        String(f.get('reason')),
+                      ),
+                    );
+                  }}
+                >
+                  <span>
+                    {c.name} · {c.approved ? 'Verified' : 'Needs review'}
+                  </span>
+                  <select name="approved">
+                    <option value="yes">Conditions met</option>
+                    <option value="no">Conditions not met</option>
+                  </select>
+                  <input
+                    name="reason"
+                    required
+                    minLength={5}
+                    aria-label="Verification reason"
+                    placeholder="Evidence / reason"
+                  />
+                  <Button type="submit" disabled={busy}>
+                    Save review
+                  </Button>
+                </form>
+              ))}
+            </>
+          )}
+          <h3>Published results</h3>
+          {overview.results
+            .filter((r) => r.published)
+            .map((r) => (
+              <p key={r.id}>
+                {role !== 'student' && (
+                  <>
+                    {overview.candidates.find((c) => c.applicationId === r.applicationId)?.name}{' '}
+                    ·{' '}
+                  </>
+                )}
+                {drive.rounds?.find((round) => round.id === r.roundId)?.name}:{' '}
+                <Badge>{r.status}</Badge> {r.score !== undefined && <>Score {r.score}</>}{' '}
+                {r.feedback}
+              </p>
+            ))}
+          {overview.assignments
+            .filter((a) => role === 'student' || a.roundId === roundId)
+            .map((a) => (
+              <section key={a.id} className="panel">
+                <h3>{a.title}</h3>
+                <p>{a.description}</p>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{a.tasks}</p>
+                <p>{a.instructions}</p>
+                <p>
+                  Submission: {a.format} · {a.allowedTypes} · Maximum marks {a.maximumMarks}
+                </p>
+                <p>
+                  Deadline: {a.deadline} · Evaluation: {a.criteria}
+                </p>
+                {a.link && /^https:\/\//.test(a.link) && (
+                  <a href={a.link}>Assignment attachment / link</a>
+                )}
+                {role === 'student' &&
+                  overview.candidates.some((c) => c.currentRoundId === a.roundId) && (
+                    <form
+                      className="form-stack"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const form = new FormData(e.currentTarget);
+                        const content = String(form.get('content') || '');
+                        const file = form.get('file') as File | null;
+                        void run(async () => {
+                          let documentId: string | undefined;
+                          if (file?.size) {
+                            const uploaded = (await documentService.upload(
+                              file,
+                              'Other',
+                            )) as WorkspaceData;
+                            documentId = uploaded.documents.at(-1)?.id;
+                          }
+                          await service.submitAssignment(drive.id, a.id, content, documentId);
+                        });
+                      }}
+                    >
+                      <FormField label="Submission text or HTTPS document link">
+                        <textarea name="content" />
+                      </FormField>
+                      <FormField label="Submission file (PDF or image, matching allowed types)">
+                        <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+                      </FormField>
+                      <Button type="submit" disabled={busy || drive.status !== 'IN_PROGRESS'}>
+                        Submit assignment
+                      </Button>
+                    </form>
+                  )}
+                {overview.submissions
+                  .filter((s) => s.assignmentId === a.id)
+                  .map((s) => (
+                    <p key={s.id}>
+                      Submitted {s.submittedAt}: {s.content}
+                      {s.documentId && (
+                        <Button
+                          kind="outline"
+                          onClick={() =>
+                            void run(async () => {
+                              const url = await documentService.download(
+                                s.documentId!,
+                                s.studentId,
+                              );
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = s.documentName || 'submission';
+                              link.click();
+                              URL.revokeObjectURL(url);
+                            })
+                          }
+                        >
+                          Download {s.documentName}
+                        </Button>
+                      )}
+                    </p>
+                  ))}
+              </section>
+            ))}
+          <h3>Interview schedules</h3>
+          {overview.slots.map((s) => (
+            <p key={s.id}>
+              {role !== 'student' && (
+                <>{overview.candidates.find((c) => c.studentId === s.studentId)?.name} · </>
+              )}
+              {s.date} · {s.time} IST · {s.duration} min · {s.mode} · {s.venue} / {s.room} · Panel{' '}
+              {s.panel}{' '}
+              {s.meetingLink && /^https:\/\//.test(s.meetingLink) && (
+                <a href={s.meetingLink}>Join meeting</a>
+              )}
+            </p>
+          ))}
+        </>
+      )}
+      {publish && (
+        <Modal title="Publish round results?" onClose={() => setPublish(false)}>
+          <p>Only qualified candidates advance. Published decisions cannot be edited.</p>
+          <Button
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                await service.publishResults(drive.id, roundId);
+                setPublish(false);
+              })
+            }
+          >
+            Confirm publication
+          </Button>
+        </Modal>
+      )}
+      {assignment && round && (
+        <Modal title="Assignment for this round" onClose={() => setAssignment(false)}>
+          <form
+            className="form-stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              const input = Object.fromEntries(f.entries());
+              void run(async () => {
+                await service.saveAssignment(drive.id, {
+                  ...input,
+                  roundId,
+                  maximumMarks: Number(f.get('maximumMarks')),
+                  deadline: new Date(String(f.get('deadline'))).toISOString(),
+                } as unknown as Omit<RecruitmentAssignment, 'id' | 'driveId'>);
+                setAssignment(false);
+              });
+            }}
+          >
+            {[
+              'title',
+              'description',
+              'tasks',
+              'instructions',
+              'format',
+              'link',
+              'maximumMarks',
+              'deadline',
+              'allowedTypes',
+              'criteria',
+            ].map((key) => {
+              const value =
+                overview?.assignments.find((a) => a.roundId === roundId)?.[
+                  key as keyof RecruitmentAssignment
+                ] || '';
+              return (
+                <FormField key={key} label={fieldLabel(key)}>
+                  {['description', 'tasks', 'instructions', 'criteria'].includes(key) ? (
+                    <textarea
+                      required={key !== 'instructions'}
+                      name={key}
+                      defaultValue={String(value)}
+                      rows={4}
+                    />
+                  ) : (
+                    <input
+                      required={key !== 'link'}
+                      name={key}
+                      type={
+                        key === 'maximumMarks'
+                          ? 'number'
+                          : key === 'deadline'
+                            ? 'datetime-local'
+                            : 'text'
+                      }
+                      defaultValue={key === 'deadline' ? localDateInput(String(value)) : value}
+                    />
+                  )}
+                </FormField>
+              );
+            })}
+            <Button type="submit" disabled={busy}>
+              Save assignment
+            </Button>
+          </form>
+        </Modal>
+      )}
+      {interview && (
+        <Modal title="Individual interview slot" onClose={() => setInterview(false)}>
+          <form
+            className="form-stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              void run(async () => {
+                await service.scheduleInterview(drive.id, {
+                  roundId,
+                  studentId: String(f.get('studentId')),
+                  date: String(f.get('date')),
+                  time: String(f.get('time')),
+                  duration: Number(f.get('duration')),
+                  venue: String(f.get('venue')),
+                  room: String(f.get('room')),
+                  panel: String(f.get('panel')),
+                  mode: String(f.get('mode')),
+                  meetingLink: String(f.get('meetingLink')),
+                  override: f.get('override') === 'on',
+                  reason: String(f.get('reason') || ''),
+                });
+                setInterview(false);
+              });
+            }}
+          >
+            <FormField label="Candidate">
+              <select required name="studentId">
+                {current.map((c) => (
+                  <option key={c.studentId} value={c.studentId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {['date', 'time', 'duration', 'venue', 'room', 'panel', 'meetingLink'].map((key) => (
+              <FormField key={key} label={fieldLabel(key)}>
+                <input
+                  name={key}
+                  required={['date', 'time', 'duration', 'panel'].includes(key)}
+                  type={
+                    key === 'date'
+                      ? 'date'
+                      : key === 'time'
+                        ? 'time'
+                        : key === 'duration'
+                          ? 'number'
+                          : 'text'
+                  }
+                />
+              </FormField>
+            ))}
+            <select name="mode">
+              <option>Offline</option>
+              <option>Online</option>
+            </select>
+            {role === 'campus' && (
+              <>
+                <label>
+                  <input name="override" type="checkbox" /> Override conflict
+                </label>
+                <FormField label="Override reason">
+                  <input name="reason" />
+                </FormField>
+              </>
+            )}
+            <Button type="submit" disabled={busy || !current.length}>
+              Assign interview
+            </Button>
+          </form>
+        </Modal>
+      )}
+    </section>
+  );
+}
+
+export function CampusRelationships({ role, data }: { role: Role; data: WorkspaceData }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const query = useQuery({ queryKey: ['relationships', role], queryFn: service.relationships });
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      setError('');
+      await fn();
+      await query.refetch();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel">
+      <h2>{role === 'campus' ? 'Recruiter requests' : 'Campus recruitment access'}</h2>
+      <p>
+        Campus acceptance is required before a recruiter can submit a job. Student records remain
+        private until application.
+      </p>
+      {(error || query.error) && <p role="alert">{error || query.error?.message}</p>}
+      {role === 'recruiter' &&
+        data.campuses?.map((c) => {
+          const row = query.data?.find((r) => r.campusId === c.id);
+          return (
+            <div className="panel-header" key={c.id}>
+              <span>
+                {c.name} · {row?.status || 'No request'}
+              </span>
+              <Button
+                disabled={busy || (!!row && row.status !== 'Rejected')}
+                onClick={() => void run(() => service.requestCampus(c.id))}
+              >
+                Request access
+              </Button>
+            </div>
+          );
+        })}
+      {role === 'campus' &&
+        query.data?.map((r) => (
+          <form
+            key={r.id}
+            className="form-stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              void run(() =>
+                service.reviewCampus(r.id, String(f.get('status')), String(f.get('reason'))),
+              );
+            }}
+          >
+            <h3>
+              {r.company} <Badge>{r.status}</Badge>
+            </h3>
+            {r.status === 'Pending' && (
+              <>
+                <select name="status">
+                  <option>Accepted</option>
+                  <option>Rejected</option>
+                </select>
+                <input
+                  name="reason"
+                  aria-label="Review reason"
+                  placeholder="Reason (required for rejection)"
+                />
+                <Button type="submit" disabled={busy}>
+                  Save decision
+                </Button>
+              </>
+            )}
+          </form>
+        ))}
+    </section>
+  );
+}
+
+export function CampusAssessments({ role }: { role: Role }) {
+  const [creating, setCreating] = useState(false);
+  const [questions, setQuestions] = useState<
+    { prompt: string; options: string[]; answer: number }[]
+  >([{ prompt: '', options: ['', ''], answer: 0 }]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [sessions, setSessions] = useState<Record<string, string>>({});
+  const query = useQuery({ queryKey: ['campus-assessments', role], queryFn: service.assessments });
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+      await query.refetch();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <section className="panel">
+        <h2>Campus Assessments</h2>
+        <p>Preparation tests for students in your campus, separate from recruiter rounds.</p>
+        {role === 'campus' && <Button onClick={() => setCreating(true)}>Create assessment</Button>}
+        {(error || query.error) && <p role="alert">{error || query.error?.message}</p>}
+        {message && <p role="status">{message}</p>}
+        {query.isLoading && <p>Loading assessments…</p>}
+        {query.data?.length === 0 && <EmptyState title="No campus assessments yet." />}
+      </section>
+      {query.data?.map((a) => (
+        <section className="panel" key={a.id}>
+          <h3>{a.title}</h3>
+          <Badge>{a.type}</Badge>
+          <p>{a.description}</p>
+          <p>
+            {a.start} – {a.end} · {a.duration} minutes · {a.maximumMarks} marks
+          </p>
+          <p>{a.instructions}</p>
+          {!!a.attempts?.length && (
+            <>
+              <h3>Results</h3>
+              {a.attempts.map((t) => (
+                <p key={t.studentId}>
+                  {t.name} ·{' '}
+                  {t.score === undefined ? 'Result withheld by campus' : `${t.score} marks`} ·{' '}
+                  {new Date(t.date).toLocaleDateString()}
+                </p>
+              ))}
+            </>
+          )}
+          {role === 'student' && !a.attempts?.length && !sessions[a.id] && (
+            <Button
+              disabled={
+                busy ||
+                Date.now() < Date.parse(a.start) ||
+                Date.now() > Date.parse(a.end) ||
+                (!!sessions[a.id] && Date.now() > Date.parse(sessions[a.id]))
+              }
+              onClick={() =>
+                void run(async () => {
+                  const session = await service.startAssessment(a.id);
+                  setSessions((v) => ({ ...v, [a.id]: session.expiresAt }));
+                })
+              }
+            >
+              Start assessment
+            </Button>
+          )}
+          {role === 'student' && !a.attempts?.length && sessions[a.id] && (
+            <form
+              className="form-stack"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                void run(async () => {
+                  const result = await service.submitAssessment(
+                    a.id,
+                    a.questions.map((_, i) => Number(f.get(`q${i}`))),
+                  );
+                  setMessage(
+                    result.message ||
+                      `Score: ${result.score} · ${result.passed ? 'Passed' : 'Needs preparation'}`,
+                  );
+                });
+              }}
+            >
+              <p>Submit before {new Date(sessions[a.id]).toLocaleTimeString()}.</p>
+              {a.questions.map((q, i) => (
+                <FormField key={i} label={q.prompt}>
+                  <select name={`q${i}`} required>
+                    <option value="">Choose answer</option>
+                    {q.options.map((o, j) => (
+                      <option key={j} value={j}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              ))}
+              <Button
+                type="submit"
+                disabled={
+                  busy ||
+                  Date.now() < Date.parse(a.start) ||
+                  Date.now() > Date.parse(a.end) ||
+                  (!!sessions[a.id] && Date.now() > Date.parse(sessions[a.id]))
+                }
+              >
+                Submit assessment
+              </Button>
+            </form>
+          )}
+        </section>
+      ))}
+      {creating && (
+        <Modal title="Create campus assessment" onClose={() => setCreating(false)}>
+          <form
+            className="form-stack"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              void run(async () => {
+                await service.createAssessment({
+                  title: String(f.get('title')),
+                  description: String(f.get('description')),
+                  type: String(f.get('type')),
+                  questions,
+                  duration: Number(f.get('duration')),
+                  start: new Date(String(f.get('start'))).toISOString(),
+                  end: new Date(String(f.get('end'))).toISOString(),
+                  maximumMarks: Number(f.get('maximumMarks')),
+                  passingMarks: Number(f.get('passingMarks')),
+                  batch: String(f.get('batch')),
+                  branch: String(f.get('branch')),
+                  studentIds: String(f.get('studentIds'))
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                  instructions: String(f.get('instructions')),
+                  visibleResults: f.get('visibleResults') === 'on',
+                });
+                setCreating(false);
+              });
+            }}
+          >
+            {[
+              'title',
+              'description',
+              'duration',
+              'start',
+              'end',
+              'maximumMarks',
+              'passingMarks',
+              'batch',
+              'branch',
+              'studentIds',
+              'instructions',
+            ].map((key) => (
+              <FormField
+                key={key}
+                label={
+                  fieldLabel(key) +
+                  (['batch', 'branch', 'studentIds'].includes(key) ? ' (blank = all students)' : '')
+                }
+              >
+                <input
+                  name={key}
+                  required={[
+                    'title',
+                    'duration',
+                    'start',
+                    'end',
+                    'maximumMarks',
+                    'passingMarks',
+                  ].includes(key)}
+                  type={
+                    ['duration', 'maximumMarks', 'passingMarks'].includes(key)
+                      ? 'number'
+                      : ['start', 'end'].includes(key)
+                        ? 'datetime-local'
+                        : 'text'
+                  }
+                />
+              </FormField>
+            ))}
+            <select name="type">
+              {[
+                'Aptitude test',
+                'Coding test',
+                'Technical quiz',
+                'Communication assessment',
+                'Custom assessment',
+              ].map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+            <h3>Questions</h3>
+            {questions.map((q, i) => (
+              <section className="panel" key={i}>
+                <FormField label={`Question ${i + 1}`}>
+                  <textarea
+                    required
+                    value={q.prompt}
+                    onChange={(e) =>
+                      setQuestions((v) =>
+                        v.map((r, j) => (j === i ? { ...r, prompt: e.target.value } : r)),
+                      )
+                    }
+                  />
+                </FormField>
+                <FormField label="Answer choices (one per line)">
+                  <textarea
+                    required
+                    value={q.options.join('\n')}
+                    onChange={(e) =>
+                      setQuestions((v) =>
+                        v.map((r, j) =>
+                          j === i ? { ...r, options: e.target.value.split('\n') } : r,
+                        ),
+                      )
+                    }
+                  />
+                </FormField>
+                <FormField label="Correct answer">
+                  <select
+                    value={q.answer}
+                    onChange={(e) =>
+                      setQuestions((v) =>
+                        v.map((r, j) => (j === i ? { ...r, answer: Number(e.target.value) } : r)),
+                      )
+                    }
+                  >
+                    {q.options.map((o, j) => (
+                      <option key={j} value={j}>
+                        {o || `Choice ${j + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <Button
+                  kind="outline"
+                  disabled={questions.length === 1}
+                  onClick={() => setQuestions((v) => v.filter((_, j) => j !== i))}
+                >
+                  Remove question
+                </Button>
+              </section>
+            ))}
+            <Button
+              kind="outline"
+              onClick={() =>
+                setQuestions((v) => [...v, { prompt: '', options: ['', ''], answer: 0 }])
+              }
+            >
+              Add question
+            </Button>
+            <label>
+              <input type="checkbox" name="visibleResults" /> Show results to students
+            </label>
+            <Button type="submit" disabled={busy}>
+              Publish campus assessment
+            </Button>
+          </form>
+        </Modal>
+      )}
+    </>
+  );
+}

@@ -7,8 +7,9 @@ import { Database } from './db';
 import { Account } from './auth';
 import { requireCondition } from './errors';
 import { queueMail } from './mail';
-import { checkEligibility } from '../src/utils/placement';
+import { checkEligibility, studentVisible } from '../src/utils/placement';
 import type { AdminAssessment, AdminContest } from '../src/types/admin';
+import type { InterviewSlot, CandidateResult } from '../src/types/recruitment';
 
 export type StoredDrive = Drive & { recruiterId: string };
 export function emptyWorkspace(account?: Account, campusName = ''): WorkspaceData {
@@ -151,9 +152,13 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     actor.role === 'recruiter' ? d.recruiterId === actor.id : d.campusId === actor.campusId,
   );
   if (actor.role === 'student')
-    data.drives = data.drives.filter((d) =>
-      ['ACTIVE', 'IN_PROGRESS', 'COMPLETED'].includes(d.status),
-    );
+    data.drives = data.drives
+      .filter((d) => studentVisible(d) && checkEligibility(data.student, d).passed)
+      .map((d) => {
+        const publicDrive = { ...d } as Partial<StoredDrive>;
+        delete publicDrive.recruiterId;
+        return publicDrive as Drive;
+      });
   if (actor.role === 'recruiter') {
     const owned = new Set(data.drives.map((d) => d.opportunityId || d.id));
     data.applications = data.applications.filter((a) => owned.has(a.opportunityId));
@@ -164,6 +169,39 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       (i) => (i as typeof i & { recruiterId?: string }).recruiterId === actor.id,
     );
   }
+  const visibleDriveIds = new Set(data.drives.map((d) => d.id));
+  const roundResults = await db.list<CandidateResult>(
+    'candidate-round',
+    target?.campusId || actor.campusId,
+    target?.id || actor.id,
+  );
+  for (const slot of await db.list<InterviewSlot>(
+    'interview-slot',
+    target?.campusId || actor.campusId,
+    target?.id || actor.id,
+  )) {
+    const drive = data.drives.find((d) => d.id === slot.driveId);
+    if (!drive || !visibleDriveIds.has(slot.driveId)) continue;
+    data.interviews.push({
+      id: slot.id,
+      company: drive.company,
+      role: drive.role,
+      date: slot.date,
+      time: slot.time,
+      mode: slot.mode === 'Online' ? slot.meetingLink : `${slot.venue} · ${slot.room}`,
+      round: drive.rounds?.find((r) => r.id === slot.roundId)?.name || 'Interview',
+      status: roundResults.some((r) => r.roundId === slot.roundId && r.published)
+        ? 'Completed'
+        : 'Scheduled',
+    });
+  }
+  data.offers = data.offers.map((o) =>
+    o.deadline &&
+    o.deadline < new Date().toISOString().slice(0, 10) &&
+    ['Offer Sent', 'Viewed', 'Received'].includes(o.status)
+      ? { ...o, status: 'Expired' }
+      : o,
+  );
   data.notifications = await db.list('notification', undefined, actor.id);
   const templates = await db.list<InterviewTemplate & { recruiterId: string; campusIds: string[] }>(
     'template',
@@ -277,6 +315,93 @@ async function writeWorkspace(action: (data: WorkspaceData) => void) {
       requireCondition(actor.role !== 'student' || stored, 403, 'Students cannot create drives.');
       const next = { ...drive, recruiterId: stored?.recruiterId || actor.id };
       await db.put('drive', drive.id, next, drive.campusId, next.recruiterId);
+      // Keep existing Drive projections compatible while exposing independently
+      // addressable rounds and schedule relationships in the scoped record store.
+      for (const [order, round] of (drive.rounds || []).entries())
+        await db.put(
+          'recruitment-round',
+          `${drive.id}:${round.id}`,
+          {
+            ...round,
+            id: `${drive.id}:${round.id}`,
+            roundId: round.id,
+            driveId: drive.id,
+            order,
+            recruiterId: next.recruiterId,
+          },
+          drive.campusId,
+          next.recruiterId,
+        );
+      for (const row of await db.list<{ id: string; driveId: string }>(
+        'recruitment-round',
+        drive.campusId,
+      ))
+        if (
+          row.driveId === drive.id &&
+          !drive.rounds?.some((r) => `${drive.id}:${r.id}` === row.id)
+        )
+          await db.remove('recruitment-round', row.id);
+      if (drive.schedule)
+        await db.put(
+          'drive-schedule',
+          drive.id,
+          { ...drive.schedule, driveId: drive.id, status: drive.status },
+          drive.campusId,
+          next.recruiterId,
+        );
+      const eventId = randomUUID();
+      await db.put(
+        'audit',
+        eventId,
+        {
+          id: eventId,
+          user_id: actor.id,
+          role: actor.role,
+          action: 'drive-updated',
+          entity: 'drive',
+          entity_id: drive.id,
+          timestamp: new Date().toISOString(),
+          old_value: old,
+          new_value: next,
+        },
+        drive.campusId,
+        actor.id,
+      );
+      const recipients = (await db.list<Account>('account')).filter(
+        (a) =>
+          a.id !== actor.id &&
+          (a.id === next.recruiterId || (a.role === 'campus' && a.campusId === drive.campusId)),
+      );
+      for (const recipient of recipients)
+        await notify(
+          db,
+          recipient,
+          `${drive.company}: ${drive.status.toLowerCase().replaceAll('_', ' ')}`,
+          drive.reviewNote || `${drive.role} updated. Review the drive details.`,
+          'Drive',
+        );
+      if (
+        (old?.schedule && JSON.stringify(old.schedule) !== JSON.stringify(drive.schedule)) ||
+        (old?.status === 'ACTIVE' && ['SCHEDULING', 'CANCELLED'].includes(drive.status))
+      ) {
+        for (const student of await db.list<Account>('account', drive.campusId)) {
+          if (student.role !== 'student') continue;
+          const profile = await db.get<WorkspaceData>('workspace', student.id);
+          if (
+            !profile?.applications.some(
+              (a) => a.opportunityId === (drive.opportunityId || drive.id),
+            )
+          )
+            continue;
+          await notify(
+            db,
+            student,
+            drive.status === 'CANCELLED' ? 'Drive cancelled' : 'Schedule changed',
+            `${drive.company}: ${drive.reviewNote || 'The campus is coordinating a revised schedule.'}`,
+            'Drive',
+          );
+        }
+      }
       if (drive.status === 'ACTIVE' && old?.status !== 'ACTIVE') {
         for (const a of await db.list<Account>('account', drive.campusId)) {
           if (a.role !== 'student') continue;

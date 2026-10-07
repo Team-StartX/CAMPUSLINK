@@ -9,10 +9,13 @@ export function usePlatform() {
     queryFn: studentService.getDashboard,
     enabled: Boolean(user && user.onboardingComplete !== false),
     retry: 1,
+    refetchInterval: 15000,
   });
   const client = useQueryClient();
   const refresh = () => {
     client.invalidateQueries({ queryKey: ['readiness'] });
+    client.invalidateQueries({ queryKey: ['recruitment-dashboard'] });
+    client.invalidateQueries({ queryKey: ['server-analytics'] });
     return client.invalidateQueries({ queryKey: ['platform'] });
   };
   return { ...query, refresh };

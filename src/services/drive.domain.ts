@@ -1,7 +1,12 @@
 import { mockAdapter } from '@/mocks/adapter';
 import { Drive, DriveSchedule, DriveStatus, Role } from '@/types';
 import { DomainError } from '@/utils/domain-error';
-import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
+import {
+  checkEligibility,
+  driveOpportunity,
+  studentVisible,
+  scheduleFinalized,
+} from '@/utils/placement';
 import { fit } from '@/utils/scoring';
 import { defaultDrive } from './drive.defaults';
 import { driveRequestSchema, scheduleConflicts, scheduleSchema } from './drive.validation';
@@ -16,6 +21,8 @@ type Action =
   | 'request-change'
   | 'finalize'
   | 'activate'
+  | 'close'
+  | 'reschedule'
   | 'start'
   | 'complete'
   | 'cancel'
@@ -33,7 +40,13 @@ const transitions: Record<Action, { role: Role; from: DriveStatus[]; to: DriveSt
   },
   finalize: { role: 'campus', from: ['CONFIRMED'], to: 'CONFIRMED' },
   activate: { role: 'campus', from: ['CONFIRMED'], to: 'ACTIVE' },
-  start: { role: 'campus', from: ['ACTIVE'], to: 'IN_PROGRESS' },
+  close: { role: 'campus', from: ['ACTIVE'], to: 'APPLICATIONS_CLOSED' },
+  reschedule: {
+    role: 'campus',
+    from: ['AWAITING_RECRUITER_CONFIRMATION', 'CONFIRMED', 'ACTIVE', 'APPLICATIONS_CLOSED'],
+    to: 'SCHEDULING',
+  },
+  start: { role: 'campus', from: ['ACTIVE', 'APPLICATIONS_CLOSED'], to: 'IN_PROGRESS' },
   complete: { role: 'campus', from: ['IN_PROGRESS'], to: 'COMPLETED' },
   cancel: {
     role: 'campus',
@@ -94,18 +107,13 @@ export const driveService = {
       if (!drive || rule.role !== role || !rule.from.includes(drive.status))
         throw new DomainError('This action is not available at the current drive stage.');
       if (
-        ['changes', 'reject', 'request-change', 'cancel'].includes(action) &&
+        ['changes', 'reject', 'request-change', 'cancel', 'reschedule'].includes(action) &&
         note.trim().length < 5
       )
         throw new DomainError('Add a reason of at least 5 characters.');
       if (['confirm', 'activate', 'finalize'].includes(action) && !drive.schedule)
         throw new DomainError('A campus schedule is required.');
-      if (
-        action === 'activate' &&
-        !drive.audit?.some(
-          (a) => a.status === 'CONFIRMED' && a.note === 'Schedule finalized by campus.',
-        )
-      )
+      if (action === 'activate' && !scheduleFinalized(drive))
         throw new DomainError('Finalize the confirmed schedule before activation.');
       if (action === 'resubmit') driveRequestSchema.parse(drive);
       audit(

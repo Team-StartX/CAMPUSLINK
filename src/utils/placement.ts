@@ -9,17 +9,34 @@ export const driveStatuses: DriveStatus[] = [
   'AWAITING_RECRUITER_CONFIRMATION',
   'CONFIRMED',
   'ACTIVE',
+  'APPLICATIONS_CLOSED',
   'IN_PROGRESS',
   'COMPLETED',
   'REJECTED',
   'CANCELLED',
 ];
 export const statusLabel = (status: DriveStatus) =>
+  (
+    ({
+      SUBMITTED: 'Pending Campus Approval',
+      UNDER_REVIEW: 'Campus Review',
+      ACTIVE: 'Applications Open',
+      CONFIRMED: 'Schedule Confirmed',
+    }) as Partial<Record<DriveStatus, string>>
+  )[status] ||
   status
     .toLowerCase()
     .replaceAll('_', ' ')
     .replace(/^./, (s) => s.toUpperCase());
-export const studentVisible = (drive: Drive) => ['ACTIVE', 'IN_PROGRESS'].includes(drive.status);
+export const studentVisible = (drive: Drive) =>
+  ['ACTIVE', 'APPLICATIONS_CLOSED', 'IN_PROGRESS', 'COMPLETED'].includes(drive.status) &&
+  (drive.workflowVersion !== 2 ||
+    Boolean(
+      drive.schedule &&
+      drive.audit?.some((a) => a.status === 'SCHEDULING') &&
+      drive.audit?.some((a) => a.status === 'CONFIRMED') &&
+      drive.audit?.some((a) => a.status === 'ACTIVE'),
+    ));
 const values = (s = '') =>
   s
     .split(',')
@@ -36,6 +53,26 @@ const branchCode = (s: string) =>
 export function checkEligibility(student: Student, drive: Drive) {
   const branch = branchCode(student.branch || student.course.split('·')[1]?.trim() || '');
   const checks = [
+    ...(drive.additionalEligibility?.trim()
+      ? [
+          {
+            name: 'Additional recruiter conditions',
+            passed: Boolean(drive.eligibilityApprovals?.includes(student.id)),
+            detail: drive.additionalEligibility,
+          },
+        ]
+      : []),
+    ...(drive.requireSkills
+      ? [
+          {
+            name: 'Required skills',
+            passed: values(drive.skills).every((s) =>
+              student.skills.some((k) => k.name.toLowerCase() === s),
+            ),
+            detail: drive.skills,
+          },
+        ]
+      : []),
     {
       name: 'Campus',
       passed: student.campus === drive.campus,
@@ -72,6 +109,8 @@ export function checkEligibility(student: Student, drive: Drive) {
 export function driveOpportunity(drive: Drive, existing?: Opportunity): Opportunity {
   return {
     id: drive.opportunityId || drive.id,
+    workMode: drive.workMode,
+    logo: drive.companyDetails?.logo,
     driveId: drive.id,
     company: drive.company,
     role: drive.role,
@@ -81,12 +120,22 @@ export function driveOpportunity(drive: Drive, existing?: Opportunity): Opportun
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
-    match: existing?.match ?? 86,
-    deadline: drive.deadline || drive.schedule?.date || '2026-10-12',
+    match: existing?.match ?? 0,
+    deadline: drive.deadline || drive.schedule?.date || '',
     color: existing?.color || 'sage',
     type: drive.workType || 'Full-time',
     campus: drive.campus,
     visitDate: drive.schedule?.date,
     venue: drive.schedule?.venue,
   };
+}
+
+export function scheduleFinalized(drive: Drive) {
+  const history = drive.audit || [];
+  const proposal = history.findLastIndex((a) => a.status === 'AWAITING_RECRUITER_CONFIRMATION');
+  return (
+    history.findLastIndex(
+      (a) => a.status === 'CONFIRMED' && a.note === 'Schedule finalized by campus.',
+    ) > proposal
+  );
 }

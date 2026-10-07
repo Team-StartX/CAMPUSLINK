@@ -407,7 +407,11 @@ export const notificationService = {
 export const offerService = {
   create: (offer: Omit<import('@/types').Offer, 'id' | 'status'>) =>
     mockAdapter.update((d) => {
-      d.offers.push({ ...offer, id: crypto.randomUUID(), status: 'Received' });
+      d.offers.push({
+        ...offer,
+        id: crypto.randomUUID(),
+        status: offer.applicationId && offer.deadline ? 'Offer Sent' : 'Received',
+      });
       d.notifications.unshift({
         id: crypto.randomUUID(),
         title: `A new chapter with ${offer.company}.`,
@@ -429,10 +433,18 @@ export const offerService = {
       const o = d.offers.find((o) => o.id === id);
       if (!o) throw new DomainError('Offer not found.');
       const transitions: Record<string, string[]> = {
+        'Offer Sent': ['Viewed', 'Accepted', 'Declined'],
+        Viewed: ['Accepted', 'Declined'],
         Received: ['Accepted', 'Declined', 'Deferred'],
         Deferred: ['Accepted', 'Declined', 'Withdrawn'],
         Accepted: ['Joined', 'Withdrawn'],
       };
+      if (
+        o.deadline &&
+        o.deadline < new Date().toISOString().slice(0, 10) &&
+        ['Offer Sent', 'Viewed', 'Received'].includes(o.status)
+      )
+        throw new DomainError('This offer has expired.');
       if (!transitions[o.status]?.includes(status))
         throw new DomainError('This offer response is unavailable at the current stage.');
       o.status = status;

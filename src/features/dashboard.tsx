@@ -1,5 +1,6 @@
 'use client';
-import { ConnectedAnalytics } from '@/components/backend-tools';
+import Image from 'next/image';
+import { RecruitmentDashboard } from './recruitment';
 import { ContestProgress } from '@/components/contest-progress';
 import { DashboardActivity } from '@/components/dashboard-activity';
 import { PreparationOverview } from '@/components/preparation-overview';
@@ -34,7 +35,11 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
     >
       <div className="opportunity-top">
         <span className={`company-logo ${job.color}`}>
-          {job.company === 'Atlassian' ? '▲' : job.company === 'Google' ? 'G' : job.company[0]}
+          {job.logo ? (
+            <Image unoptimized src={job.logo} alt={job.company} width={44} height={44} />
+          ) : (
+            job.company[0]
+          )}
           {job.company === 'Razorpay' && <ArrowUpRight size={17} />}
         </span>
         <span className="match-tag">
@@ -42,7 +47,11 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
         </span>
       </div>
       <p className="company-name">{job.company}</p>
-      <Badge>ON-CAMPUS · Eligibility passed</Badge>
+      <Badge>Eligibility passed</Badge>
+      <p>
+        {job.location} · {job.workMode || 'On-site'}
+      </p>
+      <p>Apply before {formatDate(job.deadline)}</p>
       <h3>{job.role}</h3>
       <p className="muted job-meta">
         {job.visitDate ? formatDate(job.visitDate) : 'Campus visit'} <span>·</span> {job.campus}
@@ -433,7 +442,7 @@ export function TeamDashboard({ data, role }: { data: WorkspaceData; role: Role 
         }
       />
       <DriveActivitySummary data={data} role={role} />
-      <ConnectedAnalytics />
+      <RecruitmentDashboard role={role} data={data} />
     </>
   );
 }

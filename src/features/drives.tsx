@@ -1,4 +1,8 @@
 'use client';
+import { JobInformation, RecruitmentPanel, CampusRelationships } from './recruitment';
+import { roundTypes } from '@/types/recruitment';
+import { recruitmentService } from '@/services/recruitment.service';
+import { useSession } from '@/store/session';
 import { ContestProgress } from '@/components/contest-progress';
 import {
   Badge,
@@ -18,7 +22,7 @@ import {
 import { aiService } from '@/services/platform.service';
 import { WorkspaceData, Drive, DriveSchedule, DriveStatus, Role } from '@/types';
 import { contestAchievements } from '@/utils/contest-achievements';
-import { checkEligibility, driveStatuses, statusLabel } from '@/utils/placement';
+import { checkEligibility, driveStatuses, statusLabel, scheduleFinalized } from '@/utils/placement';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import {
@@ -56,6 +60,7 @@ export function CampusDiscovery({ data }: Props) {
         title="Meet your next campus."
         description="Explore campus cohorts, then request a visit through the placement cell."
       />
+      <CampusRelationships role="recruiter" data={data} />
       <label className="search-input">
         <Search size={18} />
         <input
@@ -235,6 +240,7 @@ function DriveRequestWizard({
   existing?: Drive;
 }) {
   const router = useRouter();
+  const user = useSession((s) => s.user);
   const [step, setStep] = useState(0);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -248,7 +254,7 @@ function DriveRequestWizard({
     return (
       existing ||
       driveService.getRequestDefaults({
-        company: '',
+        company: user?.organization || '',
         role: '',
         description: '',
         campusId: campusId || '',
@@ -312,7 +318,22 @@ function DriveRequestWizard({
     try {
       const input = { ...values, preferredDates: values.preferredDates?.filter(Boolean) };
       if (existing) {
-        await driveService.updateDriveRequest(existing.id, input);
+        const patch = { ...input } as Partial<Drive> & { recruiterId?: string };
+        for (const key of [
+          'id',
+          'status',
+          'applicants',
+          'schedule',
+          'audit',
+          'opportunityId',
+          'campusId',
+          'campus',
+          'recruiterId',
+          'workflowVersion',
+          'companyDetails',
+        ] as const)
+          delete patch[key];
+        await driveService.updateDriveRequest(existing.id, patch);
         await driveService.transition(existing.id, 'resubmit', 'recruiter');
       } else await driveService.createDriveRequest(input, draft);
       refresh();
@@ -321,7 +342,8 @@ function DriveRequestWizard({
           ? 'Draft saved. Students cannot see it.'
           : 'Request submitted. Awaiting campus review.',
       );
-      router.push('/recruiter/drives');
+      const requests = await driveService.getDriveRequests();
+      router.push(`/recruiter/drives/${existing?.id || requests.at(-1)?.id || ''}`);
     } catch (e) {
       setError(e instanceof z.ZodError ? e.issues[0].message : (e as Error).message);
     } finally {
@@ -330,8 +352,8 @@ function DriveRequestWizard({
   };
   const roundSet = (
     id: string,
-    key: 'name' | 'duration' | 'capacity' | 'requirements',
-    value: string | number,
+    key: keyof import('@/types').DriveRound,
+    value: string | number | boolean | undefined,
   ) =>
     set(
       'rounds',
@@ -412,6 +434,46 @@ function DriveRequestWizard({
         )}
         {step === 1 && (
           <>
+            <FormField label="Work mode">
+              <select
+                value={values.workMode || 'On-site'}
+                onChange={(e) => set('workMode', e.target.value as Drive['workMode'])}
+              >
+                <option>On-site</option>
+                <option>Hybrid</option>
+                <option>Remote</option>
+              </select>
+            </FormField>
+            {(
+              [
+                'responsibilities',
+                'stipend',
+                'bond',
+                'joiningDate',
+                'requiredDocuments',
+                'additionalEligibility',
+              ] as const
+            ).map((key) => (
+              <FormField
+                key={key}
+                label={
+                  {
+                    responsibilities: 'Roles and responsibilities',
+                    stipend: 'Internship stipend (if applicable)',
+                    bond: 'Bond / service agreement',
+                    joiningDate: 'Expected joining date',
+                    requiredDocuments: 'Required document types (comma separated)',
+                    additionalEligibility: 'Additional eligibility rules (campus must verify)',
+                  }[key]
+                }
+              >
+                <input
+                  value={values[key] || ''}
+                  type={key === 'joiningDate' ? 'date' : 'text'}
+                  onChange={(e) => set(key, e.target.value)}
+                />
+              </FormField>
+            ))}
             <div className="form-row">
               <FormField label="Company">
                 <input
@@ -492,6 +554,14 @@ function DriveRequestWizard({
         )}
         {step === 2 && (
           <>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={values.requireSkills || false}
+                onChange={(e) => set('requireSkills', e.target.checked)}
+              />{' '}
+              Require all listed skills for eligibility
+            </label>
             <div className="info-banner yellow">
               <ShieldCheck />
               <p>
@@ -566,6 +636,10 @@ function DriveRequestWizard({
         )}
         {step === 3 && (
           <>
+            <p>
+              Define the recruitment process for this job. An assignment is optional and can only be
+              added inside an Assignment round.
+            </p>
             <p>Build the sequence your team will conduct during the campus visit.</p>
             {values.rounds?.map((r, i) => (
               <div className="round-editor" key={r.id}>
@@ -599,6 +673,96 @@ function DriveRequestWizard({
                         onChange={(e) => roundSet(r.id, 'capacity', Number(e.target.value))}
                       />
                     </FormField>
+                  </div>
+                  <div className="form-row">
+                    <FormField label="Round type">
+                      <select
+                        value={r.type || 'Custom Round'}
+                        onChange={(e) => roundSet(r.id, 'type', e.target.value)}
+                      >
+                        {roundTypes.map((t) => (
+                          <option key={t}>{t}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                    <FormField label="Mode">
+                      <select
+                        value={r.mode || 'Offline'}
+                        onChange={(e) => roundSet(r.id, 'mode', e.target.value)}
+                      >
+                        <option>Offline</option>
+                        <option>Online</option>
+                      </select>
+                    </FormField>
+                  </div>
+                  <FormField label="Description">
+                    <textarea
+                      value={r.description || ''}
+                      onChange={(e) => roundSet(r.id, 'description', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="Instructions">
+                    <textarea
+                      value={r.instructions || ''}
+                      onChange={(e) => roundSet(r.id, 'instructions', e.target.value)}
+                    />
+                  </FormField>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={r.elimination !== false}
+                      onChange={(e) => roundSet(r.id, 'elimination', e.target.checked)}
+                    />{' '}
+                    Elimination round
+                  </label>
+                  <div className="form-row">
+                    {(['maximumScore', 'passingScore'] as const).map((key) => (
+                      <FormField
+                        key={key}
+                        label={
+                          key === 'maximumScore'
+                            ? 'Maximum score (optional)'
+                            : 'Passing score (optional)'
+                        }
+                      >
+                        <input
+                          type="number"
+                          min={0}
+                          value={r[key] ?? ''}
+                          onChange={(e) =>
+                            roundSet(
+                              r.id,
+                              key,
+                              e.target.value === '' ? undefined : Number(e.target.value),
+                            )
+                          }
+                        />
+                      </FormField>
+                    ))}
+                  </div>
+                  <div className="hero-buttons">
+                    <Button
+                      kind="outline"
+                      disabled={i === 0}
+                      onClick={() => {
+                        const rounds = [...(values.rounds || [])];
+                        [rounds[i - 1], rounds[i]] = [rounds[i], rounds[i - 1]];
+                        set('rounds', rounds);
+                      }}
+                    >
+                      Move up
+                    </Button>
+                    <Button
+                      kind="outline"
+                      disabled={i === (values.rounds?.length || 0) - 1}
+                      onClick={() => {
+                        const rounds = [...(values.rounds || [])];
+                        [rounds[i + 1], rounds[i]] = [rounds[i], rounds[i + 1]];
+                        set('rounds', rounds);
+                      }}
+                    >
+                      Move down
+                    </Button>
                   </div>
                   <FormField label="Requirements">
                     <input
@@ -642,7 +806,10 @@ function DriveRequestWizard({
                   ...(values.rounds || []),
                   {
                     id: crypto.randomUUID(),
-                    name: 'Custom round',
+                    name: 'Interview',
+                    type: 'Technical Interview',
+                    mode: 'Offline',
+                    elimination: true,
                     duration: 30,
                     capacity: 30,
                     requirements: '',
@@ -736,6 +903,7 @@ function DriveRequestWizard({
         )}
         {step === 5 && (
           <>
+            <JobInformation drive={values} />
             <DriveSummary drive={values} />
             <div className="info-banner sage">
               <ShieldCheck />
@@ -878,17 +1046,17 @@ function DriveDetail({
       />
     );
   const campus = role === 'campus';
-  const finalized = drive.audit?.some(
-    (a) => a.status === 'CONFIRMED' && a.note === 'Schedule finalized by campus.',
-  );
+  const finalized = scheduleFinalized(drive);
   const eligibility = checkEligibility(data.student, drive);
   const milestones = [
+    'DRAFT',
     'SUBMITTED',
     'UNDER_REVIEW',
     'SCHEDULING',
     'AWAITING_RECRUITER_CONFIRMATION',
     'CONFIRMED',
     'ACTIVE',
+    'APPLICATIONS_CLOSED',
     'IN_PROGRESS',
     'COMPLETED',
   ];
@@ -912,6 +1080,10 @@ function DriveDetail({
           </div>
         ))}
       </div>
+      <JobInformation drive={drive} />
+      {drive.workflowVersion === 2 && (
+        <RecruitmentPanel drive={drive} role={role} refresh={refresh} />
+      )}
       <div className="drive-detail-layout">
         <div>
           <section className="panel">
@@ -948,7 +1120,7 @@ function DriveDetail({
               </Link>
             </section>
           )}
-          {drive.status === 'IN_PROGRESS' && campus && (
+          {drive.status === 'IN_PROGRESS' && campus && drive.workflowVersion !== 2 && (
             <LiveTracking drive={drive} refresh={refresh} notify={notify} />
           )}
         </div>
@@ -970,6 +1142,7 @@ function DriveDetail({
                       ? 'Schedule finalized. Campus can open applications.'
                       : 'Recruiter confirmed. Campus must finalize the schedule.',
                     ACTIVE: 'Eligible students can apply. Campus can begin the visit.',
+                    APPLICATIONS_CLOSED: 'Applications closed. Campus can begin the drive.',
                     IN_PROGRESS: 'The company is on campus. Track attendance and round results.',
                     COMPLETED: 'Visit complete. Continue with offers, documents, and joining.',
                     REJECTED: 'Campus rejected the request.',
@@ -985,6 +1158,27 @@ function DriveDetail({
               </div>
             )}
             <div className="form-stack">
+              {campus && drive.status === 'ACTIVE' && (
+                <Button disabled={busy} onClick={() => void run('close')}>
+                  Close applications
+                </Button>
+              )}
+              {campus &&
+                [
+                  'CONFIRMED',
+                  'ACTIVE',
+                  'APPLICATIONS_CLOSED',
+                  'AWAITING_RECRUITER_CONFIRMATION',
+                ].includes(drive.status) && (
+                  <>
+                    <FormField label="Reason for schedule change">
+                      <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+                    </FormField>
+                    <Button kind="outline" disabled={busy} onClick={() => void run('reschedule')}>
+                      Propose revised schedule
+                    </Button>
+                  </>
+                )}
               {campus && drive.status === 'SUBMITTED' && (
                 <Button disabled={busy} onClick={() => void run('review')}>
                   Begin review
@@ -1036,7 +1230,7 @@ function DriveDetail({
                   {finalized ? 'Activate student participation' : 'Finalize confirmed schedule'}
                 </Button>
               )}
-              {campus && drive.status === 'ACTIVE' && (
+              {campus && ['ACTIVE', 'APPLICATIONS_CLOSED'].includes(drive.status) && (
                 <Button disabled={busy} onClick={() => void run('start')}>
                   Begin campus drive
                 </Button>
@@ -1082,6 +1276,66 @@ function DriveDetail({
           </section>
         </aside>
       </div>
+      {!campus && drive.status === 'AWAITING_RECRUITER_CONFIRMATION' && (
+        <section className="panel">
+          <h2>Request another slot</h2>
+          <form
+            className="form-stack"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              setBusy(true);
+              setError('');
+              try {
+                await recruitmentService.requestSlot(drive.id, {
+                  date: String(f.get('date')),
+                  start: String(f.get('start')),
+                  end: String(f.get('end')),
+                  reason: String(f.get('reason')),
+                });
+                refresh();
+                notify('Alternative slot sent to campus.');
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {(['date', 'start', 'end', 'reason'] as const).map((k) => (
+              <FormField
+                key={k}
+                label={
+                  {
+                    date: 'Suggested date',
+                    start: 'Start time',
+                    end: 'End time',
+                    reason: 'Reason',
+                  }[k]
+                }
+              >
+                <input
+                  required
+                  name={k}
+                  type={k === 'date' ? 'date' : k === 'reason' ? 'text' : 'time'}
+                />
+              </FormField>
+            ))}
+            <Button type="submit" disabled={busy}>
+              Send alternative slot
+            </Button>
+          </form>
+        </section>
+      )}
+      {campus && drive.requestedSlot && (
+        <section className="panel">
+          <h2>Recruiter availability</h2>
+          <p>
+            {drive.requestedSlot.date} · {drive.requestedSlot.start}–{drive.requestedSlot.end} IST
+          </p>
+          <p>{drive.requestedSlot.reason}</p>
+        </section>
+      )}
       {campus && drive.status === 'SCHEDULING' && (
         <ScheduleProposal drive={drive} data={data} refresh={refresh} notify={notify} />
       )}
@@ -1098,10 +1352,8 @@ export function ScheduleSummary({ schedule: s }: { schedule: DriveSchedule }) {
         </b>
       </span>
       <span>
-        Talk / assessment / interviews
-        <b>
-          {s.talk} / {s.assessment} / {s.interviews}
-        </b>
+        Start time
+        <b>{s.talk}</b>
       </span>
       <span>
         Venue<b>{s.venue}</b>
@@ -1170,17 +1422,37 @@ function ScheduleProposal({
           }
         })}
       >
+        {(['building', 'meetingLink', 'coordinator', 'instructions', 'notes'] as const).map(
+          (key) => (
+            <FormField
+              key={key}
+              label={
+                {
+                  building: 'Building',
+                  meetingLink: 'Online meeting link (if applicable)',
+                  coordinator: 'Campus coordinator',
+                  instructions: 'Instructions',
+                  notes: 'Campus notes',
+                }[key]
+              }
+            >
+              <input {...register(key)} />
+            </FormField>
+          ),
+        )}
+        <input type="hidden" {...register('assessment')} />
+        <input type="hidden" {...register('interviews')} />
         <FormField label="Visit date">
           <input type="date" {...register('date')} />
         </FormField>
         <div className="three-columns">
-          {(['reporting', 'talk', 'assessment', 'interviews', 'end'] as const).map((key) => (
+          {(['reporting', 'talk', 'end'] as const).map((key) => (
             <FormField
               key={key}
               label={
                 {
                   reporting: 'Reporting',
-                  talk: 'Pre-placement talk',
+                  talk: 'Drive start time',
                   assessment: 'Assessment',
                   interviews: 'Interviews',
                   end: 'Visit ends',

@@ -11,7 +11,7 @@ export const setTargetStudent = (value: string) => {
 };
 apiClient.interceptors.request.use((config) => {
   if (csrf) config.headers.set('X-CSRF-Token', csrf);
-  if (target) config.headers.set('X-Student-ID', target);
+  if (target && !config.headers.has('X-Student-ID')) config.headers.set('X-Student-ID', target);
   return config;
 });
 export async function rpc<T>(service: string, method: string, args: unknown[] = []): Promise<T> {

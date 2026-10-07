@@ -1,7 +1,24 @@
 import { z } from 'zod';
 import type { Drive, DriveSchedule } from '@/types';
+import { roundTypes } from '@/types/recruitment';
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((v) => {
+    const d = new Date(`${v}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }, 'Enter a valid calendar date.');
+const clockTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'Enter a valid time.');
 
 export const driveRequestSchema = z.object({
+  workMode: z.enum(['On-site', 'Hybrid', 'Remote']).optional(),
+  responsibilities: z.string().max(10000).optional(),
+  stipend: z.string().max(300).optional(),
+  bond: z.string().max(3000).optional(),
+  joiningDate: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
+  requiredDocuments: z.string().max(1000).optional(),
+  additionalEligibility: z.string().max(3000).optional(),
+  requireSkills: z.boolean().optional(),
   campusId: z.string().min(1, 'Select a campus.'),
   company: z.string().trim().min(2),
   role: z.string().trim().min(2, 'Enter the role.'),
@@ -17,49 +34,65 @@ export const driveRequestSchema = z.object({
     .regex(/^\d{4}(\s*,\s*\d{4})*$/, 'Use graduation years separated by commas.'),
   allowedBacklogs: z.number().int().min(0).max(10),
   skills: z.string().trim().min(1),
-  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  preferredDates: z
-    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
-    .min(1)
-    .max(3),
+  deadline: calendarDate,
+  preferredDates: z.array(calendarDate).min(1).max(3),
   teamSize: z.number().int().min(1).max(50),
   labs: z.number().int().min(0),
   rooms: z.number().int().min(0),
   systems: z.number().int().min(0).max(1000),
   rounds: z
     .array(
-      z.object({
-        id: z.string(),
-        name: z.string().trim().min(1),
-        duration: z.number().int().min(5).max(480),
-        capacity: z.number().int().min(1),
-        requirements: z.string(),
-        cleared: z.number().min(0),
-      }),
+      z
+        .object({
+          type: z.enum(roundTypes).optional(),
+          description: z.string().max(5000).optional(),
+          mode: z.enum(['Online', 'Offline']).optional(),
+          elimination: z.boolean().optional(),
+          maximumScore: z.number().min(0).optional(),
+          passingScore: z.number().min(0).optional(),
+          instructions: z.string().max(5000).optional(),
+          id: z.string().min(1).max(100),
+          name: z.string().trim().min(1),
+          duration: z.number().int().min(5).max(480),
+          capacity: z.number().int().min(1),
+          requirements: z.string(),
+          cleared: z.number().min(0),
+        })
+        .refine(
+          (r) =>
+            r.passingScore === undefined ||
+            (r.maximumScore !== undefined && r.passingScore <= r.maximumScore),
+          { message: 'Passing score must not exceed maximum score.' },
+        ),
     )
-    .min(1),
+    .min(1)
+    .max(30)
+    .refine(
+      (rounds) => new Set(rounds.map((r) => r.id)).size === rounds.length,
+      'Each round must have a unique identifier.',
+    ),
 });
 export const scheduleSchema = z
   .object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    reporting: z.string().regex(/^\d{2}:\d{2}$/),
-    talk: z.string().regex(/^\d{2}:\d{2}$/),
-    assessment: z.string().regex(/^\d{2}:\d{2}$/),
-    interviews: z.string().regex(/^\d{2}:\d{2}$/),
-    end: z.string().regex(/^\d{2}:\d{2}$/),
+    building: z.string().max(300).optional(),
+    meetingLink: z.string().max(1000).optional(),
+    coordinator: z.string().max(300).optional(),
+    instructions: z.string().max(3000).optional(),
+    notes: z.string().max(3000).optional(),
+    date: calendarDate,
+    reporting: clockTime,
+    talk: clockTime,
+    assessment: clockTime,
+    interviews: clockTime,
+    end: clockTime,
     venue: z.string().trim().min(2),
     lab: z.string(),
     rooms: z.string(),
     systems: z.number().int().min(0),
   })
-  .refine(
-    (s) =>
-      s.reporting <= s.talk &&
-      s.talk < s.assessment &&
-      s.assessment < s.interviews &&
-      s.interviews < s.end,
-    { message: 'Times must follow reporting → talk → assessment → interviews → end.' },
-  );
+  .refine((s) => s.reporting <= s.talk && s.talk < s.end, {
+    message: 'Reporting must precede the start time, and end must follow start.',
+  });
 export function scheduleConflicts(drives: Drive[], id: string, schedule: DriveSchedule) {
   const current = drives.find((d) => d.id === id);
   return drives

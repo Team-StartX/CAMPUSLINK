@@ -37,6 +37,8 @@ export interface Student {
   xp: number;
 }
 export interface Opportunity {
+  workMode?: string;
+  logo?: string;
   id: string;
   company: string;
   role: string;
@@ -53,6 +55,8 @@ export interface Opportunity {
   venue?: string;
 }
 export interface Application {
+  currentRoundId?: string;
+  resumeId?: string;
   id: string;
   opportunityId: string;
   stage: string;
@@ -108,6 +112,10 @@ export interface Interview {
   status: string;
 }
 export interface Offer {
+  applicationId?: string;
+  deadline?: string;
+  location?: string;
+  letterUrl?: string;
   id: string;
   company: string;
   role: string;
@@ -126,6 +134,7 @@ export type DriveStatus =
   | 'AWAITING_RECRUITER_CONFIRMATION'
   | 'CONFIRMED'
   | 'ACTIVE'
+  | 'APPLICATIONS_CLOSED'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'REJECTED'
@@ -139,6 +148,13 @@ export interface Campus {
   branches: string[];
 }
 export interface DriveRound {
+  type?: import('./recruitment').RoundType;
+  description?: string;
+  mode?: 'Online' | 'Offline';
+  elimination?: boolean;
+  maximumScore?: number;
+  passingScore?: number;
+  instructions?: string;
   id: string;
   name: string;
   duration: number;
@@ -147,6 +163,11 @@ export interface DriveRound {
   cleared: number;
 }
 export interface DriveSchedule {
+  building?: string;
+  meetingLink?: string;
+  coordinator?: string;
+  instructions?: string;
+  notes?: string;
   date: string;
   reporting: string;
   talk: string;
@@ -159,6 +180,18 @@ export interface DriveSchedule {
   systems: number;
 }
 export interface Drive {
+  requestedSlot?: { date: string; start: string; end: string; reason: string };
+  eligibilityApprovals?: string[];
+  workflowVersion?: number;
+  workMode?: 'On-site' | 'Hybrid' | 'Remote';
+  responsibilities?: string;
+  stipend?: string;
+  bond?: string;
+  joiningDate?: string;
+  requiredDocuments?: string;
+  additionalEligibility?: string;
+  requireSkills?: boolean;
+  companyDetails?: import('./recruitment').CompanyDetails;
   id: string;
   company: string;
   role: string;

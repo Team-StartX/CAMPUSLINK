@@ -514,6 +514,9 @@ export async function createApp(db = new Database()) {
         description: z.string().max(5000),
         industry: z.string().max(150),
         headquarters: z.string().max(150),
+        website: z.union([z.literal(''), z.string().url().startsWith('https://')]).optional(),
+        logo: z.union([z.literal(''), z.string().url().startsWith('https://')]).optional(),
+        size: z.string().max(100).optional(),
       })
       .strict()
       .parse(req.body);
@@ -634,13 +637,11 @@ export async function createApp(db = new Database()) {
       if (error instanceof ZodError)
         return res.status(400).json({ message: error.issues[0]?.message || 'Invalid input.' });
       if (error instanceof multer.MulterError)
-        return res
-          .status(400)
-          .json({
-            message: req.path.startsWith('/api/v1/voice/')
-              ? 'Upload one audio recording under 12 MB.'
-              : 'Upload one supported file under 10 MB.',
-          });
+        return res.status(400).json({
+          message: req.path.startsWith('/api/v1/voice/')
+            ? 'Upload one audio recording under 12 MB.'
+            : 'Upload one supported file under 10 MB.',
+        });
       const status =
         error instanceof HttpError
           ? error.status

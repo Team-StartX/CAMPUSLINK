@@ -1,4 +1,6 @@
 'use client';
+import { JobInformation, RecruitmentPanel } from './recruitment';
+import { recruitmentService } from '@/services/recruitment.service';
 import { AnalysisSource } from '@/components/external-analysis-setting';
 import {
   Badge,
@@ -31,9 +33,30 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const [location, setLocation] = useState('All locations');
   const [type, setType] = useState('All types');
   const [confirm, setConfirm] = useState(false);
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [companyOpen, setCompanyOpen] = useState(false);
   const [error, setError] = useState('');
   const job = data.opportunities.find((j) => j.id === id);
   const drive = data.drives.find((d) => d.id === job?.driveId);
+  const interestQuery = useQuery({
+    queryKey: ['interest', drive?.id],
+    queryFn: () => recruitmentService.overview(drive!.id),
+    enabled: !!drive && drive.workflowVersion === 2,
+  });
+  const interested = interestQuery.data?.interest === 'Interested';
+  const showInterest = async (value: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await recruitmentService.interest(drive!.id, value);
+      await interestQuery.refetch();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const { data: match } = useQuery<
     Awaited<ReturnType<typeof matchingService.getMatchExplanation>> & MlAnnotation
   >({
@@ -60,7 +83,15 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
           title={job.role}
           description={`${job.location} · ${job.type} · ₹${job.ctc}`}
           action={
-            <Button disabled={applied} onClick={() => setConfirm(true)}>
+            <Button
+              disabled={
+                busy ||
+                applied ||
+                (drive?.workflowVersion === 2 && !interested) ||
+                drive?.status !== 'ACTIVE'
+              }
+              onClick={() => setConfirm(true)}
+            >
               {applied ? (
                 <>
                   <Check size={16} /> Applied
@@ -82,33 +113,30 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 {job.visitDate ? formatDate(job.visitDate) : 'Visit date pending'} · {job.venue} ·
                 Company physically visits campus
               </p>
-              <h2>Build something that matters.</h2>
-              <p>
-                Join {job.company} and help create thoughtful, reliable products used by people
-                every day. We’re looking for curious graduates who enjoy solving problems and
-                learning with a team.
-              </p>
-              <h3>What you’ll do</h3>
-              <ul>
-                <li>
-                  Collaborate with designers and engineers to deliver accessible, high-quality
-                  products.
-                </li>
-                <li>
-                  Write maintainable code, review changes, and contribute to technical decisions.
-                </li>
-                <li>Learn from experienced teammates and take ownership of meaningful projects.</li>
-              </ul>
-              <h3>What you’ll bring</h3>
-              <p>
-                Strong fundamentals in {job.skills.join(', ')}, problem solving, and communication.
-                A portfolio of projects and a desire to keep growing.
-              </p>
-              <div className="job-chips">
-                {job.skills.map((s) => (
-                  <Badge key={s}>{s}</Badge>
-                ))}
-              </div>
+              {drive && (
+                <Link className="button outline" href={`/student/company/${drive.id}`}>
+                  View company page
+                </Link>
+              )}
+              <Button kind="outline" onClick={() => setCompanyOpen(true)}>
+                {job.company} · Company details
+              </Button>
+              {drive && <JobInformation drive={drive} student />}
+              {drive?.workflowVersion === 2 && !applied && (
+                <div className="hero-buttons">
+                  <Button disabled={busy} onClick={() => void showInterest('Interested')}>
+                    {interested ? 'Interested ✓' : 'Interested'}
+                  </Button>
+                  <Button
+                    kind="outline"
+                    disabled={busy}
+                    onClick={() => void showInterest('Not Interested')}
+                  >
+                    Not Interested
+                  </Button>
+                </div>
+              )}
+              {error && <p role="alert">{error}</p>}
               <h3>Eligibility</h3>
               <Badge kind="verified">✓ Your profile meets hard eligibility</Badge>
               {drive &&
@@ -216,6 +244,31 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
             </section>
           </aside>
         </div>
+        {drive?.workflowVersion === 2 && (
+          <RecruitmentPanel drive={drive} role="student" refresh={refresh} />
+        )}
+        {companyOpen && drive && (
+          <Modal title={job.company} onClose={() => setCompanyOpen(false)}>
+            <p>
+              {drive.companyDetails?.description || 'Company description has not been provided.'}
+            </p>
+            <p>
+              {drive.companyDetails?.industry} · {drive.companyDetails?.headquarters} ·{' '}
+              {drive.companyDetails?.size}
+            </p>
+            {drive.companyDetails?.website && /^https:\/\//.test(drive.companyDetails.website) && (
+              <a href={drive.companyDetails.website}>Company website</a>
+            )}
+            <h3>Active opportunities</h3>
+            {data.opportunities
+              .filter((o) => o.company === job.company)
+              .map((o) => (
+                <p key={o.id}>
+                  <Link href={`/student/opportunities/${o.id}`}>{o.role}</Link>
+                </p>
+              ))}
+          </Modal>
+        )}
         {confirm && (
           <Modal title="Take the next step." onClose={() => setConfirm(false)}>
             <form
@@ -223,15 +276,62 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
               onSubmit={async (e) => {
                 e.preventDefault();
                 try {
-                  await applicationService.apply(job.id);
+                  setBusy(true);
+                  if (drive?.workflowVersion === 2) {
+                    await recruitmentService.apply(
+                      drive.id,
+                      agree,
+                      String(new FormData(e.currentTarget).get('resumeId')),
+                    );
+                    await interestQuery.refetch();
+                  } else await applicationService.apply(job.id);
                   refresh();
                   setConfirm(false);
                   notify(`Application submitted to ${job.company}. Good luck!`);
                 } catch (e) {
                   setError((e as Error).message);
+                } finally {
+                  setBusy(false);
                 }
               }}
             >
+              <p>
+                Profile completeness:{' '}
+                {data.student.profileCompletion ??
+                  Math.round(
+                    ([
+                      data.student.bio,
+                      data.student.course,
+                      data.student.year,
+                      data.student.skills.length,
+                      data.student.projects.length,
+                      data.documents.some((d) => d.type === 'Resume'),
+                    ].filter(Boolean).length /
+                      6) *
+                      100,
+                  )}
+                %
+              </p>
+              <p>
+                Resume:{' '}
+                {data.documents.find((d) => d.type === 'Resume')?.name ||
+                  'Upload a resume in Documents'}
+              </p>
+              <p>Required documents: {drive?.requiredDocuments || 'Resume'}</p>
+              <p>
+                Eligibility:{' '}
+                {drive && checkEligibility(data.student, drive).passed ? 'Passed' : 'Not eligible'}
+              </p>
+              <p>Recruitment rounds: {drive?.rounds?.map((r) => r.name).join(' → ')}</p>
+              <label className="checkbox-label">
+                <input
+                  required
+                  type="checkbox"
+                  checked={agree}
+                  onChange={(e) => setAgree(e.target.checked)}
+                />{' '}
+                I have reviewed the job details and agree to participate in the recruitment process.
+              </label>
               <h3>
                 {job.role} · {job.company}
               </h3>
@@ -240,12 +340,14 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 application.
               </p>
               <FormField label="Resume">
-                <select required>
+                <select required name="resumeId">
                   <option value="">Choose a resume</option>
                   {data.documents
                     .filter((d) => d.type === 'Resume')
                     .map((d) => (
-                      <option key={d.id}>{d.name}</option>
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
                     ))}
                 </select>
               </FormField>
@@ -253,7 +355,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 <input type="checkbox" required /> I confirm that my information is accurate.
               </label>
               {error && <p className="field-error">{error}</p>}
-              <Button type="submit">
+              <Button type="submit" disabled={busy || !agree}>
                 Submit application <ArrowUpRight size={16} />
               </Button>
             </form>
@@ -338,8 +440,8 @@ export function ApplicationsPage({ data, role = 'student', refresh, notify }: Pr
   const apps = data.applications.filter(
     (a) =>
       filter === 'All' ||
-      (filter === 'Active' && !['Offer', 'Rejected'].includes(a.stage)) ||
-      (filter === 'Offers' && a.stage === 'Offer') ||
+      (filter === 'Active' && !['Offer', 'Selected', 'Rejected', 'Absent'].includes(a.stage)) ||
+      (filter === 'Offers' && ['Offer', 'Selected'].includes(a.stage)) ||
       (filter === 'Rejected' && a.stage === 'Rejected'),
   );
   return (
@@ -378,10 +480,17 @@ export function ApplicationsPage({ data, role = 'student', refresh, notify }: Pr
                 </div>
                 <Badge kind="verified">{a.stage}</Badge>
               </div>
+              <p>
+                Current round:{' '}
+                {archivedDrive?.rounds?.find((r) => r.id === a.currentRoundId)?.name || a.stage}
+              </p>
               <div className="application-pipeline">
-                {stages.map((s, i) => (
-                  <div key={s} className={i <= stages.indexOf(a.stage) ? 'reached' : ''}>
-                    <span>{i < stages.indexOf(a.stage) ? <Check size={13} /> : i + 1}</span>
+                {(archivedDrive?.workflowVersion === 2
+                  ? ['Applied', ...(archivedDrive.rounds || []).map((r) => r.name), 'Selected']
+                  : stages
+                ).map((s, i, pipeline) => (
+                  <div key={s} className={i <= pipeline.indexOf(a.stage) ? 'reached' : ''}>
+                    <span>{i < pipeline.indexOf(a.stage) ? <Check size={13} /> : i + 1}</span>
                     <b>{s}</b>
                   </div>
                 ))}
@@ -396,7 +505,7 @@ export function ApplicationsPage({ data, role = 'student', refresh, notify }: Pr
               >
                 View campus drive <ArrowUpRight size={15} />
               </Link>
-              {role !== 'student' && (
+              {role !== 'student' && archivedDrive?.workflowVersion !== 2 && (
                 <div className="hero-buttons">
                   <Button
                     kind="outline"
@@ -450,6 +559,22 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
     status: string;
   } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [offerError, setOfferError] = useState('');
+  const [offerBusy, setOfferBusy] = useState(false);
+  const runOffer = async (fn: () => Promise<unknown>) => {
+    setOfferBusy(true);
+    setOfferError('');
+    try {
+      await fn();
+      refresh();
+      return true;
+    } catch (e) {
+      setOfferError((e as Error).message);
+      return false;
+    } finally {
+      setOfferBusy(false);
+    }
+  };
   return (
     <>
       <PageHeader
@@ -458,12 +583,20 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
         description="Review offers and follow the next step in the placement journey."
         action={
           role === 'recruiter' && (
-            <Button onClick={() => setCreating(true)}>
+            <Button
+              disabled={!data.applications.some((a) => ['Selected', 'Offer'].includes(a.stage))}
+              onClick={() => setCreating(true)}
+            >
               Create offer <Gift size={16} />
             </Button>
           )
         }
       />
+      {offerError && (
+        <p className="field-error" role="alert">
+          {offerError}
+        </p>
+      )}
       <div className="two-columns">
         {data.offers.map((o) => (
           <section key={o.id} className="panel offer-card sage">
@@ -478,6 +611,24 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
             <h2>{o.company}</h2>
             <h3>{o.role}</h3>
             <div className="offer-ctc">{o.ctc}</div>
+            <p>
+              Location: {o.location || 'Not specified'} · Acceptance deadline:{' '}
+              {o.deadline || 'Not specified'}
+            </p>
+            {o.letterUrl && /^https:\/\//.test(o.letterUrl) && (
+              <a
+                className="button outline"
+                href={o.letterUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  if (role === 'student' && o.status === 'Offer Sent')
+                    void runOffer(() => offerService.respond(o.id, 'Viewed'));
+                }}
+              >
+                View offer letter
+              </a>
+            )}
             <div className="detail-list">
               <span>
                 Offer date<b>{formatDate(o.date)}</b>
@@ -486,7 +637,8 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
                 Joining date<b>{formatDate(o.joining)}</b>
               </span>
             </div>
-            {['Received', 'Deferred'].includes(o.status) && role === 'student' ? (
+            {['Offer Sent', 'Viewed', 'Received', 'Deferred'].includes(o.status) &&
+            role === 'student' ? (
               <div className="hero-buttons">
                 <Button onClick={() => setPending({ id: o.id, status: 'Accepted' })}>
                   Accept offer <Check size={16} />
@@ -514,9 +666,8 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
               <Button
                 kind="outline"
                 onClick={async () => {
-                  await offerService.respond(o.id, 'Joined');
-                  refresh();
-                  notify('Joining recorded.');
+                  if (await runOffer(() => offerService.respond(o.id, 'Joined')))
+                    notify('Joining recorded.');
                 }}
               >
                 Mark joined <Check size={16} />
@@ -548,17 +699,24 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              await offerService.create({
-                company: String(f.get('company')),
-                role: String(f.get('role')),
-                ctc: String(f.get('ctc')),
-                date: new Date().toISOString().slice(0, 10),
-                joining: String(f.get('joining')),
-                kind: String(f.get('kind')) as 'Full-time' | 'PPO' | 'Internship conversion',
-              });
-              refresh();
-              setCreating(false);
-              notify('Offer created and student notified.');
+              const success = await runOffer(() =>
+                offerService.create({
+                  company: String(f.get('company')),
+                  role: String(f.get('role')),
+                  ctc: String(f.get('ctc')),
+                  date: new Date().toISOString().slice(0, 10),
+                  joining: String(f.get('joining')),
+                  applicationId: String(f.get('applicationId')),
+                  deadline: String(f.get('deadline')),
+                  location: String(f.get('location')),
+                  letterUrl: String(f.get('letterUrl')),
+                  kind: String(f.get('kind')) as 'Full-time' | 'PPO' | 'Internship conversion',
+                }),
+              );
+              if (success) {
+                setCreating(false);
+                notify('Offer created and student notified.');
+              }
             }}
           >
             <FormField label="Candidate">
@@ -567,6 +725,31 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
                   {data.student.name} · {data.student.id}
                 </option>
               </select>
+            </FormField>
+            <FormField label="Selected application">
+              <select required name="applicationId">
+                {data.applications
+                  .filter((a) => ['Selected', 'Offer'].includes(a.stage))
+                  .map((a) => {
+                    const d = data.drives.find(
+                      (d) => (d.opportunityId || d.id) === a.opportunityId,
+                    );
+                    return (
+                      <option key={a.id} value={a.id}>
+                        {d?.company} · {d?.role}
+                      </option>
+                    );
+                  })}
+              </select>
+            </FormField>
+            <FormField label="Acceptance deadline">
+              <input name="deadline" required type="date" />
+            </FormField>
+            <FormField label="Job location">
+              <input name="location" required />
+            </FormField>
+            <FormField label="Offer letter (HTTPS link)">
+              <input name="letterUrl" type="url" pattern="https://.*" required />
             </FormField>
             <FormField label="Company">
               <input name="company" required />
@@ -587,8 +770,9 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
                 <option>Internship conversion</option>
               </select>
             </FormField>
-            <p className="muted">Local preview only. No real offer letter is issued.</p>
-            <Button type="submit">
+
+            {offerError && <p role="alert">{offerError}</p>}
+            <Button type="submit" disabled={offerBusy}>
               Create offer <Check size={16} />
             </Button>
           </form>
@@ -603,12 +787,14 @@ export function OffersPage({ data, refresh, notify, role = 'student' }: Props) {
             This records your offer response. You can review the company and compensation before
             deciding.
           </p>
+          {offerError && <p role="alert">{offerError}</p>}
           <Button
+            disabled={offerBusy}
             onClick={async () => {
-              await offerService.respond(pending.id, pending.status);
-              refresh();
-              setPending(null);
-              notify('Your offer response has been recorded.');
+              if (await runOffer(() => offerService.respond(pending.id, pending.status))) {
+                setPending(null);
+                notify('Your offer response has been recorded.');
+              }
             }}
           >
             Confirm response <Check size={16} />
