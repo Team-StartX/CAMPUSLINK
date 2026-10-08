@@ -6,6 +6,10 @@ export const config = {
   port: Number(process.env.PORT || 8000),
   host: process.env.HOST || '0.0.0.0',
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  developmentOrigins: (process.env.DEV_FRONTEND_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   database: process.env.DATABASE_URL || '',
   databaseCaPath: process.env.DATABASE_CA_PATH || '',
   localDatabase: process.env.SQLITE_PATH || 'server/data/campuslink.sqlite',

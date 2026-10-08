@@ -3,6 +3,7 @@ import { config } from './config';
 export function trustedOrigin(origin: string | undefined) {
   if (!origin || origin === config.origin) return true;
   if (config.production) return false;
+  if (config.developmentOrigins.includes(origin)) return true;
   try {
     const expected = new URL(config.origin);
     const actual = new URL(origin);
