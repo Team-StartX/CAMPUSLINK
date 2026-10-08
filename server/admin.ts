@@ -5,7 +5,7 @@ import { Database } from './db';
 import { Authentication, Account, publicUser } from './auth';
 import { requireCondition } from './errors';
 import { config } from './config';
-import type { AdminAssessment, AdminQuestion } from '../src/types/admin';
+import type { AdminAssessment, AdminQuestion, AuditEntry } from '../src/types/admin';
 import { checkMlConnection, mlConfigured } from './ml-client';
 
 const text = z.string().trim().min(1).max(2000);
@@ -89,7 +89,23 @@ export function mountAdmin(app: Express, db: Database, auth: Authentication) {
     );
   app.get(base, async (_req, res) => {
     const accounts = await db.list<Account>('account');
-    const events = await db.list<{ time: string }>('audit');
+    // Placement workflows store timestamp/action; operator actions store time/event.
+    // Normalize both formats for the admin activity feed before sorting.
+    const records = await db.list<
+      Partial<AuditEntry> & {
+        timestamp?: string;
+        action?: string;
+        user_id?: string;
+        entity_id?: string;
+      }
+    >('audit');
+    const events = records.map((record) => ({
+      ...record,
+      time: record.time ?? record.timestamp ?? '',
+      event: record.event ?? record.action ?? 'Unknown activity',
+      actorId: record.actorId ?? record.user_id,
+      targetId: record.targetId ?? record.entity_id,
+    }));
     res.json({
       accounts: accounts.map(publicUser),
       questions: await db.list('admin-question'),

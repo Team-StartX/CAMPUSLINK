@@ -1,72 +1,102 @@
 # CampusLink
 
-CampusLink is a campus placement application with a Next.js frontend and an
-Express backend. The frontend always uses authenticated API requests and persisted
-records. Browser demo authentication, sample placement previews, simulated paid
-plans, and synthetic outcome inference have been removed.
+CampusLink is a campus placement application with a Next.js frontend, an Express API and persistent database records. It provides student preparation, recruiter drives, campus placement workflows and an administrator dashboard.
 
-## Run locally
+## Local setup
 
-Use Node.js 24.x. Install dependencies and run:
+Use Node.js 24.x. From the repository root:
 
 ```sh
 npm install
+```
+
+Copy `.env.example` to `.env` and `server/.env.example` to `server/.env` if they do not exist. Preserve existing credentials when updating configuration.
+
+```sh
 npm run dev
 ```
 
-This starts both the frontend and the API. Open http://localhost:3000 and register
-real accounts. A campus team must register an institution before its students can
-join. Institution and recruiter accounts require approval. See
-[BACKEND-SETUP.md](BACKEND-SETUP.md) for configuration and operator commands.
+Open http://localhost:3000. This starts the API on port 8000 before the website, or reuses a healthy API already running there. To manage them separately, use `npm run server:dev` and `npm run dev:frontend` in separate terminals.
 
-## Placement workflows
+Without external database credentials, development uses SQLite, local private uploads and an email outbox. A configured `DATABASE_URL` selects PostgreSQL.
 
-Recruiters request campus drives. Campus teams review requests, reserve resources,
-agree schedules with recruiters, and activate student applications. The backend
-checks campus membership, course, branch, year, CGPA and backlog eligibility.
-Applications, shortlist decisions, interviews, offers, private documents and
-joining progress are stored with authorization checks.
+## Project structure
 
-Preparation feedback uses submitted answers and recorded evidence. Curated skill
-question banks remain available; published campus assessments and contests are
-managed by administrators. Rankings and participation counts use campus records.
-Sample datasets remain only as isolated regression-test fixtures.
+| Directory                                | Contents                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------- |
+| `src/app`                                | Next.js routes and styles                                                 |
+| `src/features`                           | Student, recruiter, campus and administrator screens                      |
+| `src/components`                         | Shared interface components                                               |
+| `src/services`, `src/store`, `src/hooks` | API clients, session state and interface behavior                         |
+| `src/types`, `src/utils`, `src/config`   | Shared contracts, business rules and settings                             |
+| `src/mocks`                              | Existing question banks, data and adapters referenced by application code |
+| `server`                                 | Express API, authentication, database, workflows and integrations         |
+| `scripts`                                | Local development startup                                                 |
+| `public`                                 | Images, fonts, logos and other static assets                              |
 
-## Voice input and external services
+API routes and payloads are documented in [server/API.md](server/API.md). Asset source notes and font licenses remain with their assets.
 
-Voice practice records microphone audio and sends it through the authenticated
-backend to OpenAI's Audio Transcriptions API after explicit consent. CampusLink
-does not save audio recordings. Students review the resulting transcript before
-saving feedback. Voice input is unavailable until configured; typed practice works
-independently.
+## Accounts and administration
 
-Configure secrets in `server/.env` or the hosting service's environment settings:
+A campus team must register its institution before students can join. Campus and recruiter accounts require approval; email verification is not required for access. Administrative access is granted to an existing account by the project operator.
 
-- Voice input: `SPEECH_PROVIDER=openai`, `OPENAI_API_KEY`, optionally
-  `OPENAI_TRANSCRIPTION_MODEL` (default `gpt-4o-mini-transcribe`).
-- Email verification is not required for signup or access, including existing accounts. Staff organization approval still applies. Password recovery and notification emails remain available.
-- Real email: `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, verified `EMAIL_FROM`.
-- Database and files: PostgreSQL and private Supabase storage settings.
-- Optional generative coaching: `AI_PROVIDER=openai`, `OPENAI_API_KEY`,
-  `OPENAI_MODEL`, and student consent.
-- Optional placement probabilities: an evaluated model trained on real historical
-  outcomes. Synthetic artifacts cannot produce predictions.
+Build the backend before using operator commands:
 
-Never put secret keys in browser variables or commit them. See
-[DEPLOYMENT.md](DEPLOYMENT.md) for hosting and [server/API.md](server/API.md) for
-existing API contracts. Provider presence does not establish live connectivity;
-verify real email, microphone transcription, database and storage on deployment.
+```sh
+npm run server:build
+npm run db:approve -- campus-account@example.edu
+npm run admin:grant -- admin-account@example.edu
+```
 
-## Validation
+Complete the account's profile before granting administrator access. Sign out and back in, then open `/admin/dashboard`. Remove administrator access with `npm run admin:revoke -- admin-account@example.edu`.
+
+For local password-reset messages, run `npm run email:preview` and inspect `server/data/outbox.json`. Its single-use links are private.
+
+## Service configuration
+
+Keep server credentials in `server/.env` or backend hosting settings. Never expose them through `NEXT_PUBLIC_*` variables or commit `.env` files.
+
+| Service                      | Settings                                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| PostgreSQL                   | `DATABASE_URL`; `DATABASE_CA_PATH` when a provider CA is required                             |
+| Private Supabase storage     | `STORAGE_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
+| Email delivery               | `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, a verified `EMAIL_FROM`                            |
+| Optional generative coaching | `AI_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_MODEL`                                        |
+| Optional voice transcription | `SPEECH_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_TRANSCRIPTION_MODEL`                      |
+| Optional external ML         | `ML_API_URL`, `ML_API_TOKEN`                                                                  |
+
+Use a private storage bucket; the default name is `campuslink-private`. PostgreSQL TLS must validate the certificate and hostname. The public CA certificate is at `server/certs/supabase-ca.crt`; confirm it matches your database provider.
+
+Voice and external analysis require explicit student consent. Typed practice and local preparation analysis work without these providers. Placement probabilities require a validated model trained on real historical outcomes; synthetic models are rejected. Restart the backend after changing its settings.
+
+For Google sign-in, enable Google in Supabase Auth using a Google OAuth client. Set Google's redirect URI to `https://YOUR_PROJECT.supabase.co/auth/v1/callback`. In Supabase, set the Site URL to the frontend origin and allow the exact frontend callback path `/api/v1/auth/google/callback**` on that host.
+
+## Deployment
+
+Deploy the frontend to Vercel and the backend to Render, both from the repository root. The repository includes `vercel.json` and `render.yaml`.
+
+The Render backend builds with `npm ci --include=dev && npm run server:build` and starts with `npm run server:start`. Configure `FRONTEND_URL` as the frontend HTTPS origin without a trailing slash, plus PostgreSQL, Supabase storage and Resend credentials. Production requires these external services. Render supplies `PORT`; Express binds to `0.0.0.0`. Database tables are created at startup.
+
+Set these frontend variables in Vercel:
+
+```dotenv
+NEXT_PUBLIC_APP_ENV=api
+NEXT_PUBLIC_API_URL=/api/v1
+API_INTERNAL_URL=https://your-api.onrender.com
+```
+
+Use the actual backend origin without `/api/v1`. Redeploy the frontend when it changes: the API proxy is configured at build time. Browser requests use the frontend's `/api/v1` path so session cookies stay on the frontend domain. Update `FRONTEND_URL` on the backend when the frontend origin changes.
+
+Check `/api/v1/health`, sign-in, account approvals, private uploads and password recovery after deployment. The backend needs a persistent process for email and reminder workers; sleeping hosting services delay requests and pause those workers.
+
+## Project checks and builds
 
 ```sh
 npm run typecheck
 npm run server:typecheck
 npm run lint
-npm test
 npm run server:build
 npm run build
 ```
 
-The tests use isolated databases and provider mocks. Live service verification,
-backup recovery, monitoring and workload checks remain deployment requirements.
+Start a built backend with `npm run server:start` and a built frontend with `npm start`. Automated test files and their runner have been removed from this project.
