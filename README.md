@@ -83,7 +83,7 @@ Keep server credentials in `server/.env` or backend hosting settings. Never expo
 | PostgreSQL                   | `DATABASE_URL`; `DATABASE_CA_PATH` when a provider CA is required                             |
 | Private Supabase storage     | `STORAGE_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
 | Email delivery               | `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, a verified `EMAIL_FROM`                            |
-| Optional generative coaching | `AI_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_MODEL`                                        |
+| Optional generative coaching | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL` (or OpenAI equivalents)                                        |
 | Optional voice transcription | `SPEECH_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_TRANSCRIPTION_MODEL`                      |
 | Optional external ML         | `ML_API_URL`, `ML_API_TOKEN`                                                                  |
 
@@ -216,3 +216,15 @@ enabling concurrent workers. Benchmark database query volume, concurrent users
 and scheduling contention on realistic cohorts before promising capacity.
 The included demonstration checks scope isolation; it does not prove
 production-scale throughput.
+
+### Gemini coaching setup
+
+Use `server/.env` for local backend secrets. The root `.env` is for the frontend; do not put Gemini keys there or prefix them with `NEXT_PUBLIC_`.
+
+```env
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your-key-from-google-ai-studio
+GEMINI_MODEL=gemini-3.5-flash-lite
+```
+
+For the deployed app, add these three values to the **CampusLink Express backend** Render service's Environment settings and redeploy the updated backend and frontend. Restart the backend after local environment changes. Students enable Google Gemini coaching in Settings; consent is specific to the selected provider. Gemini supplies resume coaching and skill/interview practice feedback. PDF text extraction and the optional Python ML service remain separate. If generation fails, built-in guidance remains available. Speech transcription still uses its separate OpenAI configuration.

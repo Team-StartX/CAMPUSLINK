@@ -260,7 +260,10 @@ export const aiService = {
       factors: r.factors,
     };
   },
-  analyzeResume: async (_documentId: string): Promise<{ label: string; suggestions: string[] }> => {
+  getSkillPractice: async (_skill: string): Promise<import('@/types/resume').SkillPractice> => {
+    throw new DomainError('Skill practice requires an authenticated profile.');
+  },
+  analyzeResume: async (_documentId: string): Promise<import('@/types/resume').ResumeAnalysis> => {
     throw new DomainError('Resume analysis requires an authenticated document upload.');
   },
   getCareerRecommendations: async () => {

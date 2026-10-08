@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import type { WorkspaceData } from '@/types';
 import { PageHeader } from '@/components/ui';
+import { CampusStudentOverview } from '@/components/student-cohort-overview';
 import { ActionCenter } from './action-center';
 import { SmartMatchingSummary } from '@/components/smart-matching-summary';
 import { DriveActivitySummary } from './drives';
@@ -45,6 +46,7 @@ export function CampusDashboard({ data }: { data: WorkspaceData }) {
         />
       )}
       {query.data && <SmartMatchingSummary overview={query.data} role="campus" />}
+      <CampusStudentOverview />
       <div className="two-columns">
         <CampusReadinessSummary />
         <ActionCenter data={data} role="campus" compact />

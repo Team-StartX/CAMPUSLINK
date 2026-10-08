@@ -1,3 +1,4 @@
+import { hasAiConsent } from './ai-provider';
 import { z } from 'zod';
 import * as platform from '../src/services/platform.domain';
 import { driveService, driveRequestSchema } from '../src/services/drive.domain';
@@ -22,6 +23,8 @@ import { HttpError, requireCondition } from './errors';
 import { analyzeResumeText, interviewFeedback, parseRequirements, similarity } from './nlp';
 import { modelInsight, OutcomeRow } from './ml';
 import { coaching } from './generative';
+import { skillPractice } from './skill-practice';
+import { normalizeSkill } from '../src/utils/skills';
 import {
   analyzeCommunication,
   communicationInputSchema,
@@ -50,6 +53,7 @@ import {
 } from './ml-client';
 
 export const readOnlyServices = new Set([
+  'aiService.getSkillPractice',
   'studentService.getDashboard',
   'campusService.getStudents',
   'recruiterService.getCandidates',
@@ -100,6 +104,7 @@ export const policy: Record<string, Record<string, string[]>> = {
     parseJobDescription: ['recruiter', 'campus'],
     predictPlacementRisk: ['student', 'campus'],
     analyzeResume: ['student'],
+    getSkillPractice: ['student'],
     getCareerRecommendations: ['student'],
   },
   interviewService: {
@@ -183,6 +188,7 @@ const schemas: Record<string, z.ZodTypeAny> = {
   'aiService.parseJobDescription': z.tuple([text]),
   'aiService.predictPlacementRisk': z.tuple([id]),
   'aiService.analyzeResume': z.tuple([id]),
+  'aiService.getSkillPractice': z.tuple([z.string().trim().min(1).max(80)]),
   'notificationService.markRead': z.tuple([optionalId]),
   'learningService.complete': z.tuple([z.string().min(1).max(200)]),
   'contestService.joinContest': z.tuple([id]),
@@ -434,6 +440,13 @@ export async function dispatch(service: string, method: string, input: unknown[]
       .sort((a, b) => b.score - a.score)
       .map((r) => r.role);
   }
+  if (key === 'aiService.getSkillPractice') {
+    const skill = data.student.skills.find(
+      (s) => normalizeSkill(s.name) === normalizeSkill(String(args[0])),
+    );
+    requireCondition(skill, 404, 'Add this skill to your profile before starting practice.');
+    return skillPractice(skill.name, skill.level, hasAiConsent(actor));
+  }
   if (key === 'aiService.analyzeResume') {
     const doc = data.documents.find((d) => d.id === args[0]) as (typeof data.documents)[number] & {
       storageKey?: string;
@@ -467,7 +480,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
     const advice = await coaching(
       'Suggest resume improvements without inventing achievements',
       { text: parsed.text.slice(0, 18000) },
-      Boolean((actor as typeof actor & { aiConsent?: boolean }).aiConsent),
+      hasAiConsent(actor),
     ).catch(() => undefined);
     return {
       documentId: doc.id,
@@ -625,7 +638,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
       id: randomUUID(),
       date: new Date().toISOString(),
     };
-    const consent = Boolean((actor as typeof actor & { aiConsent?: boolean }).aiConsent);
+    const consent = hasAiConsent(actor);
     try {
       const advice = await coaching(
         'Coach an English communication practice response. Identify specific grammar or wording errors using short quoted excerpts and corrected alternatives in your suggestions. Explain how to improve clarity, organization, and relevance to the prompt. Acknowledge that a transcript may contain recognition errors. Do not claim to measure pronunciation, accent, confidence, emotion, or pauses from text. Do not invent personal facts or achievements. Include an improved version of a short excerpt only when justified.',
@@ -706,7 +719,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
     const advice = await coaching(
       'Give interview preparation feedback',
       { questions: practice.questions, answers },
-      Boolean((actor as typeof actor & { aiConsent?: boolean }).aiConsent),
+      hasAiConsent(actor),
     ).catch(() => undefined);
     if (advice) {
       feedback.label = 'Text analysis + AI coaching';

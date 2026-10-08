@@ -1,3 +1,4 @@
+import { hasAiConsent } from './ai-provider';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -304,14 +305,25 @@ export async function createApp(db = new Database()) {
     res.json({ message: 'Email verification is not required.' });
   });
   app.put(`${base}/account/ai-consent`, async (req, res) => {
-    const input = z.object({ consent: z.boolean() }).parse(req.body);
-    const account = { ...res.locals.account, aiConsent: input.consent };
+    const input = z
+      .object({ consent: z.boolean(), provider: z.string().optional() })
+      .parse(req.body);
+    requireCondition(
+      !input.consent || (input.provider || 'openai') === config.ai,
+      409,
+      'AI provider changed. Refresh Settings before enabling coaching.',
+    );
+    const account = {
+      ...res.locals.account,
+      aiConsent: input.consent,
+      aiConsentProvider: config.ai,
+    };
     await auth.save(account);
     res.json({ consent: input.consent });
   });
   app.get(`${base}/account/ai-consent`, (_req, res) =>
     res.json({
-      consent: Boolean(res.locals.account.aiConsent),
+      consent: hasAiConsent(res.locals.account),
       provider: config.ai,
       mlConsent: Boolean(res.locals.account.mlConsent),
       mlConfigured: mlConfigured(),

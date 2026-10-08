@@ -1,6 +1,7 @@
 'use client';
 import { CareerIntelligence } from '@/components/backend-tools';
-import { AnalysisSource } from '@/components/external-analysis-setting';
+import { ResumeReview } from '@/components/resume-review';
+import type { ResumeAnalysis } from '@/types/resume';
 import { Badge, Button, EmptyState, FormField, Modal, PageHeader, Progress } from '@/components/ui';
 import {
   aiService,
@@ -717,14 +718,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
   const fileInput = useRef<HTMLInputElement>(null);
   const feedback = useRef<HTMLDivElement>(null);
   const [analysisName, setAnalysisName] = useState('');
-  const [analysis, setAnalysis] = useState<{
-    label: string;
-    suggestions: string[];
-    ml?: {
-      status?: string;
-      message: string;
-    };
-  } | null>(null);
+  const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
   async function runAction(id: string, action: string, work: () => Promise<void>) {
     setError('');
     setBusy({ id, action });
@@ -929,24 +923,7 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
           </p>
         )}
         {analysis && (
-          <section
-            className="panel resume-analysis"
-            aria-label="Resume analysis results"
-            aria-live="polite"
-          >
-            <span className="eyebrow">RESUME REVIEW</span>
-            <h2>{analysisName}</h2>
-            <p>{analysis.label}</p>
-            {analysis.ml && <AnalysisSource status={analysis.ml.status} />}
-            {analysis.ml && analysis.ml.status !== 'remote' && (
-              <p className="muted">{analysis.ml.message}</p>
-            )}
-            <ul>
-              {analysis.suggestions.map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ul>
-          </section>
+          <ResumeReview analysis={analysis} name={analysisName} data={data} refresh={refresh} />
         )}
       </div>
     </div>

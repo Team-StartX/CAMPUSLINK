@@ -49,7 +49,7 @@ function ConnectedTools({ role }: { role: Role }) {
   if (
     role === 'student' &&
     user?.approved &&
-    consent?.provider !== 'openai' &&
+    !['openai', 'gemini'].includes(consent?.provider) &&
     !consent?.mlConfigured &&
     !message
   )
@@ -87,7 +87,7 @@ function ConnectedTools({ role }: { role: Role }) {
           </select>
         </FormField>
       )}
-      {role === 'student' && consent?.provider === 'openai' && (
+      {role === 'student' && ['openai', 'gemini'].includes(consent?.provider) && (
         <label className="checkbox-label">
           <input
             type="checkbox"
@@ -95,15 +95,19 @@ function ConnectedTools({ role }: { role: Role }) {
             onChange={async (e) => {
               try {
                 await rpc('studentService', 'getDashboard');
-                await apiClient.put('/account/ai-consent', { consent: e.target.checked });
+                await apiClient.put('/account/ai-consent', {
+                  consent: e.target.checked,
+                  provider: consent.provider,
+                });
                 void client.invalidateQueries({ queryKey: ['ai-consent'] });
               } catch (e) {
                 setMessage((e as Error).message);
               }
             }}
           />{' '}
-          Allow my resume text and practice answers to be sent to OpenAI for optional coaching.
-          Local analysis works without this.
+          Allow my resume text, skill names and practice answers to be sent to{' '}
+          {consent.provider === 'gemini' ? 'Google Gemini' : 'OpenAI'} for optional coaching and
+          skill questions. Local analysis works without this.
         </label>
       )}
       {role === 'student' && consent?.mlConfigured && (

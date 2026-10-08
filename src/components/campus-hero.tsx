@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { PublicStartLink } from './public-session';
+import { CompanyLoop } from './home-extras';
 
 const words = ['STAND OUT.', 'GET HIRED.', 'GO FURTHER.'];
 const pathways = [
@@ -215,6 +216,7 @@ export function CampusHero() {
           ))}
         </div>
       </div>
+      <CompanyLoop />
       <section className="career-playground content-width" id="career-pathways">
         <div className="career-playground-heading">
           <div>

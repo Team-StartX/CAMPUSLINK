@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { CareerID } from './student-dashboard';
 import { InstituteStudentEditor } from './institute-student-editor';
+import { StudentCohortOverview } from '@/components/student-cohort-overview';
 type Props = {
   data: WorkspaceData;
   role: Role;
@@ -75,6 +76,7 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     />
   );
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState('All students');
   const [driveId, setDriveId] = useState(
     data.drives.find((d) => ['ACTIVE', 'IN_PROGRESS'].includes(d.status))?.id || '',
@@ -116,6 +118,23 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     return true;
   };
   const person = people?.find((p) => p.id === id);
+  const filteredPeople = (people || [])
+    .filter(
+      (p) =>
+        `${p.name} ${p.id} ${p.course} ${p.branch || ''} ${p.skills.map((s) => s.name).join(' ')}`
+          .toLowerCase()
+          .includes(search.toLowerCase()) &&
+        (status !== 'CGPA 8.5+' || p.cgpa >= 8.5) &&
+        (status !== 'Shortlisted' || shortlisted.includes(p.id)),
+    )
+    .sort((a, b) =>
+      selectedDrive
+        ? (ranking?.find((r) => r.student.id === b.id)?.hybridScore || 0) -
+          (ranking?.find((r) => r.student.id === a.id)?.hybridScore || 0)
+        : a.name.localeCompare(b.name),
+    );
+  const pages = Math.max(1, Math.ceil(filteredPeople.length / 12));
+  const currentPage = Math.min(page, pages);
   if (error)
     return (
       <EmptyState title="Student records are unavailable" description={(error as Error).message} />
@@ -251,12 +270,16 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
             : 'Discover verified skills, projects, assessment activity, and ambition.'
         }
       />
-      <div className="filter-bar">
+      <StudentCohortOverview people={people || []} />
+      <div className="filter-bar student-directory-filters">
         {role !== 'student' && (
           <select
             aria-label="Select active campus drive"
             value={driveId}
-            onChange={(e) => setDriveId(e.target.value)}
+            onChange={(e) => {
+              setDriveId(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="">Choose a placement to check eligibility</option>
             {data.drives
@@ -272,21 +295,27 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           <Search size={18} />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search by name, ID, branch, or skill…"
           />
         </label>
         <select
           aria-label="Filter students"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
         >
           <option>All students</option>
           <option>CGPA 8.5+</option>
           <option>Shortlisted</option>
         </select>
       </div>
-      <div className="table-wrap panel">
+      <div className="table-wrap panel student-directory">
         <table>
           <thead>
             <tr>
@@ -300,96 +329,130 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
             </tr>
           </thead>
           <tbody>
-            {people
-              ?.filter(
-                (p) =>
-                  `${p.name} ${p.id} ${p.course} ${p.skills.map((s) => s.name).join(' ')}`
-                    .toLowerCase()
-                    .includes(search.toLowerCase()) &&
-                  (status !== 'CGPA 8.5+' || p.cgpa >= 8.5) &&
-                  (status !== 'Shortlisted' || shortlisted.includes(p.id)),
-              )
-              .sort((a, b) =>
-                selectedDrive
-                  ? (ranking?.find((r) => r.student.id === b.id)?.hybridScore || 0) -
-                    (ranking?.find((r) => r.student.id === a.id)?.hybridScore || 0)
-                  : b.cgpa - a.cgpa,
-              )
-              .map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <Link
-                      className="student-record-link"
-                      href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
-                    >
-                      <b>{p.name}</b>
-                      <small>
-                        {p.id} · {p.branch || p.course}
-                      </small>
+            {filteredPeople.slice((currentPage - 1) * 12, currentPage * 12).map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <Link
+                    className="student-record-link"
+                    href={`/${role}/${role === 'campus' ? 'students' : 'candidates'}/${p.id}`}
+                  >
+                    <b>{p.name}</b>
+                    <small>
+                      {p.branch || p.course} · {p.year}
+                    </small>
+                  </Link>
+                </td>
+                <td>
+                  <div className="student-mini-stat">
+                    <b>{p.cgpa.toFixed(1)}</b>
+                    <progress aria-label={`${p.name} CGPA`} max={10} value={p.cgpa} />
+                  </div>
+                </td>
+                <td>
+                  <div className="student-mini-stat">
+                    <span>
+                      {p.skills.filter((s) => s.verified).length} / {p.skills.length}
+                    </span>
+                    <progress
+                      aria-label={`${p.name} verified skills`}
+                      max={Math.max(1, p.skills.length)}
+                      value={p.skills.filter((s) => s.verified).length}
+                    />
+                  </div>
+                </td>
+                <td>{p.xp.toLocaleString()} XP</td>
+                <td>
+                  {selectedDrive
+                    ? `${ranking?.find((r) => r.student.id === p.id)?.hybridScore || 0}% hybrid fit`
+                    : 'Select a drive'}
+                </td>
+                <td>
+                  {selectedDrive ? (
+                    <>
+                      <Badge kind={checkEligibility(p, selectedDrive).passed ? 'verified' : ''}>
+                        {checkEligibility(p, selectedDrive).passed ? 'Eligible' : 'Not eligible'}
+                      </Badge>
+                      {!checkEligibility(p, selectedDrive).passed && (
+                        <details>
+                          <summary>Why not eligible?</summary>
+                          {checkEligibility(p, selectedDrive)
+                            .checks.filter((check) => !check.passed)
+                            .map((check) => (
+                              <p key={check.name}>
+                                {check.name}: {check.detail}
+                              </p>
+                            ))}
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <Badge>{shortlisted.includes(p.id) ? 'Shortlisted' : 'Registered'}</Badge>
+                  )}
+                </td>
+                <td>
+                  {role === 'campus' ? (
+                    <button className="text-button" onClick={() => setEditing(p)}>
+                      Edit record <ArrowUpRight size={14} />
+                    </button>
+                  ) : selectedDrive?.workflowVersion === 2 ? (
+                    <Link className="text-link" href={`/recruiter/drives/${selectedDrive.id}`}>
+                      Review selection <ArrowUpRight size={14} />
                     </Link>
-                  </td>
-                  <td>{p.cgpa}</td>
-                  <td>{p.skills.filter((s) => s.verified).length}</td>
-                  <td>{p.xp.toLocaleString()} XP</td>
-                  <td>
-                    {selectedDrive
-                      ? `${ranking?.find((r) => r.student.id === p.id)?.hybridScore || 0}% hybrid fit`
-                      : 'Select a drive'}
-                  </td>
-                  <td>
-                    {selectedDrive ? (
-                      <>
-                        <Badge kind={checkEligibility(p, selectedDrive).passed ? 'verified' : ''}>
-                          {checkEligibility(p, selectedDrive).passed ? 'Eligible' : 'Not eligible'}
-                        </Badge>
-                        {!checkEligibility(p, selectedDrive).passed && (
-                          <details>
-                            <summary>Why not eligible?</summary>
-                            {checkEligibility(p, selectedDrive)
-                              .checks.filter((check) => !check.passed)
-                              .map((check) => (
-                                <p key={check.name}>
-                                  {check.name}: {check.detail}
-                                </p>
-                              ))}
-                          </details>
-                        )}
-                      </>
-                    ) : (
-                      <Badge>{shortlisted.includes(p.id) ? 'Shortlisted' : 'Registered'}</Badge>
-                    )}
-                  </td>
-                  <td>
-                    {role === 'campus' ? (
-                      <button className="text-button" onClick={() => setEditing(p)}>
-                        Edit record <ArrowUpRight size={14} />
-                      </button>
-                    ) : selectedDrive?.workflowVersion === 2 ? (
-                      <Link className="text-link" href={`/recruiter/drives/${selectedDrive.id}`}>
-                        Review selection <ArrowUpRight size={14} />
-                      </Link>
-                    ) : (
-                      <button
-                        className="text-button"
-                        disabled={
-                          shortlisted.includes(p.id) ||
-                          !selectedDrive ||
-                          !checkEligibility(p, selectedDrive).passed
-                        }
-                        onClick={async () => {
-                          if (await setShortlisted((s) => [...s, p.id]))
-                            notify(`${p.name} shortlisted.`);
-                        }}
-                      >
-                        Shortlist <Plus size={14} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                  ) : (
+                    <button
+                      className="text-button"
+                      disabled={
+                        shortlisted.includes(p.id) ||
+                        !selectedDrive ||
+                        !checkEligibility(p, selectedDrive).passed
+                      }
+                      onClick={async () => {
+                        if (await setShortlisted((s) => [...s, p.id]))
+                          notify(`${p.name} shortlisted.`);
+                      }}
+                    >
+                      Shortlist <Plus size={14} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+      {Boolean(people?.length) && !filteredPeople.length && (
+        <EmptyState
+          title="No students match these filters"
+          description="Try another name, branch, skill or filter."
+        />
+      )}
+      {filteredPeople.length > 0 && (
+        <nav className="directory-pagination" aria-label="Student list pages">
+          <span>
+            {(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, filteredPeople.length)} of{' '}
+            {filteredPeople.length} students
+          </span>
+          <div>
+            <Button
+              kind="outline"
+              disabled={currentPage === 1}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              <ChevronLeft size={16} /> Previous
+            </Button>
+            <span>
+              Page {currentPage} of {pages}
+            </span>
+            <Button
+              kind="outline"
+              disabled={currentPage === pages}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Next <ChevronRight size={16} />
+            </Button>
+          </div>
+        </nav>
+      )}
       {!people?.length && (
         <EmptyState
           title={

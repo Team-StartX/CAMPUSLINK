@@ -24,6 +24,8 @@ export const config = {
   ai: process.env.AI_PROVIDER || 'local',
   aiKey: process.env.OPENAI_API_KEY || '',
   aiModel: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+  geminiKey: process.env.GEMINI_API_KEY || '',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
   speech: process.env.SPEECH_PROVIDER || 'disabled',
   speechModel: process.env.OPENAI_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe',
   modelPath: process.env.ML_MODEL_PATH || 'server/models/placement.json',
@@ -36,8 +38,8 @@ if (!['local', 'supabase'].includes(config.storage))
   throw new Error('STORAGE_PROVIDER must be local or supabase.');
 if (!['outbox', 'resend'].includes(config.email))
   throw new Error('EMAIL_PROVIDER must be outbox or resend.');
-if (!['local', 'openai'].includes(config.ai))
-  throw new Error('AI_PROVIDER must be local or openai.');
+if (!['local', 'openai', 'gemini'].includes(config.ai))
+  throw new Error('AI_PROVIDER must be local, openai or gemini.');
 if (!['disabled', 'openai'].includes(config.speech))
   throw new Error('SPEECH_PROVIDER must be disabled or openai.');
 if (config.speech === 'openai' && !config.aiKey)
@@ -48,6 +50,8 @@ if (
 )
   throw new Error('Production requires PostgreSQL, external private storage and email delivery.');
 if (config.production) {
+  if (config.ai === 'gemini' && !config.geminiKey)
+    throw new Error('GEMINI_API_KEY is required when AI_PROVIDER is gemini.');
   const missing = [
     !process.env.FRONTEND_URL && 'FRONTEND_URL',
     config.storage === 'supabase' && !config.supabaseUrl && 'SUPABASE_URL',
