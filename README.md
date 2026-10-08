@@ -38,6 +38,20 @@ API routes and payloads are documented in [server/API.md](server/API.md). Asset 
 
 ## Accounts and administration
 
+Each role has its own dashboard component and layout:
+
+| Role          | Dashboard              | Main responsibilities                                                            |
+| ------------- | ---------------------- | -------------------------------------------------------------------------------- |
+| Student       | `/student/dashboard`   | Career profile, readiness, skill gaps, opportunities and personal offer progress |
+| Recruiter     | `/recruiter/dashboard` | Applicant matching, visit confirmation, selection rounds and offer release       |
+| Campus team   | `/campus/dashboard`    | Student readiness support, recruiter approvals, scheduling and campus outcomes   |
+| Administrator | `/admin/dashboard`     | Account access, campuses, assessment content and audit history                   |
+
+The student, recruiter, campus and admin dashboards are implemented in separate
+files under `src/features`. Shared cards and data hooks are reusable components;
+the dashboards select their own layouts and actions. The backend enforces role
+and campus permissions on placement operations.
+
 A campus team must register its institution before students can join. Campus and recruiter accounts require approval; email verification is not required for access. Administrative access is granted to an existing account by the project operator.
 
 Build the backend before using operator commands:
@@ -90,6 +104,20 @@ Use the actual backend origin without `/api/v1`. Redeploy the frontend when it c
 Check `/api/v1/health`, sign-in, account approvals, private uploads and password recovery after deployment. The backend needs a persistent process for email and reminder workers; sleeping hosting services delay requests and pause those workers.
 
 ## Project checks and builds
+
+The prototype covers all three core placement-management capabilities:
+
+| Capability                                      | Implementation                                                                                                                     |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Readiness profiling and skill-gap analysis      | Student profile, evidence-weighted readiness, job-specific skill gaps and campus preparation support                               |
+| Recruiter-student matching and drive scheduling | Eligibility gates, ranked applicant matches, campus approval, recruiter confirmation, resource conflict checks and interview slots |
+| Analytics and offer tracking                    | Campus/recruiter placement outcomes, offer release, student responses, document verification and joining progress                  |
+
+The role dashboards link the demonstration flow: **Profiling → Matching →
+Scheduling → Notification → Offer Tracking → Analytics**. Placement decisions
+create stored in-app notifications. Real email delivery requires configured
+credentials. Historical-model predictions are optional and require a validated
+model; analytics and readiness insights work without one.
 
 ```sh
 npm run typecheck

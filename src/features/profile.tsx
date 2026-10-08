@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { CareerID } from './dashboard';
+import { CareerID } from './student-dashboard';
 type Common = {
   data: WorkspaceData;
   refresh: () => void;

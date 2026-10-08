@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, Check, CircleCheck, Gift, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { OpportunityCard } from './dashboard';
+import { OpportunityCard } from './student-dashboard';
 type Props = {
   data: WorkspaceData;
   refresh: () => void;

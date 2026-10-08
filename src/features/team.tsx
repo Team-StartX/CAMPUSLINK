@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { CareerID } from './dashboard';
+import { CareerID } from './student-dashboard';
 import { InstituteStudentEditor } from './institute-student-editor';
 type Props = {
   data: WorkspaceData;
@@ -105,11 +105,12 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           );
         } catch (e) {
           notify((e as Error).message);
-          return;
+          return false;
         }
       }
     }
-    refresh();
+    await refresh();
+    return true;
   };
   const person = people?.find((p) => p.id === id);
   if (error)
@@ -133,6 +134,10 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           action={
             role === 'campus' ? (
               <Button onClick={() => setEditing(person)}>Edit student record</Button>
+            ) : selectedDrive?.workflowVersion === 2 ? (
+              <Link className="button dark" href={`/recruiter/drives/${selectedDrive.id}`}>
+                Review selection rounds <ArrowUpRight size={16} />
+              </Link>
             ) : (
               <Button
                 disabled={
@@ -140,9 +145,9 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                   (role === 'recruiter' &&
                     (!selectedDrive || !checkEligibility(person, selectedDrive).passed))
                 }
-                onClick={() => {
-                  setShortlisted((s) => [...s, person.id]);
-                  notify('Candidate added to the shortlist.');
+                onClick={async () => {
+                  if (await setShortlisted((s) => [...s, person.id]))
+                    notify('Candidate added to the shortlist.');
                 }}
               >
                 Shortlist candidate <Check size={16} />
@@ -336,13 +341,17 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                       <button className="text-button" onClick={() => setEditing(p)}>
                         Edit record <ArrowUpRight size={14} />
                       </button>
+                    ) : selectedDrive?.workflowVersion === 2 ? (
+                      <Link className="text-link" href={`/recruiter/drives/${selectedDrive.id}`}>
+                        Review selection <ArrowUpRight size={14} />
+                      </Link>
                     ) : (
                       <button
                         className="text-button"
                         disabled={shortlisted.includes(p.id)}
-                        onClick={() => {
-                          setShortlisted((s) => [...s, p.id]);
-                          notify(`${p.name} shortlisted.`);
+                        onClick={async () => {
+                          if (await setShortlisted((s) => [...s, p.id]))
+                            notify(`${p.name} shortlisted.`);
                         }}
                       >
                         Shortlist <Plus size={14} />

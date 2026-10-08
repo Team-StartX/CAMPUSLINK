@@ -1,13 +1,13 @@
 'use client';
 import Image from 'next/image';
-import { RecruitmentDashboard } from './recruitment';
 import { ContestProgress } from '@/components/contest-progress';
 import { DashboardActivity } from '@/components/dashboard-activity';
 import { PreparationOverview } from '@/components/preparation-overview';
+import { NotificationsSummary, PlacementWorkflow } from '@/components/placement-dashboard-sections';
 import { CareerID } from '@/components/student-id';
 import { Badge, PageHeader, formatDate } from '@/components/ui';
 import { aiService, studentService } from '@/services/platform.service';
-import { WorkspaceData, Opportunity, Role } from '@/types';
+import { WorkspaceData, Opportunity } from '@/types';
 import { contestAchievements } from '@/utils/contest-achievements';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -25,7 +25,6 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
-import { DriveActivitySummary } from './drives';
 export { CareerID } from '@/components/student-id';
 export function OpportunityCard({ job, compact = false }: { job: Opportunity; compact?: boolean }) {
   return (
@@ -149,6 +148,40 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
             </Link>
           </div>
         }
+      />
+      <PlacementWorkflow
+        steps={[
+          {
+            title: 'Profiling',
+            detail: 'Keep your skills and career profile current',
+            href: '/student/profile',
+          },
+          {
+            title: 'Matching',
+            detail: 'Find eligible drives and understand skill gaps',
+            href: '/student/opportunities',
+          },
+          {
+            title: 'Scheduling',
+            detail: 'Review campus visits and upcoming interviews',
+            href: '/student/interviews',
+          },
+          {
+            title: 'Notification',
+            detail: 'Follow applications and placement updates',
+            href: '/student/notifications',
+          },
+          {
+            title: 'Offer tracking',
+            detail: 'Review offers and update your response',
+            href: '/student/offers',
+          },
+          {
+            title: 'Analytics',
+            detail: 'See your readiness evidence and preparation insights',
+            href: '/student/readiness',
+          },
+        ]}
       />
       <div className="dashboard-snapshot">
         {[
@@ -405,6 +438,19 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
         <Sparkles size={15} /> Your potential isn’t a number. These insights help you decide what to
         do next.
       </div>
+      <div className="two-columns">
+        <section className="panel">
+          <h2>Your offer progress</h2>
+          {data.offers.map((offer) => (
+            <p key={offer.id}>
+              {offer.company} · {offer.role} <Badge>{offer.status}</Badge>
+            </p>
+          ))}
+          {!data.offers.length && <p>No offers received yet. Keep tracking your applications.</p>}
+          <Link href="/student/offers">Review your offers</Link>
+        </section>
+        <NotificationsSummary data={data} href="/student/notifications" />
+      </div>
       <section className="dashboard-identity panel">
         <div>
           <span className="eyebrow">YOUR CAMPUSLINK IDENTITY</span>
@@ -424,25 +470,5 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
         <CareerID student={student} refresh={refresh} />
       </section>
     </div>
-  );
-}
-export function TeamDashboard({ data, role }: { data: WorkspaceData; role: Role }) {
-  return (
-    <>
-      <PageHeader
-        title={role === 'campus' ? 'Your campus placement overview.' : 'Your recruitment overview.'}
-        description="Current records from your authorized placement workspace."
-        action={
-          <Link
-            href={role === 'campus' ? '/campus/drive-requests' : '/recruiter/drives/request'}
-            className="button dark"
-          >
-            {role === 'campus' ? 'Review drive requests' : 'Request campus drive'}
-          </Link>
-        }
-      />
-      <DriveActivitySummary data={data} role={role} />
-      <RecruitmentDashboard role={role} data={data} />
-    </>
   );
 }

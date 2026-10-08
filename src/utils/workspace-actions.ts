@@ -1,4 +1,5 @@
 import { WorkspaceData, Role } from '@/types';
+import type { Relationship } from '@/types/recruitment';
 
 export interface WorkspaceAction {
   id: string;
@@ -14,6 +15,7 @@ export function workspaceActions(
   data: WorkspaceData,
   role: Role,
   today: string,
+  relationships: Relationship[] = [],
 ): WorkspaceAction[] {
   const items: WorkspaceAction[] = [];
   const add = (item: WorkspaceAction) => items.push(item);
@@ -96,6 +98,18 @@ export function workspaceActions(
         });
     });
     if (role === 'campus') {
+      relationships
+        .filter((request) => request.status === 'Pending')
+        .forEach((request) =>
+          add({
+            id: `recruiter-request-${request.id}`,
+            title: `Review recruiter access · ${request.company}`,
+            detail: 'Recruitment access request awaiting your campus approval',
+            category: 'Approvals',
+            href: '/campus/drive-requests',
+            priority: 'High',
+          }),
+        );
       const pending = data.documents.filter((d) =>
         ['Uploaded', 'Pending'].includes(d.status),
       ).length;

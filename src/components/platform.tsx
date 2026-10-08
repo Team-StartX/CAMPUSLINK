@@ -6,7 +6,9 @@ import { Landing, PublicPage } from '@/components/public';
 import { Badge, Button, EmptyState, PageHeader, Toast } from '@/components/ui';
 import { AssessmentSession, AssessmentsPage, ContestsPage } from '@/features/assessments';
 import { AuthPage } from '@/features/auth';
-import { StudentDashboard, TeamDashboard } from '@/features/dashboard';
+import { StudentDashboard } from '@/features/student-dashboard';
+import { CampusDashboard } from '@/features/campus-dashboard';
+import { RecruiterDashboard } from '@/features/recruiter-dashboard';
 import {
   CampusDiscovery,
   CareerPointsPage,
@@ -31,7 +33,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { ActionCenter } from '@/features/action-center';
-import { AdminDashboard } from '@/features/admin';
+import { AdminDashboard } from '@/features/admin-dashboard';
 import { CommunicationPractice } from '@/features/communication';
 import { useSession } from '@/store/session';
 import { WorkspaceData, Role } from '@/types';
@@ -87,8 +89,17 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <ActionCenter {...props} />;
         break;
       case 'dashboard':
-        content =
-          role === 'student' ? <StudentDashboard {...props} /> : <TeamDashboard {...props} />;
+        switch (role) {
+          case 'student':
+            content = <StudentDashboard {...props} />;
+            break;
+          case 'campus':
+            content = <CampusDashboard data={props.data} />;
+            break;
+          case 'recruiter':
+            content = <RecruiterDashboard data={props.data} />;
+            break;
+        }
         break;
       case 'profile':
         content = <ProfilePage {...props} />;
