@@ -21,7 +21,7 @@ import type { MouseEventHandler } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CampusHero } from './campus-hero';
 import { CampusOperation } from './campus-operation';
-import { CommunityAndFAQ, MomentumSection } from './home-extras';
+import { CommunityAndFAQ, CompanyLoop, MomentumSection } from './home-extras';
 import { MobileCardSlider } from './mobile-card-slider';
 import { PlacementJourney } from './placement-journey';
 import { PublicStartLink, usePublicSession } from './public-session';
@@ -332,6 +332,7 @@ export function Landing() {
       <PublicNav />
       <main className="campus-landing">
         <CampusHero />
+        <CompanyLoop />
         <section className="perspectives content-width" id="ecosystem">
           <div className="section-heading">
             <div>
