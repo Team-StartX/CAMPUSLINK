@@ -37,6 +37,7 @@ export interface Student {
   xp: number;
 }
 export interface Opportunity {
+  eligibility?: { passed: boolean; checks: { name: string; passed: boolean; detail: string }[] };
   workMode?: string;
   logo?: string;
   id: string;

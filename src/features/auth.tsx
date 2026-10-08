@@ -10,6 +10,7 @@ import { authService } from '@/store/session';
 import type { Campus } from '@/types';
 import { Role } from '@/types';
 import { authSchema } from '@/utils/auth-validation';
+import { dashboardPath } from '@/utils/permissions';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, BriefcaseBusiness, Building2, GraduationCap } from 'lucide-react';
@@ -111,7 +112,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
           : await authService.login(values.email, values.password, remember);
         client.clear();
         character.succeed();
-        router.push(user.isAdmin ? '/admin/dashboard' : `/${user.role}/dashboard`);
+        router.replace(dashboardPath(user));
       } catch (e) {
         character.fail();
         setError((e as Error).message);

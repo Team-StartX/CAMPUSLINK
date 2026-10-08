@@ -1,4 +1,5 @@
 import { Drive, DriveStatus, Opportunity, Student } from '@/types';
+import { normalizeSkill, skillNames } from './skills';
 
 export const driveStatuses: DriveStatus[] = [
   'DRAFT',
@@ -52,6 +53,9 @@ const branchCode = (s: string) =>
   })[s.toLowerCase()] || s.toLowerCase();
 export function checkEligibility(student: Student, drive: Drive) {
   const branch = branchCode(student.branch || student.course.split('·')[1]?.trim() || '');
+  const missingSkills = skillNames(drive.skills).filter(
+    (name) => !student.skills.some((skill) => normalizeSkill(skill.name) === normalizeSkill(name)),
+  );
   const checks = [
     ...(drive.additionalEligibility?.trim()
       ? [
@@ -66,32 +70,34 @@ export function checkEligibility(student: Student, drive: Drive) {
       ? [
           {
             name: 'Required skills',
-            passed: values(drive.skills).every((s) =>
-              student.skills.some((k) => k.name.toLowerCase() === s),
-            ),
-            detail: drive.skills,
+            passed: missingSkills.length === 0,
+            detail: missingSkills.length
+              ? `Missing skills: ${missingSkills.join(', ')}`
+              : `All required skills recorded: ${drive.skills}`,
           },
         ]
       : []),
     {
       name: 'Campus',
-      passed: student.campus === drive.campus,
-      detail: drive.campus || 'Campus not selected',
+      passed:
+        Boolean(drive.campus) &&
+        student.campus.trim().toLowerCase() === drive.campus?.trim().toLowerCase(),
+      detail: `Required: ${drive.campus || 'Campus not selected'}; yours: ${student.campus || 'Not recorded'}`,
     },
     {
       name: 'Course',
       passed: values(drive.courses).includes(student.course.split('·')[0].trim().toLowerCase()),
-      detail: drive.courses || 'No eligible courses',
+      detail: `Allowed: ${drive.courses || 'None'}; yours: ${student.course.split('·')[0].trim() || 'Not recorded'}`,
     },
     {
       name: 'Branch',
       passed: values(drive.branches).map(branchCode).includes(branch),
-      detail: drive.branches || 'No eligible branches',
+      detail: `Allowed: ${drive.branches || 'None'}; yours: ${student.branch || student.course.split('·')[1]?.trim() || 'Not recorded'}`,
     },
     {
       name: 'Graduation year',
       passed: values(drive.graduationYear).includes(student.year),
-      detail: drive.graduationYear || 'Not specified',
+      detail: `Allowed: ${drive.graduationYear || 'None'}; yours: ${student.year || 'Not recorded'}`,
     },
     {
       name: 'CGPA',
@@ -116,10 +122,7 @@ export function driveOpportunity(drive: Drive, existing?: Opportunity): Opportun
     role: drive.role,
     location: drive.location,
     ctc: drive.ctc,
-    skills: drive.skills
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
+    skills: skillNames(drive.skills),
     match: existing?.match ?? 0,
     deadline: drive.deadline || drive.schedule?.date || '',
     color: existing?.color || 'sage',

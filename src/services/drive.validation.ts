@@ -1,6 +1,23 @@
 import { z } from 'zod';
 import type { Drive, DriveSchedule } from '@/types';
 import { roundTypes } from '@/types/recruitment';
+import { skillNames } from '@/utils/skills';
+const skillList = z
+  .string()
+  .trim()
+  .max(1000)
+  .refine(
+    (value) => skillNames(value).every((name) => name.length <= 80),
+    'Each skill name must be at most 80 characters.',
+  );
+const criteriaList = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (value) => value.split(',').every((item) => item.trim().length > 0),
+    'Enter names separated by commas, without empty entries.',
+  );
 const calendarDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -27,13 +44,17 @@ export const driveRequestSchema = z.object({
   description: z.string().trim().min(20, 'Add a job description of at least 20 characters.'),
   vacancies: z.number().int().min(1).max(500),
   cgpa: z.number().min(0).max(10),
-  courses: z.string().trim().min(1),
-  branches: z.string().trim().min(1),
+  courses: criteriaList,
+  branches: criteriaList,
   graduationYear: z
     .string()
     .regex(/^\d{4}(\s*,\s*\d{4})*$/, 'Use graduation years separated by commas.'),
   allowedBacklogs: z.number().int().min(0).max(10),
-  skills: z.string().trim().min(1),
+  skills: skillList.refine(
+    (value) => skillNames(value).length > 0,
+    'Enter at least one required skill, such as Python or SQL.',
+  ),
+  preferredSkills: skillList.optional(),
   deadline: calendarDate,
   preferredDates: z.array(calendarDate).min(1).max(3),
   teamSize: z.number().int().min(1).max(50),
@@ -90,8 +111,8 @@ export const scheduleSchema = z
     rooms: z.string(),
     systems: z.number().int().min(0),
   })
-  .refine((s) => s.reporting <= s.talk && s.talk < s.end, {
-    message: 'Reporting must precede the start time, and end must follow start.',
+  .refine((s) => s.reporting <= s.talk && s.talk <= s.assessment && s.assessment <= s.interviews && s.interviews < s.end, {
+    message: 'Use chronological times: reporting, presentation, assessment, interviews, then end.',
   });
 export function scheduleConflicts(drives: Drive[], id: string, schedule: DriveSchedule) {
   const current = drives.find((d) => d.id === id);
@@ -108,10 +129,8 @@ export function scheduleConflicts(drives: Drive[], id: string, schedule: DriveSc
     .flatMap((d) => {
       const reasons = ['venue', 'lab', 'rooms'].filter((key) => {
         const k = key as 'venue' | 'lab' | 'rooms';
-        return (
-          schedule[k].trim() &&
-          schedule[k].trim().toLowerCase() === d.schedule?.[k].trim().toLowerCase()
-        );
+        const booked = (d.schedule?.[k] || '').toLowerCase().split(/[,;]/).map((name) => name.trim()).filter(Boolean);
+        return schedule[k].toLowerCase().split(/[,;]/).some((name) => name.trim() && booked.includes(name.trim()));
       });
       if (d.company === current?.company) reasons.push('recruiter availability');
       if (

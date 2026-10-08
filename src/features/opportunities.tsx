@@ -16,6 +16,7 @@ import { applicationService, matchingService, offerService } from '@/services/pl
 import { WorkspaceData, Role } from '@/types';
 import type { MlAnnotation } from '@/types/ml';
 import { checkEligibility, driveOpportunity } from '@/utils/placement';
+import { normalizeSkill } from '@/utils/skills';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, Check, CircleCheck, Gift, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -32,6 +33,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const [search, setSearch] = useState('');
   const [location, setLocation] = useState('All locations');
   const [type, setType] = useState('All types');
+  const [eligibilityFilter, setEligibilityFilter] = useState('All placements');
   const [confirm, setConfirm] = useState(false);
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,10 +41,15 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const [error, setError] = useState('');
   const job = data.opportunities.find((j) => j.id === id);
   const drive = data.drives.find((d) => d.id === job?.driveId);
+  const eligibility = drive ? checkEligibility(data.student, drive) : job?.eligibility;
+  const applicationsClosed =
+    drive?.status !== 'ACTIVE' ||
+    !drive.deadline ||
+    drive.deadline < new Date().toISOString().slice(0, 10);
   const interestQuery = useQuery({
     queryKey: ['interest', drive?.id],
     queryFn: () => recruitmentService.overview(drive!.id),
-    enabled: !!drive && drive.workflowVersion === 2,
+    enabled: !!drive && drive.workflowVersion === 2 && eligibility?.passed === true,
   });
   const interested = interestQuery.data?.interest === 'Interested';
   const showInterest = async (value: string) => {
@@ -62,7 +69,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   >({
     queryKey: ['match', id],
     queryFn: () => matchingService.getMatchExplanation(id!),
-    enabled: !!job,
+    enabled: !!job && eligibility?.passed === true,
   });
   if (id && !job)
     return (
@@ -87,12 +94,15 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
               disabled={
                 busy ||
                 applied ||
+                !eligibility?.passed ||
                 (drive?.workflowVersion === 2 && !interested) ||
-                drive?.status !== 'ACTIVE'
+                applicationsClosed
               }
               onClick={() => setConfirm(true)}
             >
-              {applied ? (
+              {applicationsClosed && !applied ? (
+                'Applications closed'
+              ) : applied ? (
                 <>
                   <Check size={16} /> Applied
                 </>
@@ -122,29 +132,39 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 {job.company} · Company details
               </Button>
               {drive && <JobInformation drive={drive} student />}
-              {drive?.workflowVersion === 2 && !applied && (
-                <div className="hero-buttons">
-                  <Button disabled={busy} onClick={() => void showInterest('Interested')}>
-                    {interested ? 'Interested ✓' : 'Interested'}
-                  </Button>
-                  <Button
-                    kind="outline"
-                    disabled={busy}
-                    onClick={() => void showInterest('Not Interested')}
-                  >
-                    Not Interested
-                  </Button>
-                </div>
-              )}
+              {drive?.workflowVersion === 2 &&
+                !applied &&
+                eligibility?.passed &&
+                !applicationsClosed && (
+                  <div className="hero-buttons">
+                    <Button disabled={busy} onClick={() => void showInterest('Interested')}>
+                      {interested ? 'Interested ✓' : 'Interested'}
+                    </Button>
+                    <Button
+                      kind="outline"
+                      disabled={busy}
+                      onClick={() => void showInterest('Not Interested')}
+                    >
+                      Not Interested
+                    </Button>
+                  </div>
+                )}
               {error && <p role="alert">{error}</p>}
               <h3>Eligibility</h3>
-              <Badge kind="verified">✓ Your profile meets hard eligibility</Badge>
-              {drive &&
-                checkEligibility(data.student, drive).checks.map((c) => (
-                  <p key={c.name}>
-                    ✓ {c.name}: {c.detail}
-                  </p>
-                ))}
+              <Badge kind={eligibility?.passed ? 'verified' : ''}>
+                {eligibility?.passed ? 'Eligible' : 'Not eligible'}
+              </Badge>
+              {!eligibility?.passed && (
+                <p>
+                  Review the unmet requirements below. Update missing profile information before
+                  applying.
+                </p>
+              )}
+              {eligibility?.checks.map((c) => (
+                <p key={c.name}>
+                  {c.passed ? '✓' : '✗'} {c.name}: {c.detail}
+                </p>
+              ))}
               <h3>Your selection journey</h3>
               <div className="selection-flow">
                 {(
@@ -169,7 +189,9 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 {job.skills.map((s) => (
                   <div key={s}>
                     <b>{s}</b>
-                    {data.student.skills.some((sk) => sk.name === s) ? (
+                    {data.student.skills.some(
+                      (sk) => normalizeSkill(sk.name) === normalizeSkill(s),
+                    ) ? (
                       <Badge kind="verified">
                         <Check size={13} /> On your profile
                       </Badge>
@@ -193,8 +215,14 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 {job.match}
                 <span>%</span>
               </div>
-              <h3>A promising alignment.</h3>
-              <p>See how your recorded profile aligns with this role.</p>
+              <h3>
+                {eligibility?.passed ? 'Your profile alignment' : 'Eligibility requirements unmet'}
+              </h3>
+              <p>
+                {eligibility?.passed
+                  ? 'See how your recorded profile aligns with this role.'
+                  : 'Matching is available after you meet the placement requirements. See the reasons listed under Eligibility.'}
+              </p>
               {match?.explanation.map((x) => (
                 <div className="match-factor" key={x.name}>
                   <span>
@@ -244,7 +272,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
             </section>
           </aside>
         </div>
-        {drive?.workflowVersion === 2 && (
+        {drive?.workflowVersion === 2 && eligibility?.passed && (
           <RecruitmentPanel drive={drive} role="student" refresh={refresh} />
         )}
         {companyOpen && drive && (
@@ -368,16 +396,29 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
     (j) =>
       `${j.company} ${j.role} ${j.skills.join(' ')}`.toLowerCase().includes(search.toLowerCase()) &&
       (location === 'All locations' || j.location === location) &&
-      (type === 'All types' || j.type === type),
+      (type === 'All types' || j.type === type) &&
+      (eligibilityFilter === 'All placements' ||
+        (eligibilityFilter === 'Eligible'
+          ? j.eligibility?.passed === true
+          : j.eligibility?.passed === false)),
   );
   return (
     <>
       <PageHeader
         eyebrow="POTENTIAL MEETS POSSIBILITY"
         title="Your campus. Your next opportunity."
-        description="Only activated campus drives that pass your campus, course, branch, year, CGPA, and backlog eligibility appear here."
+        description="Browse published placements for your college. See whether you qualify and which requirements you still need to meet."
       />
       <div className="filter-bar">
+        <select
+          aria-label="Filter eligibility"
+          value={eligibilityFilter}
+          onChange={(e) => setEligibilityFilter(e.target.value)}
+        >
+          <option>All placements</option>
+          <option>Eligible</option>
+          <option>Not eligible</option>
+        </select>
         <label className="search-input">
           <Search size={18} />
           <input
@@ -424,6 +465,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
                 setSearch('');
                 setLocation('All locations');
                 setType('All types');
+                setEligibilityFilter('All placements');
               }}
             >
               Clear filters

@@ -860,8 +860,15 @@ export function CampusRelationships({
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              const status = String(f.get('status')) as Relationship['status'];
-              const reason = String(f.get('reason') || '');
+              const submitter = (e.nativeEvent as SubmitEvent)
+                .submitter as HTMLButtonElement | null;
+              const status = submitter?.value as Relationship['status'];
+              if (!['Accepted', 'Rejected'].includes(status)) return;
+              const reason = String(f.get('reason') || '').trim();
+              if (status === 'Rejected' && reason.length < 5) {
+                setError('Give a rejection reason of at least five characters.');
+                return;
+              }
               void run(async () => {
                 await service.reviewCampus(r.id, status, reason);
                 client.setQueryData<Relationship[]>(['relationships', role, userId], (rows = []) =>
@@ -875,20 +882,32 @@ export function CampusRelationships({
             </h3>
             {r.status === 'Pending' && (
               <>
-                <select name="status">
-                  <option>Accepted</option>
-                  <option>Rejected</option>
-                </select>
+                <p>
+                  Accept to let this recruiter submit placement requests to your college. Each
+                  placement will still need your review and scheduling.
+                </p>
                 <input
                   name="reason"
                   aria-label="Review reason"
                   placeholder="Reason (required for rejection)"
                 />
-                <Button type="submit" disabled={busy}>
-                  Save decision
-                </Button>
+                <div className="hero-buttons">
+                  <Button type="submit" name="status" value="Accepted" disabled={busy}>
+                    Accept recruiter
+                  </Button>
+                  <Button
+                    type="submit"
+                    name="status"
+                    value="Rejected"
+                    kind="outline"
+                    disabled={busy}
+                  >
+                    Reject request
+                  </Button>
+                </div>
               </>
             )}
+            {r.reason && <p>Review note: {r.reason}</p>}
           </form>
         ))}
     </section>

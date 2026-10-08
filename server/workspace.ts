@@ -152,13 +152,11 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     actor.role === 'recruiter' ? d.recruiterId === actor.id : d.campusId === actor.campusId,
   );
   if (actor.role === 'student')
-    data.drives = data.drives
-      .filter((d) => studentVisible(d) && checkEligibility(data.student, d).passed)
-      .map((d) => {
-        const publicDrive = { ...d } as Partial<StoredDrive>;
-        delete publicDrive.recruiterId;
-        return publicDrive as Drive;
-      });
+    data.drives = data.drives.filter(studentVisible).map((d) => {
+      const publicDrive = { ...d } as Partial<StoredDrive>;
+      delete publicDrive.recruiterId;
+      return publicDrive as Drive;
+    });
   if (actor.role === 'recruiter') {
     const owned = new Set(data.drives.map((d) => d.opportunityId || d.id));
     data.applications = data.applications.filter((a) => owned.has(a.opportunityId));

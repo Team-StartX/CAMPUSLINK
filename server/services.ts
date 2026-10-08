@@ -4,6 +4,7 @@ import { driveService, driveRequestSchema } from '../src/services/drive.domain';
 import { mockAdapter } from '../src/mocks/adapter';
 import { readiness, fit } from '../src/utils/scoring';
 import { checkEligibility } from '../src/utils/placement';
+import { skillNames } from '../src/utils/skills';
 import {
   currentContext,
   readWorkspace,
@@ -354,10 +355,7 @@ export async function dispatch(service: string, method: string, input: unknown[]
         job: {
           title: job.role,
           description: redactMlText(job.description || job.role).slice(0, 10000),
-          requiredSkills: job.skills
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean),
+          requiredSkills: skillNames(job.skills),
         },
       },
       jobResponse,
@@ -1086,15 +1084,22 @@ export async function analytics(
         score: readiness(p.student, p.history).score,
         factors: readiness(p.student, p.history).factors,
       })),
-    recruiters: breakdown(
-      drives.map((d) => d.company),
-      () => true,
-    ).map((row) => ({
-      ...row,
-      drives: drives.filter((d) => d.company === row.name).length,
-      repeatHiring:
-        drives.filter((d) => d.company === row.name && d.status === 'COMPLETED').length > 1,
-    })),
+    recruiters: [...new Set(drives.map((drive) => drive.company))].map((name) => {
+      const companyDrives = drives.filter((drive) => drive.company === name);
+      const companyIds = new Set(companyDrives.map((drive) => drive.opportunityId || drive.id));
+      const applicants = students.filter((profile) => profile.applications.some((application) => companyIds.has(application.opportunityId)));
+      const companyOffers = offers.filter((offer) => offer.company === name && offer.applicationId && applicants.some((profile) => profile.applications.some((application) => application.id === offer.applicationId && companyIds.has(application.opportunityId))));
+      const hired = applicants.filter((profile) => profile.offers.some((offer) => companyOffers.some((row) => row.id === offer.id) && ['Accepted', 'Joined'].includes(offer.status))).length;
+      const salaries = companyOffers.map((offer) => Number(offer.ctc.match(/[\d.]+/)?.[0] || 0)).filter((salary) => salary > 0);
+      return {
+        name, total: applicants.length, placed: hired,
+        conversion: Math.round(100 * hired / Math.max(1, applicants.length)),
+        drives: companyDrives.length,
+        repeatHiring: companyDrives.filter((drive) => drive.status === 'COMPLETED').length > 1,
+        average: salaries.length ? Math.round(10 * salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length) / 10 : 0,
+        highest: Math.max(0, ...salaries),
+      };
+    }),
     documents: {
       total: students.reduce((s, p) => s + p.documents.length, 0),
       verified: students.reduce(

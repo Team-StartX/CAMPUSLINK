@@ -4,6 +4,8 @@ import { roundTypes } from '@/types/recruitment';
 import { recruitmentService } from '@/services/recruitment.service';
 import { useSession } from '@/store/session';
 import { ContestProgress } from '@/components/contest-progress';
+import { SkillRequirementsInput } from '@/components/skill-requirements-input';
+import { CampusEligibilityPreview } from '@/components/campus-eligibility-preview';
 import {
   Badge,
   Button,
@@ -20,6 +22,7 @@ import {
   scheduleSchema,
 } from '@/services/drive.service';
 import { aiService } from '@/services/platform.service';
+import { skillNames } from '@/utils/skills';
 import { WorkspaceData, Drive, DriveSchedule, DriveStatus, Role } from '@/types';
 import { contestAchievements } from '@/utils/contest-achievements';
 import { checkEligibility, driveStatuses, statusLabel, scheduleFinalized } from '@/utils/placement';
@@ -285,6 +288,20 @@ function DriveRequestWizard({
   });
   const set = <K extends keyof Drive>(key: K, value: Drive[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
+  const selectedCampus = data.campuses?.find((campus) => campus.id === values.campusId);
+  const toggleCriterion = (key: 'courses' | 'branches', name: string, checked: boolean) => {
+    const chosen =
+      values[key]
+        ?.split(',')
+        .map((value) => value.trim())
+        .filter(Boolean) || [];
+    set(
+      key,
+      (checked ? [...new Set([...chosen, name])] : chosen.filter((value) => value !== name)).join(
+        ', ',
+      ),
+    );
+  };
   const campusAccess = access.data?.find((r) => r.campusId === values.campusId);
   const canSave = campusAccess?.status === 'Accepted';
   const stageNames = [
@@ -580,10 +597,28 @@ function DriveRequestWizard({
             </FormField>
             <Button
               kind="outline"
+              disabled={busy || values.description.trim().length < 20}
               onClick={async () => {
-                const parsed = await aiService.parseJobDescription(values.description);
-                set('skills', parsed.skills.join(', '));
-                notify('Extraction complete. Review the suggested skills before continuing.');
+                setBusy(true);
+                setError('');
+                try {
+                  const parsed = await aiService.parseJobDescription(values.description);
+                  if (!parsed.skills.length) {
+                    setError(
+                      'No skill names were found. Enter required skills in the Eligibility & skills step.',
+                    );
+                    return;
+                  }
+                  set(
+                    'skills',
+                    skillNames([values.skills, ...parsed.skills].join(', ')).join(', '),
+                  );
+                  notify('Skills suggested. Review the requirements before continuing.');
+                } catch (error) {
+                  setError((error as Error).message);
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               Extract skills
@@ -608,19 +643,37 @@ function DriveRequestWizard({
               </p>
             </div>
             <div className="form-row">
-              <FormField label="Courses (comma separated)">
-                <input
-                  required
-                  value={values.courses}
-                  onChange={(e) => set('courses', e.target.value)}
-                />
+              <FormField label="Eligible courses">
+                {(selectedCampus?.courses || []).map((course) => (
+                  <label className="checkbox-label" key={course}>
+                    <input
+                      type="checkbox"
+                      checked={values.courses
+                        ?.split(',')
+                        .map((value) => value.trim())
+                        .includes(course)}
+                      onChange={(e) => toggleCriterion('courses', course, e.target.checked)}
+                    />
+                    {course}
+                  </label>
+                ))}
+                <p className="muted">Select eligible courses offered by this college.</p>
               </FormField>
-              <FormField label="Branches (comma separated)">
-                <input
-                  required
-                  value={values.branches}
-                  onChange={(e) => set('branches', e.target.value)}
-                />
+              <FormField label="Eligible branches">
+                {(selectedCampus?.branches || []).map((branch) => (
+                  <label className="checkbox-label" key={branch}>
+                    <input
+                      type="checkbox"
+                      checked={values.branches
+                        ?.split(',')
+                        .map((value) => value.trim())
+                        .includes(branch)}
+                      onChange={(e) => toggleCriterion('branches', branch, e.target.checked)}
+                    />
+                    {branch}
+                  </label>
+                ))}
+                <p className="muted">Select eligible branches offered by this college.</p>
               </FormField>
             </div>
             <div className="form-row">
@@ -629,6 +682,7 @@ function DriveRequestWizard({
                   required
                   value={values.graduationYear}
                   onChange={(e) => set('graduationYear', e.target.value)}
+                  placeholder="2027, 2028"
                 />
               </FormField>
               <FormField label="Minimum CGPA">
@@ -657,19 +711,22 @@ function DriveRequestWizard({
               />
             </FormField>
             <FormField label="Required skills">
-              <input
+              <SkillRequirementsInput
                 required
                 value={values.skills}
-                onChange={(e) => set('skills', e.target.value)}
-                placeholder="React, Node.js, SQL"
+                onChange={(value) => set('skills', value)}
               />
             </FormField>
             <FormField label="Preferred skills">
-              <input
-                value={values.preferredSkills}
-                onChange={(e) => set('preferredSkills', e.target.value)}
+              <SkillRequirementsInput
+                value={values.preferredSkills || ''}
+                onChange={(value) => set('preferredSkills', value)}
               />
             </FormField>
+            <p className="muted">
+              Required skills affect eligibility when the requirement checkbox is selected.
+              Preferred skills improve the fit score without excluding a student.
+            </p>
           </>
         )}
         {step === 3 && (
@@ -1149,6 +1206,7 @@ function DriveDetail({
         ))}
       </div>
       <JobInformation drive={drive} />
+      {campus && <CampusEligibilityPreview drive={drive} />}
       {drive.workflowVersion === 2 && (
         <RecruitmentPanel drive={drive} role={role} refresh={refresh} />
       )}
@@ -1255,8 +1313,12 @@ function DriveDetail({
               {campus && ['SUBMITTED', 'UNDER_REVIEW'].includes(drive.status) && (
                 <>
                   <Button disabled={busy} onClick={() => void run('approve')}>
-                    Proceed to scheduling <CalendarDays size={16} />
+                    Accept placement request & schedule <CalendarDays size={16} />
                   </Button>
+                  <p className="muted">
+                    Accepting approves the job requirements. Students can view the placement after
+                    scheduling and activation.
+                  </p>
                   <FormField label="Review note / reason">
                     <textarea
                       value={note}

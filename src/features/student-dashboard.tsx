@@ -46,7 +46,20 @@ export function OpportunityCard({ job, compact = false }: { job: Opportunity; co
         </span>
       </div>
       <p className="company-name">{job.company}</p>
-      <Badge>Eligibility passed</Badge>
+      <Badge kind={job.eligibility?.passed ? 'verified' : ''}>
+        {job.eligibility?.passed === false ? 'Not eligible' : 'Eligible'}
+      </Badge>
+      {job.eligibility?.passed === false && (
+        <ul className="muted">
+          {job.eligibility.checks
+            .filter((check) => !check.passed)
+            .map((check) => (
+              <li key={check.name}>
+                {check.name}: {check.detail}
+              </li>
+            ))}
+        </ul>
+      )}
       <p>
         {job.location} · {job.workMode || 'On-site'}
       </p>

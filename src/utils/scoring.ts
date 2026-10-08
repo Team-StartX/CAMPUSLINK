@@ -1,5 +1,6 @@
 import { AssessmentAttempt, WorkspaceData, Drive, Student } from '@/types';
 import { checkEligibility } from './placement';
+import { normalizeSkill, skillNames } from './skills';
 
 const average = (values: number[]) =>
   values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
@@ -74,13 +75,10 @@ export function readiness(student: Student, history: AssessmentAttempt[] = []) {
 }
 export function fit(student: Student, drive: Drive, history: AssessmentAttempt[] = []) {
   const eligibility = checkEligibility(student, drive);
-  const required = drive.skills
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const required = skillNames(drive.skills);
   const skills = required.map((name) => ({
     name,
-    skill: student.skills.find((s) => s.name.toLowerCase() === name.toLowerCase()),
+    skill: student.skills.find((s) => normalizeSkill(s.name) === normalizeSkill(name)),
   }));
   const alignment = required.length
     ? Math.round(
@@ -88,12 +86,23 @@ export function fit(student: Student, drive: Drive, history: AssessmentAttempt[]
           required.length,
       )
     : 100;
+  const preferred = skillNames(drive.preferredSkills || '');
+  const preferredAlignment = preferred.length
+    ? Math.round(
+        (100 *
+          preferred.filter((name) =>
+            student.skills.some((skill) => normalizeSkill(skill.name) === normalizeSkill(name)),
+          ).length) /
+          preferred.length,
+      )
+    : alignment;
   const words = required.map((s) => s.toLowerCase());
   const projects = student.projects.filter((p) =>
     words.some((w) => `${p} ${student.projectDescriptions?.[p] || ''}`.toLowerCase().includes(w)),
   ).length;
   const explanation = [
-    { name: 'Skill alignment', score: alignment, weight: 0.45 },
+    { name: 'Required skill alignment', score: alignment, weight: 0.35 },
+    { name: 'Preferred skill alignment', score: preferredAlignment, weight: 0.1 },
     { name: 'Assessment performance', score: average(history.map((h) => h.score)), weight: 0.2 },
     { name: 'Project relevance', score: Math.min(100, projects * 50), weight: 0.15 },
     {

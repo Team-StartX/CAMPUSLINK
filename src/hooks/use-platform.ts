@@ -16,6 +16,10 @@ export function usePlatform() {
     client.invalidateQueries({ queryKey: ['readiness'] });
     client.invalidateQueries({ queryKey: ['recruitment-dashboard'] });
     client.invalidateQueries({ queryKey: ['server-analytics'] });
+    client.invalidateQueries({ queryKey: ['people'] });
+    client.invalidateQueries({ queryKey: ['match'] });
+    client.invalidateQueries({ queryKey: ['candidate-ranking'] });
+    client.invalidateQueries({ queryKey: ['recruitment'] });
     return client.invalidateQueries({ queryKey: ['platform'] });
   };
   return { ...query, refresh };

@@ -323,6 +323,7 @@ export function ProfilePage({ data, refresh, notify }: Common) {
   );
 }
 export function SkillsPage({ data, refresh, notify }: Common) {
+  const [savingSkill, setSavingSkill] = useState(false);
   const [add, setAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [skill, setSkill] = useState('');
@@ -443,15 +444,20 @@ export function SkillsPage({ data, refresh, notify }: Common) {
             className="form-stack"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (savingSkill) return;
+              setSavingSkill(true);
+              setError('');
               try {
                 if (!skill.trim()) throw new Error('Choose or enter a skill.');
                 await studentService.addSkill(skill.trim(), level);
-                refresh();
+                await refresh();
                 setAdd(false);
                 setSkill('');
                 notify('Skill added. Take an assessment to verify it.');
               } catch (e) {
                 setError((e as Error).message);
+              } finally {
+                setSavingSkill(false);
               }
             }}
           >
@@ -460,6 +466,7 @@ export function SkillsPage({ data, refresh, notify }: Common) {
                 value={skill}
                 onChange={(e) => setSkill(e.target.value)}
                 placeholder="Search Java, React, Python…"
+                maxLength={80}
                 required
                 list="skills"
               />
@@ -496,8 +503,8 @@ export function SkillsPage({ data, refresh, notify }: Common) {
               verification.
             </p>
             {error && <p className="field-error">{error}</p>}
-            <Button type="submit">
-              Add skill <Plus size={16} />
+            <Button type="submit" disabled={savingSkill}>
+              {savingSkill ? 'Adding skill…' : 'Add skill'} <Plus size={16} />
             </Button>
           </form>
         </Modal>

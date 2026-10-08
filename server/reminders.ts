@@ -94,7 +94,7 @@ export async function runReminders(db: Database) {
           );
       for (const offer of data.offers)
         if (
-          ['Received', 'Deferred'].includes(offer.status) &&
+          ['Offer Sent', 'Viewed', 'Received', 'Deferred', 'Accepted'].includes(offer.status) &&
           offer.joining <= tomorrow &&
           data.documents.some((d) => d.status !== 'Verified')
         )

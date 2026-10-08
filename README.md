@@ -22,6 +22,14 @@ Without external database credentials, development uses SQLite, local private up
 
 ## Project structure
 
+For access from devices on the same Wi-Fi, add this PC's exact frontend origin to
+`DEV_FRONTEND_ORIGINS` in both `.env` and `server/.env`, for example
+`http://192.168.1.10:3000`, then restart `npm run dev`. In Administrator PowerShell,
+run `powershell -ExecutionPolicy Bypass -File .\scripts\enable-wifi-access.ps1`
+from the repository root. This allows port 3000 only from the Wi-Fi subnet. Open
+the printed address on other devices; VS Code port forwarding is unnecessary.
+If the PC's Wi-Fi address changes, update the origins and rerun the script.
+
 | Directory                                | Contents                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------- |
 | `src/app`                                | Next.js routes and styles                                                 |

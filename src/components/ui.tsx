@@ -9,6 +9,8 @@ export function Button({
   type = 'button',
   disabled = false,
   loading = false,
+  name,
+  value,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
@@ -16,10 +18,14 @@ export function Button({
   type?: 'button' | 'submit';
   disabled?: boolean;
   loading?: boolean;
+  name?: string;
+  value?: string;
 }) {
   return (
     <button
       type={type}
+      name={name}
+      value={value}
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}

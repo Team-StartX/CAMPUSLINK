@@ -6,6 +6,7 @@
     "node": "24.x"
   },
   "scripts": {
+    "demo:placement": "tsx scripts/placement-demo.ts",
     "dev": "node scripts/dev.cjs",
     "dev:frontend": "next dev --hostname 0.0.0.0",
     "build": "next build",

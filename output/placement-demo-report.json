@@ -1,0 +1,661 @@
+{
+  "dataset": "13 synthetic student profiles in two colleges; three simulated drives; manually specified eligibility labels and best candidates.",
+  "workflow": [
+    "Profiling",
+    "Matching",
+    "Scheduling",
+    "Notification",
+    "Offer Tracking",
+    "Analytics"
+  ],
+  "evaluation": {
+    "pairs": 39,
+    "correct": 39,
+    "eligibilityAccuracy": 1,
+    "topOneRankingAccuracy": 1,
+    "elapsedMs": 107.58,
+    "limitation": "Small scripted synthetic benchmark. Measures rule conformance and ranking examples, not real placement prediction accuracy. Includes database and workflow time; not a concurrency benchmark."
+  },
+  "readiness": {
+    "score": 93,
+    "label": "Highly Employable",
+    "categories": [
+      {
+        "name": "Verified skills",
+        "score": 100,
+        "weight": 0.3,
+        "recorded": true
+      },
+      {
+        "name": "Academics",
+        "score": 90,
+        "weight": 0.2,
+        "recorded": true
+      },
+      {
+        "name": "Projects",
+        "score": 100,
+        "weight": 0.15,
+        "recorded": true
+      },
+      {
+        "name": "Aptitude",
+        "score": 85,
+        "weight": 0.15,
+        "recorded": true
+      },
+      {
+        "name": "Communication",
+        "score": 85,
+        "weight": 0.1,
+        "recorded": true
+      },
+      {
+        "name": "Interview",
+        "score": 85,
+        "weight": 0.1,
+        "recorded": true
+      }
+    ],
+    "factors": []
+  },
+  "drives": [
+    {
+      "role": "Frontend Developer",
+      "applicants": 3,
+      "expectedBest": "web-strong",
+      "ranking": [
+        {
+          "student": "web-strong",
+          "score": 74,
+          "level": "Ready",
+          "readiness": 93,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 100,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 100,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 85,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 50,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": []
+        },
+        {
+          "student": "web-developing",
+          "score": 40,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "React",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "TypeScript",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        },
+        {
+          "student": "all-rounder",
+          "score": 34,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "React",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "TypeScript",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Backend Developer",
+      "applicants": 3,
+      "expectedBest": "backend-strong",
+      "ranking": [
+        {
+          "student": "backend-strong",
+          "score": 74,
+          "level": "Ready",
+          "readiness": 93,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 100,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 100,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 85,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 50,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": []
+        },
+        {
+          "student": "backend-developing",
+          "score": 40,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "Java",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "SQL",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        },
+        {
+          "student": "all-rounder",
+          "score": 34,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "Java",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "SQL",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "Data Analyst",
+      "applicants": 3,
+      "expectedBest": "data-strong",
+      "ranking": [
+        {
+          "student": "data-strong",
+          "score": 74,
+          "level": "Ready",
+          "readiness": 93,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 100,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 100,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 85,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 50,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": []
+        },
+        {
+          "student": "data-developing",
+          "score": 40,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "Python",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "SQL",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        },
+        {
+          "student": "all-rounder",
+          "score": 34,
+          "level": "Not Ready",
+          "readiness": 18,
+          "factors": [
+            {
+              "name": "Required skill alignment",
+              "score": 50,
+              "weight": 0.35
+            },
+            {
+              "name": "Preferred skill alignment",
+              "score": 50,
+              "weight": 0.1
+            },
+            {
+              "name": "Assessment performance",
+              "score": 0,
+              "weight": 0.2
+            },
+            {
+              "name": "Project relevance",
+              "score": 0,
+              "weight": 0.15
+            },
+            {
+              "name": "Certifications",
+              "score": 0,
+              "weight": 0.05
+            },
+            {
+              "name": "Academics",
+              "score": 90,
+              "weight": 0.15
+            }
+          ],
+          "skillGaps": [
+            {
+              "name": "Python",
+              "action": "Verify this skill through an assessment"
+            },
+            {
+              "name": "SQL",
+              "action": "Verify this skill through an assessment"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "verified": {
+    "conflictDetection": true,
+    "interviewConflictDetection": true,
+    "explanations": true,
+    "campusIsolation": true,
+    "documentVerificationBeforeJoining": true,
+    "offerDeferral": true,
+    "deduplicatedReminders": true
+  },
+  "outcome": {
+    "status": "Joined",
+    "kind": "PPO",
+    "notifications": 62,
+    "analytics": {
+      "registered": 12,
+      "ready": 7,
+      "placed": 1,
+      "offers": 1,
+      "accepted": 1,
+      "pending": 0,
+      "joined": 1,
+      "active": 3,
+      "average": 8,
+      "highest": 8,
+      "branches": [
+        {
+          "name": "CSE",
+          "total": 11,
+          "placed": 1,
+          "conversion": 9
+        },
+        {
+          "name": "Mechanical",
+          "total": 1,
+          "placed": 0,
+          "conversion": 0
+        }
+      ],
+      "skills": [
+        {
+          "name": "React",
+          "total": 7,
+          "placed": 1,
+          "conversion": 14
+        },
+        {
+          "name": "TypeScript",
+          "total": 7,
+          "placed": 1,
+          "conversion": 14
+        },
+        {
+          "name": "Java",
+          "total": 7,
+          "placed": 0,
+          "conversion": 0
+        },
+        {
+          "name": "SQL",
+          "total": 9,
+          "placed": 0,
+          "conversion": 0
+        },
+        {
+          "name": "Python",
+          "total": 7,
+          "placed": 0,
+          "conversion": 0
+        }
+      ],
+      "support": [
+        {
+          "id": "all-rounder",
+          "name": "all-rounder",
+          "score": 18,
+          "factors": [
+            "Verified skills: 0/100 · no recorded evidence yet",
+            "Projects: 0/100 · no recorded evidence yet",
+            "Aptitude: 0/100 · no recorded evidence yet",
+            "Communication: 0/100 · no recorded evidence yet",
+            "Interview: 0/100 · no recorded evidence yet"
+          ]
+        },
+        {
+          "id": "backend-developing",
+          "name": "backend-developing",
+          "score": 18,
+          "factors": [
+            "Verified skills: 0/100 · no recorded evidence yet",
+            "Projects: 0/100 · no recorded evidence yet",
+            "Aptitude: 0/100 · no recorded evidence yet",
+            "Communication: 0/100 · no recorded evidence yet",
+            "Interview: 0/100 · no recorded evidence yet"
+          ]
+        },
+        {
+          "id": "data-developing",
+          "name": "data-developing",
+          "score": 18,
+          "factors": [
+            "Verified skills: 0/100 · no recorded evidence yet",
+            "Projects: 0/100 · no recorded evidence yet",
+            "Aptitude: 0/100 · no recorded evidence yet",
+            "Communication: 0/100 · no recorded evidence yet",
+            "Interview: 0/100 · no recorded evidence yet"
+          ]
+        },
+        {
+          "id": "missing-skills",
+          "name": "missing-skills",
+          "score": 18,
+          "factors": [
+            "Verified skills: 0/100 · no recorded evidence yet",
+            "Projects: 0/100 · no recorded evidence yet",
+            "Aptitude: 0/100 · no recorded evidence yet",
+            "Communication: 0/100 · no recorded evidence yet",
+            "Interview: 0/100 · no recorded evidence yet"
+          ]
+        },
+        {
+          "id": "web-developing",
+          "name": "web-developing",
+          "score": 18,
+          "factors": [
+            "Verified skills: 0/100 · no recorded evidence yet",
+            "Projects: 0/100 · no recorded evidence yet",
+            "Aptitude: 0/100 · no recorded evidence yet",
+            "Communication: 0/100 · no recorded evidence yet",
+            "Interview: 0/100 · no recorded evidence yet"
+          ]
+        }
+      ],
+      "recruiters": [
+        {
+          "name": "Demo recruiter-1",
+          "total": 3,
+          "placed": 1,
+          "conversion": 33,
+          "drives": 1,
+          "repeatHiring": false,
+          "average": 8,
+          "highest": 8
+        },
+        {
+          "name": "Demo recruiter-2",
+          "total": 3,
+          "placed": 0,
+          "conversion": 0,
+          "drives": 1,
+          "repeatHiring": false,
+          "average": 0,
+          "highest": 0
+        },
+        {
+          "name": "Demo recruiter-3",
+          "total": 3,
+          "placed": 0,
+          "conversion": 0,
+          "drives": 1,
+          "repeatHiring": false,
+          "average": 0,
+          "highest": 0
+        }
+      ],
+      "documents": {
+        "total": 12,
+        "verified": 1
+      }
+    }
+  },
+  "predictiveModel": "Optional historical logistic regression is not trained by this demonstration. Genuine labelled outcome cohorts are required."
+}

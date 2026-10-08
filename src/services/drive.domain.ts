@@ -166,13 +166,14 @@ export const driveService = {
   getCampusOpportunities: async () => {
     const data = await mockAdapter.read();
     return data.drives
-      .filter((d) => studentVisible(d) && checkEligibility(data.student, d).passed)
+      .filter(studentVisible)
       .map((d) => ({
         ...driveOpportunity(
           d,
           data.opportunities.find((o) => o.id === d.opportunityId),
         ),
         match: fit(data.student, d, data.history).score,
+        eligibility: checkEligibility(data.student, d),
       }))
       .sort((a, b) => b.match - a.match);
   },

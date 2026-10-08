@@ -1,6 +1,7 @@
 'use client';
 import { CampusAssessments, CampusRelationships, StudentCompanyPage } from '@/features/recruitment';
 import { AppShell } from '@/components/app-shell';
+import { GuestOnlyRoute } from '@/components/guest-only-route';
 import { Loader } from '@/components/loader';
 import { Landing, PublicPage } from '@/components/public';
 import { Badge, Button, EmptyState, PageHeader, Toast } from '@/components/ui';
@@ -52,7 +53,11 @@ export function Platform() {
   if (path === '/reset-password' || path === '/verify-email')
     return <AuthLinkPage verify={path === '/verify-email'} />;
   if (path === '/login' || path === '/register')
-    return <AuthPage registering={path === '/register'} />;
+    return (
+      <GuestOnlyRoute>
+        <AuthPage registering={path === '/register'} />
+      </GuestOnlyRoute>
+    );
   const [, role, section, id] = path.split('/');
   if (!['student', 'recruiter', 'campus'].includes(role))
     return (

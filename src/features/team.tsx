@@ -40,9 +40,12 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     data: people,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: peopleKey,
     queryFn: role === 'campus' ? campusService.getStudents : recruiterService.getCandidates,
+    enabled: Boolean(user?.id),
+    refetchInterval: 15000,
   });
   const [editing, setEditing] = useState<Student | null>(null);
   const closeEditor = useCallback(() => setEditing(null), []);
@@ -117,7 +120,7 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
     return (
       <EmptyState title="Student records are unavailable" description={(error as Error).message} />
     );
-  if (id && isLoading) return <Loader label="Opening student record…" />;
+  if (isLoading) return <Loader label="Loading college student records…" />;
   if (id && !person)
     return (
       <EmptyState
@@ -242,18 +245,22 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
         title={
           role === 'campus' ? 'Every student. A possibility.' : 'Meet your next great teammate.'
         }
-        description="Discover verified skills, projects, assessment activity, and ambition."
+        description={
+          role === 'campus'
+            ? `${people?.length || 0} registered students linked to your college. Choose a placement to check eligibility.`
+            : 'Discover verified skills, projects, assessment activity, and ambition.'
+        }
       />
       <div className="filter-bar">
-        {role === 'recruiter' && (
+        {role !== 'student' && (
           <select
             aria-label="Select active campus drive"
             value={driveId}
             onChange={(e) => setDriveId(e.target.value)}
           >
-            <option value="">Choose an active drive</option>
+            <option value="">Choose a placement to check eligibility</option>
             {data.drives
-              .filter((d) => ['ACTIVE', 'IN_PROGRESS'].includes(d.status))
+              .filter((d) => role === 'campus' || ['ACTIVE', 'IN_PROGRESS'].includes(d.status))
               .map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.company} · {d.role} · {d.campus}
@@ -299,8 +306,6 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                   `${p.name} ${p.id} ${p.course} ${p.skills.map((s) => s.name).join(' ')}`
                     .toLowerCase()
                     .includes(search.toLowerCase()) &&
-                  (role === 'campus' ||
-                    (!!selectedDrive && checkEligibility(p, selectedDrive).passed)) &&
                   (status !== 'CGPA 8.5+' || p.cgpa >= 8.5) &&
                   (status !== 'Shortlisted' || shortlisted.includes(p.id)),
               )
@@ -332,9 +337,27 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                       : 'Select a drive'}
                   </td>
                   <td>
-                    <Badge kind="verified">
-                      {shortlisted.includes(p.id) ? 'Shortlisted' : 'Placement active'}
-                    </Badge>
+                    {selectedDrive ? (
+                      <>
+                        <Badge kind={checkEligibility(p, selectedDrive).passed ? 'verified' : ''}>
+                          {checkEligibility(p, selectedDrive).passed ? 'Eligible' : 'Not eligible'}
+                        </Badge>
+                        {!checkEligibility(p, selectedDrive).passed && (
+                          <details>
+                            <summary>Why not eligible?</summary>
+                            {checkEligibility(p, selectedDrive)
+                              .checks.filter((check) => !check.passed)
+                              .map((check) => (
+                                <p key={check.name}>
+                                  {check.name}: {check.detail}
+                                </p>
+                              ))}
+                          </details>
+                        )}
+                      </>
+                    ) : (
+                      <Badge>{shortlisted.includes(p.id) ? 'Shortlisted' : 'Registered'}</Badge>
+                    )}
                   </td>
                   <td>
                     {role === 'campus' ? (
@@ -348,7 +371,11 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
                     ) : (
                       <button
                         className="text-button"
-                        disabled={shortlisted.includes(p.id)}
+                        disabled={
+                          shortlisted.includes(p.id) ||
+                          !selectedDrive ||
+                          !checkEligibility(p, selectedDrive).passed
+                        }
                         onClick={async () => {
                           if (await setShortlisted((s) => [...s, p.id]))
                             notify(`${p.name} shortlisted.`);
@@ -363,6 +390,29 @@ export function PeoplePage({ data, role, id, refresh, notify }: Props) {
           </tbody>
         </table>
       </div>
+      {!people?.length && (
+        <EmptyState
+          title={
+            role === 'campus' && !user?.campusId
+              ? 'Your account has no college linked'
+              : role === 'campus'
+                ? 'No students linked to this college yet'
+                : 'No student applications yet'
+          }
+          description={
+            role === 'campus' && !user?.campusId
+              ? 'A campus-team account needs a college link to view its students. Ask an administrator to check your account’s college.'
+              : role === 'campus'
+                ? 'Students must register and select this college. Accounts without a college link, or registered with another college, do not appear here.'
+                : 'Students appear in your candidate list after applying to one of your placements.'
+          }
+          action={
+            <Button kind="outline" onClick={() => void refetch()}>
+              Refresh students
+            </Button>
+          }
+        />
+      )}
       {editor}
     </>
   );

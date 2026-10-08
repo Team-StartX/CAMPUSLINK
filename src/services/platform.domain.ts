@@ -9,6 +9,7 @@ import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/plac
 import { fit, readiness } from '@/utils/scoring';
 import { instituteStudentPatchSchema, type InstituteStudentPatch } from '@/utils/student-records';
 import { driveService } from './drive.domain';
+import { normalizeSkill, skillNames } from '@/utils/skills';
 export const studentService = {
   updatePhoto: async (photo?: string) => {
     if (
@@ -60,13 +61,14 @@ export const studentService = {
           .reduce((sum, h) => sum + h.points, 0),
     };
     d.opportunities = d.drives
-      .filter((drive) => studentVisible(drive) && checkEligibility(s, drive).passed)
+      .filter(studentVisible)
       .map((drive) => ({
         ...driveOpportunity(
           drive,
           d.opportunities.find((o) => o.id === drive.opportunityId),
         ),
         match: fit(s, drive, d.history).score,
+        eligibility: checkEligibility(s, drive),
       }))
       .sort((a, b) => b.match - a.match);
     return d;
@@ -77,7 +79,11 @@ export const studentService = {
     }),
   addSkill: (name: string, level: string) =>
     mockAdapter.update((d) => {
-      if (d.student.skills.some((s) => s.name.toLowerCase() === name.toLowerCase()))
+      name = name.trim();
+      if (!name || skillNames(name).length !== 1 || /[,;\n]/.test(name) || name.length > 80)
+        throw new DomainError('Add one skill at a time, using up to 80 characters.');
+      name = name.replace(/\s+/g, ' ');
+      if (d.student.skills.some((s) => normalizeSkill(s.name) === normalizeSkill(name)))
         throw new DomainError('This skill is already on your profile.');
       const id = crypto.randomUUID();
       d.student.skills.push({ id, name, level, verified: false });
@@ -433,8 +439,8 @@ export const offerService = {
       const o = d.offers.find((o) => o.id === id);
       if (!o) throw new DomainError('Offer not found.');
       const transitions: Record<string, string[]> = {
-        'Offer Sent': ['Viewed', 'Accepted', 'Declined'],
-        Viewed: ['Accepted', 'Declined'],
+        'Offer Sent': ['Viewed', 'Accepted', 'Declined', 'Deferred'],
+        Viewed: ['Accepted', 'Declined', 'Deferred'],
         Received: ['Accepted', 'Declined', 'Deferred'],
         Deferred: ['Accepted', 'Declined', 'Withdrawn'],
         Accepted: ['Joined', 'Withdrawn'],
