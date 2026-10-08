@@ -13,7 +13,17 @@ import { OrganizationPicker } from './organization-picker';
 import { PreparationOverview, type PreparationCategory } from './preparation-overview';
 import { Badge, Button, FormField } from './ui';
 export function BackendTools({ role }: { role: Role }) {
+  const user = useSession((s) => s.user);
+  if (role === 'student')
+    return user && !user.approved ? (
+      <p className="panel" role="status">
+        Your account is awaiting campus approval.
+      </p>
+    ) : null;
   return <ConnectedTools role={role} />;
+}
+export function AnalysisPreferences() {
+  return <ConnectedTools role="student" />;
 }
 function ConnectedTools({ role }: { role: Role }) {
   const user = useSession((s) => s.user),
@@ -29,7 +39,7 @@ function ConnectedTools({ role }: { role: Role }) {
   const { data: consent } = useQuery({
     queryKey: ['ai-consent', user?.id],
     queryFn: async () => (await apiClient.get('/account/ai-consent')).data,
-    enabled: Boolean(user),
+    enabled: role === 'student' && Boolean(user),
   });
   const { data: approvals } = useQuery<User[]>({
     queryKey: ['account-approvals', user?.id],

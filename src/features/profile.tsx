@@ -16,6 +16,8 @@ import {
   Check,
   CircleCheck,
   Code2,
+  Download,
+  FileText,
   Globe,
   GraduationCap,
   Pencil,
@@ -26,7 +28,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CareerID } from './student-dashboard';
 type Common = {
   data: WorkspaceData;
@@ -710,6 +712,11 @@ export function LearningPage({ data, refresh, notify }: Common) {
 export function DocumentsPage({ data, refresh, notify, role = 'student' }: Common) {
   const [type, setType] = useState('Resume');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState<{ id: string; action: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
+  const [analysisName, setAnalysisName] = useState('');
   const [analysis, setAnalysis] = useState<{
     label: string;
     suggestions: string[];
@@ -718,63 +725,90 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
       message: string;
     };
   } | null>(null);
+  async function runAction(id: string, action: string, work: () => Promise<void>) {
+    setError('');
+    setBusy({ id, action });
+    try {
+      await work();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'Unable to complete this action. Please try again.',
+      );
+    } finally {
+      setBusy(null);
+      feedback.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      feedback.current?.focus({ preventScroll: true });
+    }
+  }
   return (
-    <>
+    <div className="documents-page">
       <PageHeader
         title="Your work, on record."
         description="Keep your resume, academic records, and certificates together."
       />
       {role === 'student' && (
-        <div className="upload-zone panel">
-          <FilesIcon />
-          <h3>Add your latest document</h3>
-          <p>PDF, PNG, JPG · Up to 10 MB</p>
-          <select aria-label="Document type" value={type} onChange={(e) => setType(e.target.value)}>
-            <option>Resume</option>
-            <option>Academic record</option>
-            <option>Certificate</option>
-            <option>Offer letter</option>
-          </select>
-          <label className="button dark">
-            Choose file <Plus size={16} />
+        <div className="document-upload panel">
+          <div className="document-upload-copy">
+            <FileText size={28} aria-hidden="true" />
+            <div>
+              <h3>Add your latest document</h3>
+              <p>PDF, PNG, JPG · Up to 10 MB. Resume analysis needs a PDF with selectable text.</p>
+            </div>
+          </div>
+          <div className="document-upload-controls">
+            <select
+              aria-label="Document type"
+              disabled={uploading}
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option>Resume</option>
+              <option>Academic record</option>
+              <option>Certificate</option>
+              <option>Offer letter</option>
+            </select>
+            <Button loading={uploading} onClick={() => fileInput.current?.click()}>
+              {uploading ? 'Uploading…' : 'Choose file'} <Plus size={16} />
+            </Button>
             <input
+              ref={fileInput}
               type="file"
               accept=".pdf,.png,.jpg,.jpeg"
               hidden
+              aria-label="Upload document"
+              disabled={uploading}
               onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (file)
+                const input = e.currentTarget;
+                const file = input.files?.[0];
+                if (file) {
+                  setError('');
+                  setUploading(true);
                   try {
+                    if (file.size > 10 * 1024 * 1024)
+                      throw new Error('Choose a file smaller than 10 MB.');
                     await documentService.upload(file, type);
                     refresh();
                     notify('Document securely uploaded.');
-                    setError('');
                   } catch (e) {
                     setError((e as Error).message);
+                  } finally {
+                    setUploading(false);
+                    input.value = '';
                   }
+                }
               }}
             />
-          </label>
-          {error && (
-            <p role="alert" className="field-error">
-              {error}
-            </p>
-          )}
+          </div>
           <small className="muted">
             {'Documents are private and accessible to authorized placement staff.'}
           </small>
+          <p className="document-analysis-help">
+            Upload your resume, then choose Analyze resume to extract skills and review suggestions.{' '}
+            <Link href="/student/settings#analysis-preferences">AI preferences</Link>
+          </p>
         </div>
       )}
-      {analysis && (
-        <section className="panel">
-          <h3>{analysis.label}</h3>
-          {analysis.ml && <AnalysisSource status={analysis.ml.status} />}
-          {analysis.suggestions.map((s) => (
-            <p key={s}>{s}</p>
-          ))}
-        </section>
-      )}
-      <div className="panel table-wrap">
+      <div className="panel table-wrap documents-table">
         <table>
           <thead>
             <tr>
@@ -789,40 +823,10 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
             {data.documents.map((d) => (
               <tr key={d.id}>
                 <td>
-                  {
-                    <Button
-                      kind="outline"
-                      onClick={async () => {
-                        try {
-                          const url = await documentService.download(d.id),
-                            a = document.createElement('a');
-                          a.href = url;
-                          a.download = d.name;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      Download
-                    </Button>
-                  }
-                  {role === 'student' && d.type === 'Resume' && (
-                    <Button
-                      kind="outline"
-                      onClick={async () => {
-                        try {
-                          setAnalysis(await aiService.analyzeResume(d.id));
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      Analyze resume
-                    </Button>
-                  )}
-                  <b>{d.name}</b>
+                  <div className="document-name">
+                    <FileText size={21} aria-hidden="true" />
+                    <b>{d.name}</b>
+                  </div>
                 </td>
                 <td>{d.type}</td>
                 <td>{d.size}</td>
@@ -830,31 +834,77 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
                   <Badge kind={d.status === 'Verified' ? 'verified' : ''}>{d.status}</Badge>
                 </td>
                 <td>
-                  {role === 'campus' && d.status !== 'Verified' && (
+                  <div className="document-actions">
                     <Button
                       kind="outline"
-                      onClick={async () => {
-                        await documentService.verify(d.id);
-                        refresh();
-                        notify('Document verification recorded.');
-                      }}
+                      disabled={Boolean(busy)}
+                      loading={busy?.id === d.id && busy.action === 'download'}
+                      onClick={() =>
+                        void runAction(d.id, 'download', async () => {
+                          const url = await documentService.download(d.id),
+                            a = document.createElement('a');
+                          a.href = url;
+                          a.download = d.name;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        })
+                      }
                     >
-                      Verify document
+                      <Download size={15} /> Download
                     </Button>
-                  )}
-                  {role === 'student' && (
-                    <button
-                      className="icon-button"
-                      aria-label={`Remove ${d.name}`}
-                      onClick={async () => {
-                        await documentService.remove(d.id);
-                        refresh();
-                        notify('Document removed.');
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+                    {role === 'student' && d.type === 'Resume' && (
+                      <Button
+                        disabled={Boolean(busy)}
+                        loading={busy?.id === d.id && busy.action === 'analyze'}
+                        onClick={() =>
+                          void runAction(d.id, 'analyze', async () => {
+                            setAnalysis(null);
+                            setAnalysisName(d.name);
+                            setAnalysis(await aiService.analyzeResume(d.id));
+                          })
+                        }
+                      >
+                        {busy?.id === d.id && busy.action === 'analyze'
+                          ? 'Analyzing…'
+                          : 'Analyze resume'}
+                      </Button>
+                    )}
+                    {role === 'campus' && d.status !== 'Verified' && (
+                      <Button
+                        kind="outline"
+                        disabled={Boolean(busy)}
+                        loading={busy?.id === d.id && busy.action === 'verify'}
+                        onClick={() =>
+                          void runAction(d.id, 'verify', async () => {
+                            await documentService.verify(d.id);
+                            refresh();
+                            notify('Document verification recorded.');
+                          })
+                        }
+                      >
+                        Verify document
+                      </Button>
+                    )}
+                    {role === 'student' && (
+                      <button
+                        className="icon-button"
+                        aria-label={`Remove ${d.name}`}
+                        disabled={Boolean(busy)}
+                        onClick={() =>
+                          void runAction(d.id, 'remove', async () => {
+                            await documentService.remove(d.id);
+                            if (analysisName === d.name) setAnalysis(null);
+                            refresh();
+                            notify('Document removed.');
+                          })
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -867,13 +917,38 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
           />
         )}
       </div>
-    </>
-  );
-}
-function FilesIcon() {
-  return (
-    <div className="result-symbol lavender">
-      <ShieldCheck size={32} />
+      <div ref={feedback} tabIndex={-1} className="document-feedback">
+        {busy?.action === 'analyze' && (
+          <p role="status" className="document-progress">
+            Analyzing {analysisName}… This can take a moment.
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="document-error">
+            {error}
+          </p>
+        )}
+        {analysis && (
+          <section
+            className="panel resume-analysis"
+            aria-label="Resume analysis results"
+            aria-live="polite"
+          >
+            <span className="eyebrow">RESUME REVIEW</span>
+            <h2>{analysisName}</h2>
+            <p>{analysis.label}</p>
+            {analysis.ml && <AnalysisSource status={analysis.ml.status} />}
+            {analysis.ml && analysis.ml.status !== 'remote' && (
+              <p className="muted">{analysis.ml.message}</p>
+            )}
+            <ul>
+              {analysis.suggestions.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

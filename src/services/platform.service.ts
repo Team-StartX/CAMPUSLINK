@@ -7,7 +7,16 @@ export const applicationService =
   remoteService<typeof local.applicationService>('applicationService');
 export const assessmentService = remoteService<typeof local.assessmentService>('assessmentService');
 export const contestService = remoteService<typeof local.contestService>('contestService');
-export const aiService = remoteService<typeof local.aiService>('aiService');
+export const aiService = remoteService<typeof local.aiService>('aiService', {
+  // Storage retrieval and optional analysis can exceed the ordinary 30-second request limit.
+  analyzeResume: (documentId: string) =>
+    rpc<Awaited<ReturnType<typeof local.aiService.analyzeResume>>>(
+      'aiService',
+      'analyzeResume',
+      [documentId],
+      60000,
+    ),
+});
 export const interviewService = remoteService<typeof local.interviewService>('interviewService');
 export const recruiterService = remoteService<typeof local.recruiterService>('recruiterService');
 export const campusService = remoteService<typeof local.campusService>('campusService');

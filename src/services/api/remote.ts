@@ -14,12 +14,17 @@ apiClient.interceptors.request.use((config) => {
   if (target && !config.headers.has('X-Student-ID')) config.headers.set('X-Student-ID', target);
   return config;
 });
-export async function rpc<T>(service: string, method: string, args: unknown[] = []): Promise<T> {
+export async function rpc<T>(
+  service: string,
+  method: string,
+  args: unknown[] = [],
+  timeout?: number,
+): Promise<T> {
   if (!csrf) {
     const { data } = await apiClient.get('/auth/me');
     setCsrf(data.csrf);
   }
-  const response = await apiClient.post(`/services/${service}/${method}`, { args });
+  const response = await apiClient.post(`/services/${service}/${method}`, { args }, { timeout });
   return response.data;
 }
 export function remoteService<T extends object>(name: string, synchronous: Partial<T> = {}): T {

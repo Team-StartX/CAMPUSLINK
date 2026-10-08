@@ -39,7 +39,7 @@ import { CommunicationPractice } from '@/features/communication';
 import { useSession } from '@/store/session';
 import { WorkspaceData, Role } from '@/types';
 import { motion } from 'framer-motion';
-import { AuthLinkPage, BackendTools } from './backend-tools';
+import { AnalysisPreferences, AuthLinkPage, BackendTools } from './backend-tools';
 import { PublicSessionProvider } from './public-session';
 export function Platform() {
   const path = usePathname();
@@ -309,10 +309,12 @@ function Notifications({
 function SettingsPage({
   refresh,
   notify,
+  role,
 }: {
   data: WorkspaceData;
   refresh: () => void;
   notify: (s: string) => void;
+  role: Role;
 }) {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -327,6 +329,11 @@ function SettingsPage({
         title="Make this space yours."
         description="Your account and display preferences."
       />
+      {role === 'student' && (
+        <section id="analysis-preferences" aria-label="AI analysis preferences">
+          <AnalysisPreferences />
+        </section>
+      )}
       <form
         className="panel form-stack settings-form"
         onSubmit={async (e) => {

@@ -1,0 +1,219 @@
+.documents-page {
+  min-width: 0;
+}
+.document-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px 28px;
+  padding: 28px;
+  margin-bottom: 24px;
+}
+.document-upload-copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.document-upload-copy > svg {
+  flex-shrink: 0;
+  box-sizing: content-box;
+  padding: 16px;
+  background: var(--lavender);
+  border-radius: 18px;
+  color: #59438d;
+}
+.document-upload h3 {
+  font-size: 19px;
+  margin: 0 0 8px;
+}
+.document-upload p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.document-upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.document-upload-controls select {
+  width: 180px;
+}
+.document-upload-controls .button {
+  white-space: nowrap;
+}
+.document-upload > small {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.document-upload .document-analysis-help {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.document-analysis-help a {
+  color: #59438d;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#analysis-preferences {
+  scroll-margin-top: 100px;
+}
+.document-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 150px;
+}
+.document-name svg {
+  flex-shrink: 0;
+  color: #796795;
+}
+.document-name b {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 13px;
+}
+.documents-table table {
+  width: 100%;
+}
+.documents-table th:last-child {
+  min-width: 280px;
+}
+.document-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.document-actions .button {
+  min-height: 38px;
+  padding: 9px 13px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.document-actions .button.outline {
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.document-actions .icon-button {
+  flex-shrink: 0;
+}
+.documents-page button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.document-feedback {
+  scroll-margin: 24px;
+  outline: none;
+}
+.document-feedback:focus-visible {
+  outline: 2px solid #9380c8;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+.document-progress,
+.document-error {
+  margin: 18px 0;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.document-progress {
+  background: #eee8f7;
+  color: #59438d;
+}
+.document-error {
+  background: #fff0eb;
+  border: 1px solid #eac2b6;
+  color: #923820;
+}
+.resume-analysis {
+  margin-top: 22px;
+  padding: 28px;
+}
+.resume-analysis h2 {
+  margin: 10px 0;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.resume-analysis > p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.resume-analysis ul {
+  display: grid;
+  gap: 12px;
+  padding-left: 22px;
+  margin-top: 22px;
+  list-style: disc;
+}
+.resume-analysis li {
+  padding-left: 4px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+@media (max-width: 1100px) {
+  .document-upload {
+    grid-template-columns: 1fr;
+  }
+  .document-upload-controls {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 600px) {
+  .document-upload,
+  .resume-analysis {
+    padding: 20px;
+  }
+  .document-upload-copy {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .document-upload-copy > svg {
+    padding: 10px;
+    width: 22px;
+    height: 22px;
+  }
+  .document-upload-controls {
+    flex-wrap: wrap;
+  }
+  .document-upload-controls select,
+  .document-upload-controls .button {
+    width: 100%;
+  }
+  .documents-table table,
+  .documents-table tbody,
+  .documents-table tr,
+  .documents-table td {
+    display: block;
+  }
+  .documents-table thead {
+    display: none;
+  }
+  .documents-table tr {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .documents-table tr:last-child {
+    border-bottom: 0;
+  }
+  .documents-table td {
+    border: 0;
+    padding: 5px 0;
+  }
+  .documents-table td:nth-child(2)::before {
+    content: 'Type: ';
+  }
+  .documents-table td:nth-child(3)::before {
+    content: 'Size: ';
+  }
+  .documents-table td:nth-child(4)::before {
+    content: 'Status: ';
+  }
+  .document-actions {
+    margin-top: 12px;
+  }
+}

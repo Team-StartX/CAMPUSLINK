@@ -20,7 +20,7 @@ export function ExternalAnalysisSetting({
             <Sparkles size={17} />
           </span>
           <div>
-            <h3>External AI analysis</h3>
+            <h3>AI analysis preferences</h3>
             <span className="analysis-setting-state" role="status">
               <b>{busy ? 'Saving…' : enabled ? 'On' : 'Off'}</b> ·{' '}
               {enabled ? 'Optional model insights enabled' : 'Built-in analysis available'}
@@ -41,11 +41,14 @@ export function ExternalAnalysisSetting({
         </button>
       </div>
       <p id="external-analysis-description" className="analysis-setting-description">
-        Optional analysis of your resume, skills, projects, preparation scores and practice answers
-        by <strong>{destination}</strong>.
+        Enable optional insights for resume reviews, job matches, placement preparation and practice
+        interviews. Manage this preference here whenever you need to.
       </p>
       <details>
         <summary>What is shared & how to turn it off</summary>
+        <p>
+          Analysis service: <strong>{destination}</strong>
+        </p>
         <p>
           <ShieldCheck size={12} /> Email addresses and phone numbers are removed from resume text
           and practice answers. Other identifying details may remain. Your skills, project summaries

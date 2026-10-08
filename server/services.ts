@@ -18,7 +18,7 @@ import {
   type InstituteStudentPatch,
 } from '../src/utils/student-records';
 import { contestAchievements, recordContestCompletion } from '../src/utils/contest-achievements';
-import { requireCondition } from './errors';
+import { HttpError, requireCondition } from './errors';
 import { analyzeResumeText, interviewFeedback, parseRequirements, similarity } from './nlp';
 import { modelInsight, OutcomeRow } from './ml';
 import { coaching } from './generative';
@@ -445,7 +445,13 @@ export async function dispatch(service: string, method: string, input: unknown[]
       400,
       'Resume analysis currently supports text-based PDF files.',
     );
-    const parsed = await pdf(await downloadFile(doc.storageKey));
+    const resumeFile = await downloadFile(doc.storageKey);
+    const parsed = await pdf(resumeFile).catch(() => {
+      throw new HttpError(
+        422,
+        'This PDF could not be read. Export an unlocked, text-based PDF and upload it again.',
+      );
+    });
     requireCondition(
       parsed.text.trim().length > 30,
       422,
