@@ -136,3 +136,83 @@ npm run build
 ```
 
 Start a built backend with `npm run server:start` and a built frontend with `npm start`. Automated test files and their runner have been removed from this project.
+
+## Problem statement demonstration
+
+Run `npm run demo:placement` to demonstrate the complete placement lifecycle using
+13 synthetic student profiles across two colleges and three simulated drives
+(frontend development, backend development and data analysis). This uses an
+isolated in-memory database, without adding accounts or drives to the application
+database. It queues simulated notifications without starting email delivery.
+The synthetic resumes represent document records, not actual PDF uploads.
+
+The command creates `output/placement-demo-report.json` with candidate rankings,
+readiness factors, skill gaps, scheduling and interview conflicts, notifications,
+offer deferral and acceptance, verification before joining, and final analytics.
+Each run checks 39 student-drive pairings against manually specified eligibility
+labels and three independently specified best candidates. The report includes
+eligibility accuracy, top-one ranking accuracy and elapsed workflow time.
+These are small synthetic benchmark results, not validated hiring predictions
+or production load measurements.
+
+| Minimum deliverable                 | Implementation / demonstration                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Working prototype                   | Separate role dashboards, server sessions and persisted workflows; run `npm run dev`               |
+| Readiness/employability scoring     | `src/utils/scoring.ts`: recorded skills, academics, projects and practice evidence                 |
+| Matching for three simulated drives | `npm run demo:placement`; three recruiter requirement sets and candidate rankings                  |
+| Conflict-aware scheduling           | Resource, recruiter and cohort overlap checks; candidate/room/panel interview checks               |
+| Explainable matching                | Eligibility reasons, weighted fit factors, skill gaps and labelled NLP relevance                   |
+| Placement monitoring dashboard      | Campus/recruiter dashboards and analytics, refreshed every 15 seconds                              |
+| Offers and documentation            | PPO/full-time/conversion offers, deferral/acceptance/withdrawal, document verification and joining |
+| System architecture                 | Architecture description below                                                                     |
+| Model/algorithm details             | Algorithm description below and explicit explanations in the report                                |
+| Simulated placement dataset         | Thirteen labelled profiles and three drive specifications in `scripts/placement-demo.ts`           |
+| Accuracy/performance evaluation     | Generated report: 39 eligibility labels, three expected rankings and measured elapsed time         |
+| Multi-campus deployment/scaling     | Deployment section above; scope isolation and scaling approach below                               |
+
+### Architecture and algorithms
+
+The browser renders role-specific Next.js screens. Same-origin `/api/v1` requests
+are forwarded to the Express API. Server session cookies, CSRF checks and role
+policies control requests; campus IDs and recruiter ownership scope every
+placement operation. The workflow layer uses database transactions to persist
+profiles, drives, applications, rounds, offers, documents, notifications and
+audits. PostgreSQL is the production database; SQLite is the local fallback.
+Private storage holds uploaded documents. Background workers deliver queued
+email, send deduplicated reminders and clean up replaced files.
+
+Readiness weights are verified skills 30%, academics 20%, projects 15%, aptitude
+15%, communication 10% and interviews 10%. Missing evidence contributes zero.
+Levels are Not Ready (below 45), Developing (45–69), Ready (70–84) and Highly
+Employable (85–100). Hard eligibility checks campus, course, branch, graduation
+year, minimum CGPA, maximum active backlogs and optional mandatory skills.
+Additional free-text conditions require recorded campus verification.
+
+Eligible fit weights are required skills 35%, preferred skills 10%, assessments
+20%, relevant projects 15%, certifications 5% and academics 15%. If preferred
+skills are absent, their contribution follows required-skill alignment.
+Recorded unverified required skills receive partial matching credit; verified
+skills receive full credit. Candidate ranking combines this fit score (85%)
+with TF-IDF cosine relevance (15%). Local NLP extracts a reviewed skill
+dictionary, CGPA, graduation years, branches and zero-backlog conditions from
+job descriptions. Recommendations support human selection decisions.
+
+Optional outcome prediction uses regularized logistic regression over six
+readiness features. Training requires at least 60 labelled outcomes across
+three cohorts and holds out the latest cohort. Evaluation reports accuracy,
+precision, recall and Brier score. The application rejects synthetic-trained
+models for live predictions. Genuine historical outcomes are still required
+before making claims about real placement prediction accuracy.
+
+### Multi-campus scaling approach
+
+Keep one authoritative backend and PostgreSQL transaction layer, with campus
+and owner indexes for tenant-scoped queries. Frontends can be deployed across
+campuses against the same API. Recruiter availability checks span campuses;
+student access remains scoped to their registered college. Private file storage
+and background workers can scale separately. For multiple API replicas, use a
+shared rate-limit store and a durable worker queue with claimed jobs before
+enabling concurrent workers. Benchmark database query volume, concurrent users
+and scheduling contention on realistic cohorts before promising capacity.
+The included demonstration checks scope isolation; it does not prove
+production-scale throughput.

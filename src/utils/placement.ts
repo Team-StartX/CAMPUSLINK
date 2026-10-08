@@ -43,14 +43,16 @@ const values = (s = '') =>
     .split(',')
     .map((v) => v.trim().toLowerCase())
     .filter(Boolean);
-const branchCode = (s: string) =>
+export const branchCode = (s: string) =>
   ({
     'computer science': 'cse',
+    'computer science engineering': 'cse',
+    'computer science and engineering': 'cse',
     'information technology': 'it',
     electronics: 'ece',
     mechanical: 'me',
     electrical: 'ee',
-  })[s.toLowerCase()] || s.toLowerCase();
+  })[s.trim().toLowerCase()] || s.trim().toLowerCase();
 export function checkEligibility(student: Student, drive: Drive) {
   const branch = branchCode(student.branch || student.course.split('·')[1]?.trim() || '');
   const missingSkills = skillNames(drive.skills).filter(

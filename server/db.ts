@@ -43,7 +43,13 @@ export class Database {
           rejectUnauthorized: true,
         };
       }
-      this.pool = new Pool({ connectionString, ssl, max: 10, connectionTimeoutMillis: 15000 });
+      this.pool = new Pool({
+        connectionString,
+        ssl,
+        max: 4,
+        idleTimeoutMillis: 10000,
+        connectionTimeoutMillis: 8000,
+      });
       // Idle connections can be closed by the hosted database or network. pg removes
       // that client; handling the event keeps the API alive for the next connection.
       this.pool.on('error', () => {
@@ -56,12 +62,18 @@ export class Database {
     }
   }
   async migrate() {
-    if (this.pool)
-      await this.pool.query(
+    if (this.pool) {
+      const statements =
         migration +
-          '\nALTER TABLE records ENABLE ROW LEVEL SECURITY; ALTER TABLE locks ENABLE ROW LEVEL SECURITY; ALTER TABLE migrations ENABLE ROW LEVEL SECURITY;',
-      );
-    else this.sqlite!.exec(migration);
+        '\nALTER TABLE records ENABLE ROW LEVEL SECURITY; ALTER TABLE locks ENABLE ROW LEVEL SECURITY; ALTER TABLE migrations ENABLE ROW LEVEL SECURITY;';
+      // Each idempotent statement commits separately, releasing its table locks.
+      // Holding all migration locks can deadlock with a running placement transaction.
+      for (const statement of statements
+        .split(';')
+        .map((sql) => sql.trim())
+        .filter(Boolean))
+        await this.pool.query(statement);
+    } else this.sqlite!.exec(migration);
   }
   async query<T>(sql: string, values: unknown[] = []): Promise<T[]> {
     if (this.pool) {

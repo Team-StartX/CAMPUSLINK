@@ -15,6 +15,7 @@ import type {
   RecruitmentOverview,
 } from '../src/types/recruitment';
 import { checkEligibility, studentVisible } from '../src/utils/placement';
+import { fit } from '../src/utils/scoring';
 
 const text = z.string().trim().max(10000);
 const required = text.min(1);
@@ -254,7 +255,44 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
             ?.name || '',
         status: r.status,
       }));
-    return { metrics, applications: applications.slice(-8), offers: offers.slice(-8), results };
+    const matching = drives
+      .filter(
+        (drive) =>
+          drive.schedule && !['DRAFT', 'REJECTED', 'CANCELLED', 'COMPLETED'].includes(drive.status),
+      )
+      .map((drive) => {
+        const cohort = pool.filter((workspace) =>
+          accounts.some(
+            (account) => account.id === workspace.student.id && account.campusId === drive.campusId,
+          ),
+        );
+        const matches = cohort.map((workspace) => fit(workspace.student, drive, workspace.history));
+        const gaps = new Map<string, number>();
+        matches.forEach((match) =>
+          match.gaps.forEach((gap) => gaps.set(gap.name, (gaps.get(gap.name) || 0) + 1)),
+        );
+        return {
+          driveId: drive.id,
+          role: drive.role,
+          company: drive.company,
+          total: cohort.length,
+          eligible: matches.filter((match) => match.eligibility.passed).length,
+          needsPreparation: matches.filter(
+            (match) => !match.eligibility.passed || match.gaps.length > 0,
+          ).length,
+          skillGaps: [...gaps.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([name, students]) => ({ name, students })),
+        };
+      });
+    return {
+      metrics,
+      applications: applications.slice(-8),
+      offers: offers.slice(-8),
+      results,
+      matching,
+    };
   }
   if (method === 'relationships')
     return (await db.list<Relationship>('campus-recruiter')).filter((r) =>

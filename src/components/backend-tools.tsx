@@ -278,8 +278,10 @@ export function ConnectedAnalytics() {
             <p key={r.name}>
               {r.name} · {r.drives} drives{' '}
               <Badge>{r.repeatHiring ? 'Repeat hiring' : 'First cycle'}</Badge>
-              <br />{r.placed}/{r.total} applicants placed · {r.conversion}% conversion
-              <br />Average CTC: {r.average} LPA · Highest: {r.highest} LPA
+              <br />
+              {r.placed}/{r.total} applicants placed · {r.conversion}% conversion
+              <br />
+              Average CTC: {r.average} LPA · Highest: {r.highest} LPA
             </p>
           ))}
         </section>

@@ -1,5 +1,6 @@
 'use client';
 import Image from 'next/image';
+import { StudentMatchingSummary } from '@/components/smart-matching-summary';
 import { ContestProgress } from '@/components/contest-progress';
 import { DashboardActivity } from '@/components/dashboard-activity';
 import { PreparationOverview } from '@/components/preparation-overview';
@@ -162,40 +163,7 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
           </div>
         }
       />
-      <PlacementWorkflow
-        steps={[
-          {
-            title: 'Profiling',
-            detail: 'Keep your skills and career profile current',
-            href: '/student/profile',
-          },
-          {
-            title: 'Matching',
-            detail: 'Find eligible drives and understand skill gaps',
-            href: '/student/opportunities',
-          },
-          {
-            title: 'Scheduling',
-            detail: 'Review campus visits and upcoming interviews',
-            href: '/student/interviews',
-          },
-          {
-            title: 'Notification',
-            detail: 'Follow applications and placement updates',
-            href: '/student/notifications',
-          },
-          {
-            title: 'Offer tracking',
-            detail: 'Review offers and update your response',
-            href: '/student/offers',
-          },
-          {
-            title: 'Analytics',
-            detail: 'See your readiness evidence and preparation insights',
-            href: '/student/readiness',
-          },
-        ]}
-      />
+
       <div className="dashboard-snapshot">
         {[
           {
@@ -271,6 +239,7 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
           </button>
         </div>
       )}
+      <StudentMatchingSummary data={data} />
       <div className="dashboard-hero-grid">
         <ReadinessCard />
         <DashboardActivity history={data.history} />
@@ -482,6 +451,40 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
         </div>
         <CareerID student={student} refresh={refresh} />
       </section>
+      <PlacementWorkflow
+        steps={[
+          {
+            title: 'Profiling',
+            detail: 'Keep your skills and career profile current',
+            href: '/student/profile',
+          },
+          {
+            title: 'Matching',
+            detail: 'Find eligible drives and understand skill gaps',
+            href: '/student/opportunities',
+          },
+          {
+            title: 'Scheduling',
+            detail: 'Review campus visits and upcoming interviews',
+            href: '/student/interviews',
+          },
+          {
+            title: 'Notification',
+            detail: 'Follow applications and placement updates',
+            href: '/student/notifications',
+          },
+          {
+            title: 'Offer tracking',
+            detail: 'Review offers and update your response',
+            href: '/student/offers',
+          },
+          {
+            title: 'Analytics',
+            detail: 'See your readiness evidence and preparation insights',
+            href: '/student/readiness',
+          },
+        ]}
+      />
     </div>
   );
 }

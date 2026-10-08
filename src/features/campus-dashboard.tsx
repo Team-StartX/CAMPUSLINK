@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { WorkspaceData } from '@/types';
 import { PageHeader } from '@/components/ui';
 import { ActionCenter } from './action-center';
+import { SmartMatchingSummary } from '@/components/smart-matching-summary';
 import { DriveActivitySummary } from './drives';
 import {
   ApplicationsSummary,
@@ -17,7 +18,7 @@ import {
 export function CampusDashboard({ data }: { data: WorkspaceData }) {
   const query = useRecruitmentOverview('campus');
   return (
-    <>
+    <div className="role-dashboard">
       <PageHeader
         eyebrow="CAMPUS PLACEMENT TEAM"
         title="Coordinate your campus placements."
@@ -28,6 +29,36 @@ export function CampusDashboard({ data }: { data: WorkspaceData }) {
           </Link>
         }
       />
+
+      {query.isLoading && <p role="status">Loading campus placement metrics…</p>}
+      {query.error && <p role="alert">{query.error.message}</p>}
+      {query.data && (
+        <RecruitmentMetrics
+          overview={query.data}
+          labels={[
+            'Pending approvals',
+            'Active recruiters',
+            'Eligible students',
+            'Students placed',
+            'Placement rate (%)',
+          ]}
+        />
+      )}
+      {query.data && <SmartMatchingSummary overview={query.data} role="campus" />}
+      <div className="two-columns">
+        <CampusReadinessSummary />
+        <ActionCenter data={data} role="campus" compact />
+      </div>
+      <DriveActivitySummary data={data} role="campus" />
+      <div className="two-columns">
+        {query.data && (
+          <>
+            <ApplicationsSummary overview={query.data} href="/campus/drives" />
+            <OffersSummary overview={query.data} href="/campus/offers" />
+          </>
+        )}
+      </div>
+      <NotificationsSummary data={data} href="/campus/notifications" />
       <PlacementWorkflow
         steps={[
           {
@@ -62,32 +93,6 @@ export function CampusDashboard({ data }: { data: WorkspaceData }) {
           },
         ]}
       />
-      {query.isLoading && <p role="status">Loading campus placement metrics…</p>}
-      {query.error && <p role="alert">{query.error.message}</p>}
-      {query.data && (
-        <RecruitmentMetrics
-          overview={query.data}
-          labels={[
-            'Pending approvals',
-            'Active recruiters',
-            'Eligible students',
-            'Students placed',
-            'Placement rate (%)',
-          ]}
-        />
-      )}
-      <CampusReadinessSummary />
-      <DriveActivitySummary data={data} role="campus" />
-      <ActionCenter data={data} role="campus" compact />
-      <div className="two-columns">
-        {query.data && (
-          <>
-            <ApplicationsSummary overview={query.data} href="/campus/drives" />
-            <OffersSummary overview={query.data} href="/campus/offers" />
-          </>
-        )}
-        <NotificationsSummary data={data} href="/campus/notifications" />
-      </div>
-    </>
+    </div>
   );
 }

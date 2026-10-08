@@ -14,7 +14,7 @@ export function requestErrorMessage(error: unknown): string {
 }
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
-  timeout: 15000,
+  timeout: 30000,
   withCredentials: true,
 });
 apiClient.interceptors.request.use((config) => {

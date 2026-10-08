@@ -61,7 +61,15 @@ export const currentContext = () => {
 };
 
 export async function candidates(db: Database, actor: Account) {
-  const accounts = await db.list<Account>('account');
+  const accounts = await db.list<Account>(
+    'account',
+    actor.role === 'campus' ? actor.campusId : undefined,
+  );
+  if (actor.role === 'campus')
+    return accounts.filter(
+      (a) => actor.campusId && a.role === 'student' && a.approved && a.campusId === actor.campusId,
+    );
+  if (actor.role === 'student') return accounts.filter((a) => a.id === actor.id && a.approved);
   const drives = await db.list<StoredDrive>('drive');
   const profiles = await db.list<WorkspaceData>('workspace');
   return accounts
@@ -104,15 +112,41 @@ export async function runWorkspace<T>(
 }
 export async function readWorkspace(): Promise<WorkspaceData> {
   const { db, actor, target } = currentContext();
-  const campuses = await db.list<Campus>('campus');
-  const own = target ? await db.get<WorkspaceData>('workspace', target.id) : undefined;
+  const [
+    campuses,
+    own,
+    assessments,
+    contests,
+    campusWorkspaces,
+    storedDrives,
+    roundResults,
+    slots,
+    notifications,
+    templates,
+  ] = await Promise.all([
+    db.list<Campus>('campus'),
+    target ? db.get<WorkspaceData>('workspace', target.id) : Promise.resolve(undefined),
+    db.list<AdminAssessment>('admin-assessment'),
+    db.list<AdminContest>('admin-contest'),
+    db.list<WorkspaceData>('workspace', actor.campusId),
+    db.list<StoredDrive>('drive', actor.role === 'recruiter' ? undefined : actor.campusId),
+    db.list<CandidateResult>(
+      'candidate-round',
+      target?.campusId || actor.campusId,
+      target?.id || actor.id,
+    ),
+    db.list<InterviewSlot>(
+      'interview-slot',
+      target?.campusId || actor.campusId,
+      target?.id || actor.id,
+    ),
+    db.list<WorkspaceData['notifications'][number]>('notification', undefined, actor.id),
+    db.list<InterviewTemplate & { recruiterId: string; campusIds: string[] }>('template'),
+  ]);
   const data = structuredClone(
     own || emptyWorkspace(target, campuses.find((c) => c.id === target?.campusId)?.name),
   );
   data.campuses = campuses;
-  const assessments = await db.list<AdminAssessment>('admin-assessment');
-  const contests = await db.list<AdminContest>('admin-contest');
-  const campusWorkspaces = await db.list<WorkspaceData>('workspace', actor.campusId);
   const visible = (row: { status: string; campusId: string }) =>
     row.status === 'published' && (!row.campusId || row.campusId === actor.campusId);
   data.assessments = [
@@ -148,7 +182,7 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       };
     }),
   ];
-  data.drives = (await db.list<StoredDrive>('drive')).filter((d) =>
+  data.drives = storedDrives.filter((d) =>
     actor.role === 'recruiter' ? d.recruiterId === actor.id : d.campusId === actor.campusId,
   );
   if (actor.role === 'student')
@@ -168,16 +202,7 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     );
   }
   const visibleDriveIds = new Set(data.drives.map((d) => d.id));
-  const roundResults = await db.list<CandidateResult>(
-    'candidate-round',
-    target?.campusId || actor.campusId,
-    target?.id || actor.id,
-  );
-  for (const slot of await db.list<InterviewSlot>(
-    'interview-slot',
-    target?.campusId || actor.campusId,
-    target?.id || actor.id,
-  )) {
+  for (const slot of slots) {
     const drive = data.drives.find((d) => d.id === slot.driveId);
     if (!drive || !visibleDriveIds.has(slot.driveId)) continue;
     data.interviews.push({
@@ -200,15 +225,14 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       ? { ...o, status: 'Expired' }
       : o,
   );
-  data.notifications = await db.list('notification', undefined, actor.id);
-  const templates = await db.list<InterviewTemplate & { recruiterId: string; campusIds: string[] }>(
-    'template',
-  );
+  data.notifications = notifications;
   data.interviewTemplates = templates.filter((t) => {
     if (actor.role === 'recruiter') return t.recruiterId === actor.id;
     if (!t.campusIds?.includes(actor.campusId)) return false;
     if (actor.role === 'campus') return true;
-    const owned = data.drives.filter((d) => (d as StoredDrive).recruiterId === t.recruiterId);
+    const owned = storedDrives.filter(
+      (d) => visibleDriveIds.has(d.id) && d.recruiterId === t.recruiterId,
+    );
     const applications = data.applications.filter((a) =>
       owned.some((d) => (d.opportunityId || d.id) === a.opportunityId),
     );
@@ -452,10 +476,14 @@ async function writeWorkspace(action: (data: WorkspaceData) => void) {
 configurePersistence({ read: readWorkspace, update: writeWorkspace });
 export async function studentProfiles(db: Database, actor: Account): Promise<Student[]> {
   const allowed = await candidates(db, actor);
+  const [profiles, campuses] = await Promise.all([
+    db.list<WorkspaceData>('workspace', actor.role === 'campus' ? actor.campusId : undefined),
+    db.list<Campus>('campus'),
+  ]);
   const result: Student[] = [];
   for (const a of allowed) {
-    const data = await db.get<WorkspaceData>('workspace', a.id);
-    const campus = await db.get<Campus>('campus', a.campusId);
+    const data = profiles.find((profile) => profile.student.id === a.id);
+    const campus = campuses.find((row) => row.id === a.campusId);
     result.push((data || emptyWorkspace(a, campus?.name)).student);
   }
   return result;

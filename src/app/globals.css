@@ -6225,3 +6225,121 @@ body {
 .template-card summary {
   cursor: pointer;
 }
+.role-dashboard {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.role-dashboard > .two-columns,
+.role-dashboard > .metrics-grid {
+  margin-bottom: 0;
+}
+.role-dashboard .two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.role-dashboard .panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dashboard-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.workflow-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.workflow-links .metric-card {
+  padding: 16px;
+  background: #fafbf8;
+}
+.workflow-links .metric-card > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+.workflow-links p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  font-size: 12px;
+  color: #62675f;
+}
+.smart-matching-section {
+  margin-bottom: 24px;
+}
+.role-dashboard .smart-matching-section {
+  margin-bottom: 0;
+}
+.smart-matching-section .section-header {
+  gap: 16px;
+  align-items: start;
+  flex-wrap: wrap;
+}
+.smart-matching-section .section-header p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+.smart-match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.smart-match-card {
+  border: 1px solid #e0e4db;
+  border-radius: 14px;
+  padding: 20px;
+  background: #fafbf8;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.smart-match-card h3 {
+  margin: 8px 0 14px;
+  line-height: 1.35;
+}
+.smart-match-card h4 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+}
+.smart-match-card p,
+.smart-match-card li {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.smart-match-card ul {
+  padding-left: 18px;
+  margin: 8px 0 18px;
+}
+.match-counts,
+.match-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.match-card-links {
+  border-top: 1px solid #e0e4db;
+  padding-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .role-dashboard .two-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workflow-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .role-dashboard {
+    gap: 16px;
+  }
+  .workflow-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .smart-match-card {
+    padding: 16px;
+  }
+}

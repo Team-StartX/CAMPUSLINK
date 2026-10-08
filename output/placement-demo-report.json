@@ -13,7 +13,7 @@
     "correct": 39,
     "eligibilityAccuracy": 1,
     "topOneRankingAccuracy": 1,
-    "elapsedMs": 107.58,
+    "elapsedMs": 85.58,
     "limitation": "Small scripted synthetic benchmark. Measures rule conformance and ranking examples, not real placement prediction accuracy. Includes database and workflow time; not a concurrency benchmark."
   },
   "readiness": {

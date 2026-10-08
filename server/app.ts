@@ -18,7 +18,7 @@ import {
   candidates,
   StoredDrive,
 } from './workspace';
-import { dispatch, analytics, rankedCandidates, policy } from './services';
+import { dispatch, analytics, rankedCandidates, policy, readOnlyServices } from './services';
 import { uploadFile, downloadFile, detectFile } from './storage';
 import { queueMail } from './mail';
 import { mockAdapter } from '../src/mocks/adapter';
@@ -369,15 +369,17 @@ export async function createApp(db = new Database()) {
   app.post(`${base}/services/:service/:method`, async (req, res) => {
     const { args } = z.object({ args: z.array(z.unknown()).max(8).default([]) }).parse(req.body);
     const actor: Account = res.locals.account;
-    const result = await db.transaction(() =>
+    const execute = () =>
       runWorkspace(db, actor, req.header('X-Student-ID'), () =>
         dispatch(
           String(req.params.service),
           String(req.params.method),
           args.map((a) => (a === null ? undefined : a)),
         ),
-      ),
-    );
+      );
+    const result = readOnlyServices.has(`${req.params.service}.${req.params.method}`)
+      ? await execute()
+      : await db.transaction(execute);
     res.json(result ?? { ok: true });
   });
   const upload = multer({

@@ -36,7 +36,7 @@ export const studentService = {
           .length *
           6,
     );
-    d.pointsSummary = {
+    d.pointsSummary ||= {
       assessments:
         1400 +
         d.history

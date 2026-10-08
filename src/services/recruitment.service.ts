@@ -11,6 +11,15 @@ export const recruitmentService = {
   dashboard: () =>
     rpc<{
       metrics: Record<string, number>;
+      matching: {
+        driveId: string;
+        role: string;
+        company: string;
+        total: number;
+        eligible: number;
+        needsPreparation: number;
+        skillGaps: { name: string; students: number }[];
+      }[];
       applications: {
         id: string;
         name: string;

@@ -24,9 +24,9 @@ export function PlacementWorkflow({
   steps: { title: string; detail: string; href: string }[];
 }) {
   return (
-    <section className="panel" aria-label="Placement management workflow">
+    <section className="panel placement-workflow" aria-label="Placement management workflow">
       <h2>Your placement workflow</h2>
-      <div className="metrics-grid">
+      <div className="workflow-links">
         {steps.map((step, index) => (
           <Link className="metric-card" href={step.href} key={step.title}>
             <span>
@@ -50,7 +50,7 @@ export function RecruitmentMetrics({
   titles?: Record<string, string>;
 }) {
   return (
-    <div className="metrics-grid">
+    <div className="metrics-grid dashboard-metrics">
       {labels.map((label) => (
         <div className="metric-card" key={label}>
           <span>{titles[label] || label}</span>
@@ -71,7 +71,7 @@ export function ApplicationsSummary({
   return (
     <section className="panel">
       <h2>Recent applications</h2>
-      {overview.applications.map((a) => (
+      {overview.applications.slice(0, 5).map((a) => (
         <p key={a.id}>
           <Link href={`${href}/${a.driveId}`}>
             {a.name} · {a.company} · {a.role}

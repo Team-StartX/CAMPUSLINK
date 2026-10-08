@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Drive, DriveSchedule } from '@/types';
 import { roundTypes } from '@/types/recruitment';
 import { skillNames } from '@/utils/skills';
+import { branchCode } from '@/utils/placement';
 const skillList = z
   .string()
   .trim()
@@ -111,9 +112,17 @@ export const scheduleSchema = z
     rooms: z.string(),
     systems: z.number().int().min(0),
   })
-  .refine((s) => s.reporting <= s.talk && s.talk <= s.assessment && s.assessment <= s.interviews && s.interviews < s.end, {
-    message: 'Use chronological times: reporting, presentation, assessment, interviews, then end.',
-  });
+  .refine(
+    (s) =>
+      s.reporting <= s.talk &&
+      s.talk <= s.assessment &&
+      s.assessment <= s.interviews &&
+      s.interviews < s.end,
+    {
+      message:
+        'Use chronological times: reporting, presentation, assessment, interviews, then end.',
+    },
+  );
 export function scheduleConflicts(drives: Drive[], id: string, schedule: DriveSchedule) {
   const current = drives.find((d) => d.id === id);
   return drives
@@ -129,17 +138,21 @@ export function scheduleConflicts(drives: Drive[], id: string, schedule: DriveSc
     .flatMap((d) => {
       const reasons = ['venue', 'lab', 'rooms'].filter((key) => {
         const k = key as 'venue' | 'lab' | 'rooms';
-        const booked = (d.schedule?.[k] || '').toLowerCase().split(/[,;]/).map((name) => name.trim()).filter(Boolean);
-        return schedule[k].toLowerCase().split(/[,;]/).some((name) => name.trim() && booked.includes(name.trim()));
+        const booked = (d.schedule?.[k] || '')
+          .toLowerCase()
+          .split(/[,;]/)
+          .map((name) => name.trim())
+          .filter(Boolean);
+        return schedule[k]
+          .toLowerCase()
+          .split(/[,;]/)
+          .some((name) => name.trim() && booked.includes(name.trim()));
       });
       if (d.company === current?.company) reasons.push('recruiter availability');
       if (
-        (d.branches || '').split(',').some((b) =>
-          (current?.branches || '')
-            .split(',')
-            .map((v) => v.trim().toLowerCase())
-            .includes(b.trim().toLowerCase()),
-        )
+        (d.branches || '')
+          .split(',')
+          .some((b) => (current?.branches || '').split(',').map(branchCode).includes(branchCode(b)))
       )
         reasons.push('student cohort overlap');
       return reasons.length

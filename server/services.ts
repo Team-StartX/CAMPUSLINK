@@ -49,6 +49,22 @@ import {
   extractedNames,
 } from './ml-client';
 
+export const readOnlyServices = new Set([
+  'studentService.getDashboard',
+  'campusService.getStudents',
+  'recruiterService.getCandidates',
+  'recruitmentService.dashboard',
+  'recruitmentService.overview',
+  'recruitmentService.relationships',
+  'matchingService.getRecommendedJobs',
+  'matchingService.getMatchExplanation',
+  'campusService.getPlacementAnalytics',
+  'driveService.getCampuses',
+  'driveService.getDriveRequests',
+  'driveService.getDrive',
+  'driveService.getCampusOpportunities',
+]);
+
 export const policy: Record<string, Record<string, string[]>> = {
   recruitmentService: recruitmentPolicy,
   studentService: {
@@ -257,6 +273,9 @@ export async function dispatch(service: string, method: string, input: unknown[]
   if (service === 'recruitmentService') return recruitmentDispatch(method, input);
   const schema = schemas[key];
   let args = schema ? schema.parse(input) : input;
+  if (['recruiterService.getCandidates', 'campusService.getStudents'].includes(key))
+    return studentProfiles(db, actor);
+  if (key === 'studentService.getDashboard') return platform.studentService.getDashboard();
   // JSON arrays turn undefined optional arguments into null.
   const data = await readWorkspace();
   if (key === 'applicationService.apply') {
@@ -285,13 +304,6 @@ export async function dispatch(service: string, method: string, input: unknown[]
       'Use the job recruitment process to publish individual round results.',
     );
   }
-  if (key === 'studentService.getDashboard') {
-    const result = await platform.studentService.getDashboard();
-    result.pointsSummary = data.pointsSummary;
-    return result;
-  }
-  if (['recruiterService.getCandidates', 'campusService.getStudents'].includes(key))
-    return studentProfiles(db, actor);
   if (key === 'campusService.updateStudent' || key === 'campusService.getStudentAchievements') {
     return db.transaction(async () => {
       const account = (await db.list<Account>('account')).find((a) => a.id === args[0]);
@@ -1087,16 +1099,41 @@ export async function analytics(
     recruiters: [...new Set(drives.map((drive) => drive.company))].map((name) => {
       const companyDrives = drives.filter((drive) => drive.company === name);
       const companyIds = new Set(companyDrives.map((drive) => drive.opportunityId || drive.id));
-      const applicants = students.filter((profile) => profile.applications.some((application) => companyIds.has(application.opportunityId)));
-      const companyOffers = offers.filter((offer) => offer.company === name && offer.applicationId && applicants.some((profile) => profile.applications.some((application) => application.id === offer.applicationId && companyIds.has(application.opportunityId))));
-      const hired = applicants.filter((profile) => profile.offers.some((offer) => companyOffers.some((row) => row.id === offer.id) && ['Accepted', 'Joined'].includes(offer.status))).length;
-      const salaries = companyOffers.map((offer) => Number(offer.ctc.match(/[\d.]+/)?.[0] || 0)).filter((salary) => salary > 0);
+      const applicants = students.filter((profile) =>
+        profile.applications.some((application) => companyIds.has(application.opportunityId)),
+      );
+      const companyOffers = offers.filter(
+        (offer) =>
+          offer.company === name &&
+          offer.applicationId &&
+          applicants.some((profile) =>
+            profile.applications.some(
+              (application) =>
+                application.id === offer.applicationId && companyIds.has(application.opportunityId),
+            ),
+          ),
+      );
+      const hired = applicants.filter((profile) =>
+        profile.offers.some(
+          (offer) =>
+            companyOffers.some((row) => row.id === offer.id) &&
+            ['Accepted', 'Joined'].includes(offer.status),
+        ),
+      ).length;
+      const salaries = companyOffers
+        .map((offer) => Number(offer.ctc.match(/[\d.]+/)?.[0] || 0))
+        .filter((salary) => salary > 0);
       return {
-        name, total: applicants.length, placed: hired,
-        conversion: Math.round(100 * hired / Math.max(1, applicants.length)),
+        name,
+        total: applicants.length,
+        placed: hired,
+        conversion: Math.round((100 * hired) / Math.max(1, applicants.length)),
         drives: companyDrives.length,
         repeatHiring: companyDrives.filter((drive) => drive.status === 'COMPLETED').length > 1,
-        average: salaries.length ? Math.round(10 * salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length) / 10 : 0,
+        average: salaries.length
+          ? Math.round((10 * salaries.reduce((sum, salary) => sum + salary, 0)) / salaries.length) /
+            10
+          : 0,
         highest: Math.max(0, ...salaries),
       };
     }),
@@ -1112,6 +1149,10 @@ export async function analytics(
 export async function rankedCandidates(drive: StoredDrive) {
   const { db, actor } = currentContext();
   const profiles = await studentProfiles(db, actor);
+  const workspaces = await db.list<WorkspaceData>(
+    'workspace',
+    actor.role === 'campus' ? actor.campusId : undefined,
+  );
   const corpus = profiles.map(
     (s) =>
       `${s.skills.map((s) => s.name).join(' ')} ${s.projects.join(' ')} ${Object.values(s.projectDescriptions || {}).join(' ')}`,
@@ -1120,7 +1161,7 @@ export async function rankedCandidates(drive: StoredDrive) {
   const results = [];
   for (let i = 0; i < profiles.length; i++) {
     const s = profiles[i],
-      workspace = await db.get<WorkspaceData>('workspace', s.id),
+      workspace = workspaces.find((row) => row.student.id === s.id),
       rule = fit(s, drive, workspace?.history);
     results.push({
       student: s,
