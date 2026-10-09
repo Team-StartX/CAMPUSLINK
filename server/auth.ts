@@ -51,7 +51,10 @@ export class Authentication {
     return this.db.get<Account>('account', email.trim().toLowerCase());
   }
   async byId(id: string) {
-    return (await this.db.list<Account>('account')).find((a) => a.id === id);
+    const rows = await this.db.query<{ value: string }>('SELECT value FROM accounts WHERE id=$1', [
+      id,
+    ]);
+    return rows[0] ? (JSON.parse(rows[0].value) as Account) : undefined;
   }
   async save(account: Account) {
     await this.db.put('account', account.email, account, account.campusId, account.id);

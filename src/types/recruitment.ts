@@ -84,6 +84,7 @@ export interface InterviewSlot {
   panel: string;
   mode: string;
   meetingLink: string;
+  audience?: 'round';
 }
 export interface RecruitmentOverview {
   eligibleCandidates?: { studentId: string; name: string; branch: string }[];

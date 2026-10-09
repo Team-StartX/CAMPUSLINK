@@ -35,7 +35,8 @@ const assignmentSchema = z.object({
 });
 const slotSchema = z.object({
   roundId: required,
-  studentId: required,
+  studentId: required.optional(),
+  audience: z.literal('round').optional(),
   date,
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   duration: z.number().int().min(5).max(480),
@@ -642,7 +643,10 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       assignments: assignments.filter((a) => actor.role !== 'student' || reached.has(a.roundId)),
       submissions,
       slots: (await scoped<InterviewSlot>('interview-slot')).filter(
-        (s) => actor.role !== 'student' || s.studentId === actor.id,
+        (s) =>
+          actor.role !== 'student' ||
+          s.studentId === actor.id ||
+          (s.audience === 'round' && reached.has(s.roundId)),
       ),
       counts: {
         total: students.length,
@@ -997,14 +1001,16 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
   }
   if (method === 'scheduleInterview') {
     const input = slotSchema.parse(args[1]);
+    const shared = input.audience === 'round';
     const candidate = candidates.find((c) => c.studentId === input.studentId);
     requireCondition(
       round &&
         round.type?.includes('Interview') &&
-        candidate?.currentRoundId === round.id &&
-        !['Rejected', 'Absent'].includes(candidate.stage),
+        (shared ||
+          (candidate?.currentRoundId === round.id &&
+            !['Selected', 'Rejected', 'Absent'].includes(candidate.stage))),
       409,
-      'Choose a candidate in an interview round.',
+      'Choose an interview round with a valid audience.',
     );
     requireCondition(
       !input.override || (actor.role === 'campus' && (input.reason?.trim().length || 0) >= 5),
@@ -1017,19 +1023,43 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       'Online interviews require an HTTPS meeting link.',
     );
     const minutes = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
-    const id = `${drive.id}:${round.id}:${input.studentId}`;
+    const participants = shared
+      ? candidates
+          .filter(
+            (c) =>
+              c.currentRoundId === round.id &&
+              !['Selected', 'Rejected', 'Absent'].includes(c.stage),
+          )
+          .map((c) => c.studentId)
+      : [input.studentId!];
+    const id = `${drive.id}:${round.id}:${shared ? 'all' : input.studentId}`;
     const slots = await db.list<InterviewSlot & { recruiterId: string }>('interview-slot');
     const allDrives = await db.list<StoredDrive>('drive');
+    const replaced = (s: InterviewSlot) =>
+      s.id === id || (shared && s.driveId === drive.id && s.roundId === round.id);
+    const sharesStudents = (s: InterviewSlot) =>
+      s.audience === 'round'
+        ? profiles.some(
+            (w) =>
+              participants.includes(w.student.id) &&
+              w.applications.some(
+                (a) =>
+                  a.opportunityId ===
+                    (allDrives.find((d) => d.id === s.driveId)?.opportunityId || s.driveId) &&
+                  (a as typeof a & { currentRoundId?: string }).currentRoundId === s.roundId,
+              ),
+          )
+        : participants.includes(s.studentId);
     const overlap = slots.some(
       (s) =>
-        s.id !== id &&
+        !replaced(s) &&
         !['CANCELLED', 'REJECTED', 'COMPLETED'].includes(
           allDrives.find((d) => d.id === s.driveId)?.status || '',
         ) &&
         s.date === input.date &&
         minutes(s.time) < minutes(input.time) + input.duration &&
         minutes(input.time) < minutes(s.time) + s.duration &&
-        (s.studentId === input.studentId ||
+        (sharesStudents(s) ||
           (s.recruiterId === drive.recruiterId && s.panel === input.panel) ||
           (allDrives.find((d) => d.id === s.driveId)?.campusId === drive.campusId &&
             s.venue &&
@@ -1037,24 +1067,35 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
             s.room === input.room)),
     );
     const legacy = profiles
-      .find((w) => w.student.id === input.studentId)
-      ?.interviews.some(
-        (i) =>
-          i.status === 'Scheduled' &&
-          i.date === input.date &&
-          minutes(i.time) < minutes(input.time) + input.duration &&
-          minutes(input.time) < minutes(i.time) + 60,
+      .filter((w) => participants.includes(w.student.id))
+      .some((w) =>
+        w.interviews.some(
+          (i) =>
+            i.status === 'Scheduled' &&
+            i.date === input.date &&
+            minutes(i.time) < minutes(input.time) + input.duration &&
+            minutes(input.time) < minutes(i.time) + 60,
+        ),
       );
     requireCondition(
       input.override || (!overlap && !legacy),
       409,
       'Schedule Conflict: candidate, room, or panel overlaps an existing interview.',
     );
-    const row = { ...input, id, driveId: drive.id, recruiterId: drive.recruiterId };
+    const row = {
+      ...input,
+      studentId: shared ? 'all' : input.studentId!,
+      id,
+      driveId: drive.id,
+      recruiterId: drive.recruiterId,
+    };
     await log(method, 'interview-slot', id, await db.get('interview-slot', id), row);
-    await db.put('interview-slot', id, row, drive.campusId, input.studentId);
+    for (const slot of slots.filter((s) => replaced(s) && s.id !== id)) {
+      await db.remove('interview-slot', slot.id);
+    }
+    await db.put('interview-slot', id, row, drive.campusId, shared ? undefined : input.studentId);
     await announce(
-      [input.studentId],
+      participants,
       'Interview scheduled',
       `${round.name}: ${input.date}, ${input.time} IST, ${input.venue || input.meetingLink}`,
     );

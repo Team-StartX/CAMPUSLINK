@@ -30,6 +30,7 @@ async function main() {
     runWorkspace(db, actor, undefined, () => dispatch(service, method, args));
   try {
     await db.migrate();
+    await db.put('campus', actor.campusId, { id: actor.campusId, name: 'Test campus', location: '' });
     await db.put('account', actor.email, actor, actor.campusId, actor.id);
     await db.put('workspace', actor.id, emptyWorkspace(actor), actor.campusId, actor.id);
     config.ai = 'openai';

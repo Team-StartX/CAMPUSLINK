@@ -11,9 +11,10 @@ import {
   formatDate,
 } from '@/components/ui';
 import { interviewService } from '@/services/platform.service';
+import { recruitmentService } from '@/services/recruitment.service';
 import { WorkspaceData, Role } from '@/types';
 import type { MlAnnotation } from '@/types/ml';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import {
   ArrowUpRight,
   CalendarDays,
@@ -34,6 +35,84 @@ type Props = {
   refresh: () => void;
   notify: (s: string) => void;
 };
+export function StaffInterviewsPage({ data, role, refresh, notify }: Props) {
+  const drives = data.drives.filter(
+    (d) =>
+      !['CANCELLED', 'REJECTED', 'DRAFT', 'COMPLETED'].includes(d.status) &&
+      d.rounds?.some((r) => r.type?.includes('Interview')),
+  );
+  const records = useQueries({
+    queries: drives.map((drive) => ({
+      queryKey: ['recruitment', drive.id, role],
+      queryFn: () => recruitmentService.overview(drive.id),
+    })),
+  });
+  return (
+    <>
+      <PageHeader
+        title={role === 'campus' ? 'Coordinate campus interviews.' : 'Manage interview rounds.'}
+        description={
+          role === 'campus'
+            ? 'Review shared round schedules and coordinate campus venues, panels, and student participation.'
+            : 'Schedule interview rounds for your campus drives and track candidate progress.'
+        }
+      />
+      <div className="three-columns">
+        {drives.map((drive, index) => (
+          <section className="panel interview-card" key={drive.id}>
+            <h3>{drive.company}</h3>
+            <p>
+              {drive.role} · {drive.campus}
+            </p>
+            {records[index].isLoading && <p>Loading round schedules…</p>}
+            {records[index].error && <p role="alert">{records[index].error.message}</p>}
+            {drive.rounds
+              ?.filter((r) => r.type?.includes('Interview'))
+              .map((round) => {
+                const slots =
+                  records[index].data?.slots.filter((s) => s.roundId === round.id) || [];
+                return (
+                  <div key={round.id}>
+                    <h4>{round.name}</h4>
+                    {records[index].data && !slots.length && <p>No schedule set for this round.</p>}
+                    {slots.map((slot) => (
+                      <p key={slot.id}>
+                        {formatDate(slot.date)} · {slot.time} IST · {slot.duration} min
+                        <br />
+                        {slot.mode} · {slot.venue || 'Online meeting'}
+                        {slot.room && ` / ${slot.room}`} · Panel {slot.panel}
+                        <br />
+                        {slot.audience === 'round'
+                          ? 'All students participating in this round'
+                          : 'Previously assigned candidate slot'}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })}
+            <Link className="button outline" href={`/${role}/drives/${drive.id}`}>
+              Manage rounds & schedules <ArrowUpRight size={15} />
+            </Link>
+          </section>
+        ))}
+      </div>
+      {!drives.length && (
+        <EmptyState
+          title="No interview rounds to manage yet."
+          description="Interview rounds appear here after they are added to a campus drive."
+          action={
+            <Link className="button dark" href={`/${role}/drives`}>
+              View campus drives <ArrowUpRight size={15} />
+            </Link>
+          }
+        />
+      )}
+      {role === 'recruiter' && (
+        <InterviewTemplates data={data} role={role} refresh={refresh} notify={notify} />
+      )}
+    </>
+  );
+}
 export function InterviewsPage({
   data,
   role,
@@ -490,8 +569,16 @@ function InterviewTemplates({
     <section className="template-section">
       <div className="section-header">
         <div>
-          <h2>Practice with a team’s perspective.</h2>
-          <p>Role-specific interview templates created by recruiters.</p>
+          <h2>
+            {role === 'recruiter'
+              ? 'Student practice templates'
+              : 'Practice with a team’s perspective.'}
+          </h2>
+          <p>
+            {role === 'recruiter'
+              ? 'Create role-specific practice questions for students preparing for your drives.'
+              : 'Role-specific interview templates created by recruiters.'}
+          </p>
         </div>
         {role === 'recruiter' && (
           <Button kind="outline" onClick={() => setOpen(true)}>

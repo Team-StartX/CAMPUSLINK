@@ -10,9 +10,9 @@ import { MailJob } from './mail';
 async function main() {
   const [command, arg] = process.argv.slice(2);
   const db = new Database();
-  await db.migrate();
   const auth = new Authentication(db);
   try {
+    await db.migrate(command === 'migrate' ? (message) => console.log(message) : undefined);
     if (command === 'migrate') console.log('Database schema is ready.');
     else if (command === 'grant-admin' || command === 'revoke-admin') {
       const account = arg ? await auth.find(arg) : undefined;

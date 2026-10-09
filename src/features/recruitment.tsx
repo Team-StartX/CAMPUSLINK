@@ -230,6 +230,9 @@ export function RecruitmentPanel({
   };
   const overview = query.data;
   const round = drive.rounds?.find((r) => r.id === roundId);
+  const roundSchedule = overview?.slots.find(
+    (s) => s.roundId === roundId && s.audience === 'round',
+  );
   const current =
     overview?.candidates.filter(
       (c) => c.currentRoundId === roundId && !['Selected', 'Rejected', 'Absent'].includes(c.stage),
@@ -292,7 +295,7 @@ export function RecruitmentPanel({
                   )}
                   {round.type?.includes('Interview') && (
                     <Button kind="outline" onClick={() => setInterview(true)}>
-                      Schedule individual interview
+                      Schedule interview round
                     </Button>
                   )}
                   {current.length ? (
@@ -594,13 +597,19 @@ export function RecruitmentPanel({
               </section>
             ))}
           <h3>Interview schedules</h3>
+          {!overview.slots.length && <p>No interview rounds have been scheduled yet.</p>}
           {overview.slots.map((s) => (
             <p key={s.id}>
               {role !== 'student' && (
-                <>{overview.candidates.find((c) => c.studentId === s.studentId)?.name} · </>
+                <>
+                  {s.audience === 'round'
+                    ? 'All students in this round'
+                    : overview.candidates.find((c) => c.studentId === s.studentId)?.name}{' '}
+                  ·{' '}
+                </>
               )}
-              {s.date} · {s.time} IST · {s.duration} min · {s.mode} · {s.venue} / {s.room} · Panel{' '}
-              {s.panel}{' '}
+              {drive.rounds?.find((r) => r.id === s.roundId)?.name} · {s.date} · {s.time} IST ·{' '}
+              {s.duration} min · {s.mode} · {s.venue} / {s.room} · Panel {s.panel}{' '}
               {s.meetingLink && /^https:\/\//.test(s.meetingLink) && (
                 <a href={s.meetingLink}>Join meeting</a>
               )}
@@ -692,7 +701,19 @@ export function RecruitmentPanel({
         </Modal>
       )}
       {interview && (
-        <Modal title="Individual interview slot" onClose={() => setInterview(false)}>
+        <Modal title="Schedule interview round" onClose={() => setInterview(false)}>
+          <p>
+            This schedule applies to all students participating in {round?.name || 'this round'}.
+            Students see it when they reach the round.
+          </p>
+          {!current.length && (
+            <p>No students have reached this round yet. You can still schedule it in advance.</p>
+          )}
+          {error && (
+            <p role="alert" className="field-error">
+              {error}
+            </p>
+          )}
           <form
             className="form-stack"
             onSubmit={(e) => {
@@ -701,7 +722,7 @@ export function RecruitmentPanel({
               void run(async () => {
                 await service.scheduleInterview(drive.id, {
                   roundId,
-                  studentId: String(f.get('studentId')),
+                  audience: 'round',
                   date: String(f.get('date')),
                   time: String(f.get('time')),
                   duration: Number(f.get('duration')),
@@ -717,19 +738,16 @@ export function RecruitmentPanel({
               });
             }}
           >
-            <FormField label="Candidate">
-              <select required name="studentId">
-                {current.map((c) => (
-                  <option key={c.studentId} value={c.studentId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
             {['date', 'time', 'duration', 'venue', 'room', 'panel', 'meetingLink'].map((key) => (
               <FormField key={key} label={fieldLabel(key)}>
                 <input
                   name={key}
+                  defaultValue={
+                    roundSchedule?.[
+                      key as
+                        'date' | 'time' | 'duration' | 'venue' | 'room' | 'panel' | 'meetingLink'
+                    ] ?? (key === 'duration' ? round?.duration || 60 : '')
+                  }
                   required={['date', 'time', 'duration', 'panel'].includes(key)}
                   type={
                     key === 'date'
@@ -740,10 +758,16 @@ export function RecruitmentPanel({
                           ? 'number'
                           : 'text'
                   }
+                  min={key === 'duration' ? 5 : undefined}
+                  max={key === 'duration' ? 480 : undefined}
                 />
               </FormField>
             ))}
-            <select name="mode">
+            <select
+              name="mode"
+              aria-label="Interview format"
+              defaultValue={roundSchedule?.mode || 'Offline'}
+            >
               <option>Offline</option>
               <option>Online</option>
             </select>
@@ -757,8 +781,8 @@ export function RecruitmentPanel({
                 </FormField>
               </>
             )}
-            <Button type="submit" disabled={busy || !current.length}>
-              Assign interview
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Schedule for all students'}
             </Button>
           </form>
         </Modal>

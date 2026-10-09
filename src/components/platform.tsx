@@ -16,7 +16,7 @@ import {
   DrivesPage,
   PlacementCalendar,
 } from '@/features/drives';
-import { AIInterview, InterviewsPage } from '@/features/interviews';
+import { AIInterview, InterviewsPage, StaffInterviewsPage } from '@/features/interviews';
 import { ApplicationsPage, OffersPage, OpportunitiesPage } from '@/features/opportunities';
 import {
   DocumentsPage,
@@ -138,7 +138,9 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         break;
       case 'interviews':
         content =
-          id === 'ai' ? (
+          role !== 'student' ? (
+            <StaffInterviewsPage {...props} />
+          ) : id === 'ai' ? (
             <AIInterview refresh={refresh} notify={notify} />
           ) : (
             <InterviewsPage {...props} />
@@ -188,7 +190,12 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
         content = <CareerPointsPage {...props} />;
         break;
       case 'mock-interviews':
-        content = <InterviewsPage {...props} practiceOnly />;
+        content =
+          role === 'student' ? (
+            <InterviewsPage {...props} practiceOnly />
+          ) : (
+            <StaffInterviewsPage {...props} />
+          );
         break;
       case 'candidates':
       case 'students':
@@ -223,7 +230,10 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
     }
   return (
     <AppShell role={role}>
-      <BackendTools role={role} />
+      <BackendTools
+        role={role}
+        showStudentSelector={!['interviews', 'mock-interviews', 'scheduling'].includes(section)}
+      />
       <motion.div
         key={`${role}/${section}/${id || ''}`}
         initial={{ opacity: 0 }}

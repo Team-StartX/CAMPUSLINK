@@ -737,8 +737,20 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
   return (
     <div className="documents-page">
       <PageHeader
-        title="Your work, on record."
-        description="Keep your resume, academic records, and certificates together."
+        title={
+          role === 'student'
+            ? 'Your work, on record.'
+            : role === 'campus'
+              ? 'Review student documents.'
+              : 'Review candidate documents.'
+        }
+        description={
+          role === 'student'
+            ? 'Keep your resume, academic records, and certificates together.'
+            : role === 'campus'
+              ? 'Select a student above to review and verify their uploaded documents.'
+              : 'Select an authorized candidate above to review their uploaded documents.'
+        }
       />
       {role === 'student' && (
         <div className="document-upload panel">
@@ -906,8 +918,18 @@ export function DocumentsPage({ data, refresh, notify, role = 'student' }: Commo
         </table>
         {!data.documents.length && (
           <EmptyState
-            title="Your documents belong here."
-            description="Add a resume when you’re ready."
+            title={
+              role === 'student'
+                ? 'Your documents belong here.'
+                : data.student.id
+                  ? 'No documents uploaded for this student.'
+                  : 'No authorized student selected.'
+            }
+            description={
+              role === 'student'
+                ? 'Add a resume when you’re ready.'
+                : 'Choose a student above to review the documents they have uploaded.'
+            }
           />
         )}
       </div>

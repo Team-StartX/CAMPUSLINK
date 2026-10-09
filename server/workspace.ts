@@ -135,11 +135,7 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       target?.campusId || actor.campusId,
       target?.id || actor.id,
     ),
-    db.list<InterviewSlot>(
-      'interview-slot',
-      target?.campusId || actor.campusId,
-      target?.id || actor.id,
-    ),
+    db.list<InterviewSlot>('interview-slot', target?.campusId || actor.campusId),
     db.list<WorkspaceData['notifications'][number]>('notification', undefined, actor.id),
     db.list<InterviewTemplate & { recruiterId: string; campusIds: string[] }>('template'),
   ]);
@@ -205,6 +201,17 @@ export async function readWorkspace(): Promise<WorkspaceData> {
   for (const slot of slots) {
     const drive = data.drives.find((d) => d.id === slot.driveId);
     if (!drive || !visibleDriveIds.has(slot.driveId)) continue;
+    const studentId = target?.id || actor.id;
+    if (slot.audience === 'round') {
+      if (
+        (target || actor.role === 'student') &&
+        !roundResults.some(
+          (r) =>
+            r.driveId === slot.driveId && r.roundId === slot.roundId && r.studentId === studentId,
+        )
+      )
+        continue;
+    } else if (slot.studentId !== studentId) continue;
     data.interviews.push({
       id: slot.id,
       company: drive.company,

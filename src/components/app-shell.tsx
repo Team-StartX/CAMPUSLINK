@@ -181,7 +181,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
   const unread = data?.notifications.filter((n) => !n.read).length || 0;
   const links = nav.filter(([, label]) => label.toLowerCase().includes(term.toLowerCase()));
   return (
-    <div className="app-shell">
+    <div className="app-shell dashboard-theme">
       <aside
         className={`sidebar ${drawer ? 'sidebar-open' : ''}`}
         id="workspace-navigation"

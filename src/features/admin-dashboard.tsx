@@ -271,7 +271,7 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
     ['contests', 'questions', 'assessments', 'campuses'].includes(section) ? section : null
   ) as Kind | null;
   return (
-    <div className="admin-shell">
+    <div className="admin-shell dashboard-theme">
       <aside className="admin-sidebar">
         <Logo dark />
         <div className="admin-workspace-label">
@@ -285,18 +285,22 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
             <Link
               key={key}
               href={`/admin/${key}`}
+              aria-label={label}
+              title={label}
               aria-current={section === key ? 'page' : undefined}
             >
               <Icon size={18} />
-              {label}
+              <span className="nav-label">{label}</span>
             </Link>
           ))}
         </nav>
         <div className="admin-sidebar-bottom">
-          <Link href="/">
-            View website <ArrowUpRight size={16} />
+          <Link href="/" aria-label="View website" title="View website">
+            <span className="nav-label">View website</span> <ArrowUpRight size={16} />
           </Link>
           <button
+            aria-label="Sign out"
+            title="Sign out"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -311,7 +315,7 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
             }}
           >
             <LogOut size={16} />
-            Sign out
+            <span className="nav-label">Sign out</span>
           </button>
         </div>
       </aside>

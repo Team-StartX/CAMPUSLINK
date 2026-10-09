@@ -908,6 +908,15 @@ export async function dispatch(service: string, method: string, input: unknown[]
       storageKey?: string;
     };
     requireCondition(doc, 404, 'Document not found.');
+    const linked = await db.query(
+      'SELECT record_id FROM applications WHERE student_id=$1 AND resume_id=$2 UNION ALL SELECT record_id FROM assignment_submissions WHERE student_id=$3 AND document_id=$4',
+      [target!.id, doc.id, target!.id, doc.id],
+    );
+    requireCondition(
+      !linked.length,
+      409,
+      'This document is linked to an application or submission and must be retained.',
+    );
     if (doc.storageKey) await db.put('storage-gc', randomUUID(), { key: doc.storageKey });
   }
   if (service === 'driveService' || key === 'recruiterService.createDrive') {

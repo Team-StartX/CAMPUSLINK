@@ -12,7 +12,13 @@ import { AnalysisSource, ExternalAnalysisSetting } from './external-analysis-set
 import { OrganizationPicker } from './organization-picker';
 import { PreparationOverview, type PreparationCategory } from './preparation-overview';
 import { Badge, Button, FormField } from './ui';
-export function BackendTools({ role }: { role: Role }) {
+export function BackendTools({
+  role,
+  showStudentSelector = true,
+}: {
+  role: Role;
+  showStudentSelector?: boolean;
+}) {
   const user = useSession((s) => s.user);
   if (role === 'student')
     return user && !user.approved ? (
@@ -20,12 +26,18 @@ export function BackendTools({ role }: { role: Role }) {
         Your account is awaiting campus approval.
       </p>
     ) : null;
-  return <ConnectedTools role={role} />;
+  return <ConnectedTools role={role} showStudentSelector={showStudentSelector} />;
 }
 export function AnalysisPreferences() {
   return <ConnectedTools role="student" />;
 }
-function ConnectedTools({ role }: { role: Role }) {
+function ConnectedTools({
+  role,
+  showStudentSelector = true,
+}: {
+  role: Role;
+  showStudentSelector?: boolean;
+}) {
   const user = useSession((s) => s.user),
     client = useQueryClient(),
     [selected, setSelected] = useState(''),
@@ -54,6 +66,14 @@ function ConnectedTools({ role }: { role: Role }) {
     !message
   )
     return null;
+  if (
+    role !== 'student' &&
+    !showStudentSelector &&
+    user?.approved &&
+    !approvals?.length &&
+    !message
+  )
+    return null;
   return (
     <section
       className={`panel backend-tools ${role === 'student' ? 'student-backend-tools' : ''}`}
@@ -65,7 +85,7 @@ function ConnectedTools({ role }: { role: Role }) {
           operator must approve it.
         </p>
       )}
-      {role !== 'student' && (
+      {role !== 'student' && showStudentSelector && (
         <FormField label="Student record for applications, offers, interviews and documents">
           <select
             value={selected}

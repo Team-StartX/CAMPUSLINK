@@ -26,7 +26,7 @@ async function main() {
       runReminders(db).catch(() => console.error('Reminder worker failed')),
       (async () => {
         for (const job of await db.query<{ id: string; value: string }>(
-          "SELECT id,value FROM records WHERE kind='storage-gc'",
+          'SELECT record_id AS id,value FROM storage_cleanup_jobs',
         )) {
           try {
             await deleteFile(JSON.parse(job.value).key);

@@ -19,6 +19,7 @@ import './contest-progress.css';
 import './public-nav.css';
 import './documents.css';
 import './insights.css';
+import './dashboard-theme.css';
 import { Providers } from '@/components/providers';
 import { Platform } from '@/components/platform';
 export const metadata: Metadata = {

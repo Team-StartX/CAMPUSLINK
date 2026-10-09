@@ -181,6 +181,12 @@ audits. PostgreSQL is the production database; SQLite is the local fallback.
 Private storage holds uploaded documents. Background workers deliver queued
 email, send deduplicated reminders and clean up replaced files.
 
+Core entities now use relational tables with foreign keys, unique constraints
+and campus-aware connections. Migration `002-relational-entities` preserves
+legacy data and reconstructs existing dashboard responses from the new tables.
+See [database tables and migration instructions](server/DATABASE.md) before
+deploying this storage change. Verify with `npm run test:database`.
+
 Readiness weights are verified skills 30%, academics 20%, projects 15%, aptitude
 15%, communication 10% and interviews 10%. Missing evidence contributes zero.
 Levels are Not Ready (below 45), Developing (45–69), Ready (70–84) and Highly

@@ -60,7 +60,8 @@ export const recruitmentService = {
     rpc('recruitmentService', 'publishResults', [id, roundId]),
   scheduleInterview: (
     id: string,
-    input: Omit<InterviewSlot, 'id' | 'driveId'> & { override?: boolean; reason?: string },
+    input: Omit<InterviewSlot, 'id' | 'driveId' | 'studentId'> &
+      ({ audience: 'round' } | { studentId: string }) & { override?: boolean; reason?: string },
   ) => rpc('recruitmentService', 'scheduleInterview', [id, input]),
   assessments: () => rpc<CampusAssessment[]>('recruitmentService', 'assessments'),
   startAssessment: (id: string) =>

@@ -6,6 +6,8 @@
     "node": "24.x"
   },
   "scripts": {
+    "test:database": "tsx scripts/test-database-schema.ts",
+    "db:verify": "tsx scripts/verify-database.ts",
     "demo:placement": "tsx scripts/placement-demo.ts",
     "dev": "node scripts/dev.cjs",
     "dev:frontend": "next dev --hostname 0.0.0.0",
