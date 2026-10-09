@@ -1,0 +1,125 @@
+.analytics-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin: 22px 0;
+  align-items: start;
+}
+.analytics-chart-panel {
+  min-width: 0;
+}
+.panel .analytics-chart-panel,
+.dashboard-theme .panel .analytics-chart-panel {
+  border: 0;
+  padding: 16px 0;
+  box-shadow: none;
+  background: transparent;
+}
+.analytics-chart-heading h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.analytics-chart-heading p {
+  color: #68717f;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+.analytics-chart-canvas {
+  width: 100%;
+  min-width: 0;
+}
+.analytics-distribution {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.analytics-donut {
+  width: 190px;
+  height: 190px;
+  position: relative;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+.analytics-donut-total {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.analytics-donut-total strong {
+  font-size: 27px;
+}
+.analytics-donut-total span {
+  font-size: 11px;
+  color: #68717f;
+}
+.analytics-chart-legend {
+  flex: 1;
+  min-width: 160px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.analytics-chart-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 9px 0;
+  font-size: 12px;
+}
+.analytics-chart-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.analytics-chart-legend small {
+  color: #68717f;
+  min-width: 32px;
+  text-align: right;
+}
+.analytics-chart-data {
+  margin-top: 14px;
+  border-top: 1px solid #e8e5ed;
+  padding-top: 12px;
+  font-size: 12px;
+}
+.analytics-chart-data summary {
+  cursor: pointer;
+  color: #685293;
+}
+.analytics-table-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.analytics-chart-data table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+}
+.analytics-chart-data caption {
+  text-align: left;
+  padding: 8px;
+  font-weight: 600;
+}
+.analytics-chart-data :is(th, td) {
+  padding: 9px;
+  border-bottom: 1px solid #e8e5ed;
+}
+.analytics-chart-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #68717f;
+  font-size: 14px;
+}
+@media (max-width: 800px) {
+  .analytics-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

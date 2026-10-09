@@ -5,6 +5,7 @@ import type { WorkspaceData } from '@/types';
 import { fit } from '@/utils/scoring';
 import type { RecruitmentOverview } from './placement-dashboard-sections';
 import { Badge } from './ui';
+import { ComparisonChart } from './analytics-charts';
 
 export function SmartMatchingSummary({
   overview,
@@ -22,6 +23,22 @@ export function SmartMatchingSummary({
           <p>Automatically updated from current student profiles and job requirements.</p>
         </div>
       </div>
+      {matching.length > 0 && (
+        <ComparisonChart
+          title="Eligibility across scheduled jobs"
+          description="Students can qualify for multiple drives. Each row shows one drive's matching pool."
+          rows={matching.map((job) => ({
+            name: `${job.company} · ${job.role}`,
+            eligible: job.eligible,
+            remaining: Math.max(0, job.total - job.eligible),
+          }))}
+          series={[
+            { key: 'eligible', label: 'Eligible' },
+            { key: 'remaining', label: 'Not eligible' },
+          ]}
+          stacked
+        />
+      )}
       <div className="smart-match-grid">
         {matching.slice(0, 6).map((job) => (
           <article className="smart-match-card" key={job.driveId}>

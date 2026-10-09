@@ -12,6 +12,7 @@ import { AnalysisSource, ExternalAnalysisSetting } from './external-analysis-set
 import { OrganizationPicker } from './organization-picker';
 import { PreparationOverview, type PreparationCategory } from './preparation-overview';
 import { Badge, Button, FormField } from './ui';
+import { ComparisonChart, DistributionChart } from './analytics-charts';
 export function BackendTools({
   role,
   showStudentSelector = true,
@@ -229,9 +230,11 @@ interface Analytics {
   };
 }
 export function ConnectedAnalytics() {
+  const user = useSession((s) => s.user);
   const { data, error, isLoading } = useQuery<Analytics>({
-    queryKey: ['server-analytics'],
+    queryKey: ['server-analytics', user?.id],
     queryFn: async () => (await apiClient.get('/analytics')).data,
+    enabled: Boolean(user?.id),
     refetchInterval: 15000,
   });
   if (isLoading) return <Loader label="Loading placement records…" />;
@@ -248,12 +251,22 @@ export function ConnectedAnalytics() {
     ['Average CTC (LPA)', data.average],
     ['Highest CTC (LPA)', data.highest],
   ] as const;
+  // Accepted includes joined offers; keep the chart categories mutually exclusive.
+  const offerRows = [
+    { name: 'Pending response', value: data.pending },
+    { name: 'Accepted, awaiting joining', value: Math.max(0, data.accepted - data.joined) },
+    { name: 'Joined', value: data.joined },
+    { name: 'Other responses', value: Math.max(0, data.offers - data.pending - data.accepted) },
+  ];
   return (
     <>
       <div className="section-header">
         <div>
           <h1>Your placement command centre.</h1>
-          <p>Campus-scoped records · refreshed every 15 seconds</p>
+          <p>
+            {user?.role === 'recruiter' ? 'Your hiring records' : 'Campus placement records'} ·
+            refreshed every 15 seconds
+          </p>
         </div>
         <Button
           kind="outline"
@@ -271,27 +284,64 @@ export function ConnectedAnalytics() {
         </Button>
       </div>
       <div className="metrics-grid">
-        {metrics.map(([name, value], i) => (
-          <div
-            key={name}
-            className={`metric-card ${['lavender', 'sage', 'yellow', 'pink'][i % 4]}`}
-          >
-            <span>{name}</span>
-            <b>{value}</b>
-          </div>
-        ))}
+        {metrics
+          .filter(([name]) =>
+            [
+              'Registered students',
+              'Active drives',
+              'Average CTC (LPA)',
+              'Highest CTC (LPA)',
+            ].includes(name),
+          )
+          .map(([name, value], i) => (
+            <div
+              key={name}
+              className={`metric-card ${['lavender', 'sage', 'yellow', 'pink'][i % 4]}`}
+            >
+              <span>{name}</span>
+              <b>{value}</b>
+            </div>
+          ))}
       </div>
-      <div className="two-columns">
+      <div className="analytics-chart-grid">
+        <ComparisonChart
+          title="Student placement snapshot"
+          description="Readiness and placement are separate measures; a student can appear in both."
+          rows={[
+            { name: 'Registered', count: data.registered },
+            { name: 'Placement ready', count: data.ready },
+            { name: 'Placed', count: data.placed },
+          ]}
+          series={[{ key: 'count', label: 'Students' }]}
+        />
+        <DistributionChart
+          title="Offer outcomes"
+          description="Each offer appears once. Accepted offers awaiting joining are shown separately."
+          rows={offerRows}
+          unit="offers"
+        />
         {(['branches', 'skills'] as const).map((key) => (
-          <section className="panel" key={key}>
-            <h2>{key === 'branches' ? 'Branch conversion' : 'Skill conversion'}</h2>
-            {data[key].map((row) => (
-              <p key={row.name}>
-                <b>{row.name}</b> · {row.placed}/{row.total} placed · {row.conversion}%
-              </p>
-            ))}
-            <small>Observed outcomes do not establish a causal effect.</small>
-          </section>
+          <ComparisonChart
+            key={key}
+            title={key === 'branches' ? 'Placement by branch' : 'Placement by recorded skill'}
+            description={
+              key === 'branches'
+                ? 'Placed students compared with the remaining students in each branch.'
+                : 'Students may have multiple skills and appear in more than one row. Outcomes do not establish a causal effect.'
+            }
+            rows={data[key].map((r) => ({
+              name: r.name,
+              placed: r.placed,
+              remaining: Math.max(0, r.total - r.placed),
+              conversion: r.conversion,
+            }))}
+            series={[
+              { key: 'placed', label: 'Placed' },
+              { key: 'remaining', label: 'Not placed' },
+            ]}
+            detailSeries={[{ key: 'conversion', label: 'Placement rate (%)' }]}
+            stacked
+          />
         ))}
       </div>
       <section className="panel">
@@ -305,6 +355,27 @@ export function ConnectedAnalytics() {
         ))}
         {!data.support.length && <p>No current preparation support flags.</p>}
       </section>
+      <div className="analytics-chart-grid">
+        <ComparisonChart
+          title="Recruiter hiring conversion"
+          description="Percentage of each recruiter's applicants who accepted an offer or joined."
+          rows={data.recruiters.map((r) => ({ name: r.name, conversion: r.conversion }))}
+          series={[{ key: 'conversion', label: 'Placement rate' }]}
+          percent
+        />
+        <DistributionChart
+          title="Document verification"
+          description="Verification status across submitted student documents."
+          rows={[
+            { name: 'Verified', value: data.documents.verified },
+            {
+              name: 'Not verified',
+              value: Math.max(0, data.documents.total - data.documents.verified),
+            },
+          ]}
+          unit="documents"
+        />
+      </div>
       <div className="two-columns">
         <section className="panel">
           <h2>Recruiter engagement</h2>
@@ -318,12 +389,6 @@ export function ConnectedAnalytics() {
               Average CTC: {r.average} LPA · Highest: {r.highest} LPA
             </p>
           ))}
-        </section>
-        <section className="panel">
-          <h2>Document verification</h2>
-          <p>
-            {data.documents.verified} verified of {data.documents.total} submitted
-          </p>
         </section>
       </div>
     </>

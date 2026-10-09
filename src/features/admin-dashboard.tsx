@@ -1,4 +1,5 @@
 'use client';
+import { ComparisonChart, DistributionChart } from '@/components/analytics-charts';
 import { OrganizationPicker } from '@/components/organization-picker';
 import { Loader } from '@/components/loader';
 import { Logo } from '@/components/public';
@@ -433,24 +434,31 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
                     </div>
                   </section>
                 </div>
-                <section className="panel">
-                  <h2>Platform at a glance</h2>
-                  <div className="admin-summary">
-                    {(['student', 'recruiter', 'campus'] as const).map((r) => (
-                      <span key={r}>
-                        <b>{data.accounts.filter((a) => a.role === r).length}</b>
-                        {r === 'student'
+                <div className="analytics-chart-grid">
+                  <ComparisonChart
+                    title="Platform accounts"
+                    description={`Accounts across ${data.campuses.length} institutions.`}
+                    rows={(['student', 'recruiter', 'campus'] as const).map((r) => ({
+                      name:
+                        r === 'student'
                           ? 'Students'
                           : r === 'recruiter'
                             ? 'Recruiters'
-                            : 'Campus teams'}
-                      </span>
-                    ))}
-                    <span>
-                      <b>{data.campuses.length}</b>Institutions
-                    </span>
-                  </div>
-                </section>
+                            : 'Campus teams',
+                      count: data.accounts.filter((a) => a.role === r).length,
+                    }))}
+                    series={[{ key: 'count', label: 'Accounts' }]}
+                  />
+                  <DistributionChart
+                    title="Account access"
+                    description="Approved accounts and those awaiting approval or with revoked access."
+                    rows={[
+                      { name: 'Approved', value: data.accounts.filter((a) => a.approved).length },
+                      { name: 'Awaiting or revoked', value: pending.length },
+                    ]}
+                    unit="accounts"
+                  />
+                </div>
               </>
             )}
             {section === 'accounts' && (

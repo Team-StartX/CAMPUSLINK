@@ -5,6 +5,7 @@ import { Users, ShieldCheck, GraduationCap } from 'lucide-react';
 import { campusService } from '@/services/platform.service';
 import { useSession } from '@/store/session';
 import type { Student } from '@/types';
+import { ComparisonChart, DistributionChart } from './analytics-charts';
 
 export function StudentCohortOverview({ people }: { people: Student[] }) {
   const verified = people.filter((p) => p.skills.some((s) => s.verified)).length;
@@ -40,37 +41,22 @@ export function StudentCohortOverview({ people }: { people: Student[] }) {
           <span>Average CGPA / 10</span>
         </div>
       </div>
-      <div className="cohort-charts">
-        <div>
-          <h3>Skill verification</h3>
-          <p>
-            {verifiedSkills} of {skills} recorded skills verified
-          </p>
-          <progress
-            value={verifiedSkills}
-            max={Math.max(1, skills)}
-            aria-label="Verified skills across the student cohort"
-          />
-          <small>
-            {skills ? Math.round((verifiedSkills / skills) * 100) : 0}% of recorded skills
-          </small>
-        </div>
-        <div>
-          <h3>Students by branch</h3>
-          {branches.slice(0, 4).map(([name, count]) => (
-            <div className="cohort-bar" key={name}>
-              <span>{name}</span>
-              <progress
-                aria-label={`${name} students`}
-                value={count}
-                max={Math.max(1, people.length)}
-              />
-              <b>{count}</b>
-            </div>
-          ))}
-          {branches.length > 4 && <small>+ {branches.length - 4} other branches</small>}
-          {!people.length && <p>No students registered yet.</p>}
-        </div>
+      <div className="analytics-chart-grid">
+        <DistributionChart
+          title="Skill verification"
+          description="Verification across all recorded skills in this cohort."
+          rows={[
+            { name: 'Verified', value: verifiedSkills },
+            { name: 'Unverified', value: skills - verifiedSkills },
+          ]}
+          unit="skills"
+        />
+        <ComparisonChart
+          title="Students by branch"
+          description="Registered students across every branch."
+          rows={branches.map(([name, count]) => ({ name, count }))}
+          series={[{ key: 'count', label: 'Students' }]}
+        />
       </div>
     </section>
   );

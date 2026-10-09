@@ -10,6 +10,7 @@ import {
   OffersSummary,
   PlacementWorkflow,
   RecruitmentMetrics,
+  RecruitmentCharts,
   useRecruitmentOverview,
 } from '@/components/placement-dashboard-sections';
 
@@ -44,6 +45,7 @@ export function RecruiterDashboard({ data }: { data: WorkspaceData }) {
         />
       )}
       <DriveActivitySummary data={data} role="recruiter" />
+      {query.data && <RecruitmentCharts overview={query.data} />}
       {query.data && <SmartMatchingSummary overview={query.data} role="recruiter" />}
       <div className="two-columns">
         {query.data && (

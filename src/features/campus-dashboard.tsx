@@ -13,6 +13,7 @@ import {
   OffersSummary,
   PlacementWorkflow,
   RecruitmentMetrics,
+  RecruitmentCharts,
   useRecruitmentOverview,
 } from '@/components/placement-dashboard-sections';
 
@@ -46,6 +47,7 @@ export function CampusDashboard({ data }: { data: WorkspaceData }) {
         />
       )}
       {query.data && <SmartMatchingSummary overview={query.data} role="campus" />}
+      {query.data && <RecruitmentCharts overview={query.data} />}
       <CampusStudentOverview />
       <div className="two-columns">
         <CampusReadinessSummary />

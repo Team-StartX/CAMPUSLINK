@@ -1,4 +1,9 @@
 'use client';
+import {
+  AssessmentScoreTrend,
+  DistributionChart,
+  countCategories,
+} from '@/components/analytics-charts';
 import Image from 'next/image';
 import { StudentMatchingSummary } from '@/components/smart-matching-summary';
 import { ContestProgress } from '@/components/contest-progress';
@@ -272,6 +277,15 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
         </div>
       </div>
       <ContestProgress achievements={contestAchievements(data)} compact />
+      <div className="analytics-chart-grid">
+        <AssessmentScoreTrend history={data.history} />
+        <DistributionChart
+          title="Your application progress"
+          description="Where your current applications stand."
+          rows={countCategories(data.applications.map((a) => a.stage))}
+          unit="applications"
+        />
+      </div>
       <div className="career-progress panel">
         <div>
           <h3>Your career, in motion.</h3>

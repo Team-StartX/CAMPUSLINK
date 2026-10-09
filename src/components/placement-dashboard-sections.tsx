@@ -6,6 +6,26 @@ import { apiClient } from '@/services/api/client';
 import { useSession } from '@/store/session';
 import type { WorkspaceData } from '@/types';
 import { Badge } from './ui';
+import { ComparisonChart, DistributionChart, countCategories } from './analytics-charts';
+
+export function RecruitmentCharts({ overview }: { overview: RecruitmentOverview }) {
+  return (
+    <div className="analytics-chart-grid">
+      <ComparisonChart
+        title="Applications by current stage"
+        description="Each application is counted at its current stage."
+        rows={countCategories(overview.applications.map((a) => a.stage))}
+        series={[{ key: 'value', label: 'Applications' }]}
+      />
+      <DistributionChart
+        title="Offer responses"
+        description="Current responses to released offers."
+        rows={countCategories(overview.offers.map((o) => o.status))}
+        unit="offers"
+      />
+    </div>
+  );
+}
 
 export type RecruitmentOverview = Awaited<ReturnType<typeof recruitmentService.dashboard>>;
 export function useRecruitmentOverview(role: 'campus' | 'recruiter') {
@@ -136,10 +156,16 @@ export function CampusReadinessSummary() {
       {query.error && <p role="alert">{query.error.message}</p>}
       {query.data && (
         <>
-          <p>
-            {query.data.ready} of {query.data.registered} students are placement ready ·{' '}
-            {query.data.placed} placed
-          </p>
+          <DistributionChart
+            title="Placement readiness"
+            description="Students with a readiness score of at least 70."
+            rows={[
+              { name: 'Ready', value: query.data.ready },
+              { name: 'Preparing', value: Math.max(0, query.data.registered - query.data.ready) },
+            ]}
+            unit="students"
+          />
+          <p>{query.data.placed} students have accepted an offer or joined.</p>
           {query.data.support.slice(0, 3).map((student) => (
             <p key={student.id}>
               <Link href={`/campus/students/${student.id}`}>
