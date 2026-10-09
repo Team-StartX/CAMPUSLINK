@@ -142,9 +142,9 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
     );
   };
   const accounts = await db.list<Account>('account');
-  const announce = async (ids: string[], title: string, body: string) => {
+  const announce = async (ids: string[], title: string, body: string, href?: string) => {
     for (const a of accounts.filter((a) => ids.includes(a.id)))
-      await notify(db, a, title, body, 'Recruitment');
+      await notify(db, a, title, body, 'Recruitment', undefined, href);
   };
   if (method === 'dashboard') {
     const drives = (await db.list<StoredDrive>('drive')).filter((d) =>
@@ -320,6 +320,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       accounts.filter((a) => a.role === 'campus' && a.campusId === campusId).map((a) => a.id),
       'New recruiter request',
       `${actor.organization} requests recruitment access.`,
+      '/campus/recruiters',
     );
     return row;
   }
@@ -349,6 +350,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       [row.recruiterId],
       `Campus request ${status.toLowerCase()}`,
       reason || 'You can now submit job opportunities for this campus.',
+      '/recruiter/campuses',
     );
     return;
   }

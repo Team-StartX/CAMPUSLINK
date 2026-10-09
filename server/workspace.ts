@@ -7,7 +7,7 @@ import { Database } from './db';
 import { Account } from './auth';
 import { requireCondition } from './errors';
 import { queueMail } from './mail';
-import { checkEligibility, studentVisible } from '../src/utils/placement';
+import { checkEligibility, placementNotice, studentVisible } from '../src/utils/placement';
 import type { AdminAssessment, AdminContest } from '../src/types/admin';
 import type { InterviewSlot, CandidateResult } from '../src/types/recruitment';
 
@@ -276,18 +276,40 @@ export async function notify(
   body: string,
   type: string,
   dedupe?: string,
+  href?: string,
 ) {
   const id = dedupe || randomUUID();
   if (await db.get('notification', id)) return;
   await db.put(
     'notification',
     id,
-    { id, title, body, type, read: false },
+    { id, title, body, type, read: false, ...(href ? { href } : {}) },
     account.campusId,
     account.id,
   );
   await queueMail(db, account.email, title, body, `notice-${id}`);
 }
+export async function notifyPlacementStudents(db: Database, drive: StoredDrive) {
+  if (!studentVisible(drive)) return;
+  for (const account of await db.list<Account>('account', drive.campusId)) {
+    if (account.role !== 'student' || !account.approved) continue;
+    const profile = await db.get<WorkspaceData>('workspace', account.id);
+    const notice = placementNotice(
+      profile?.student || emptyWorkspace(account, drive.campus).student,
+      drive,
+    );
+    await notify(
+      db,
+      account,
+      notice.title,
+      notice.body,
+      notice.type,
+      `active-${drive.id}-${account.id}`,
+      notice.href,
+    );
+  }
+}
+
 async function writeWorkspace(action: (data: WorkspaceData) => void) {
   const { db, actor, target } = currentContext();
   return db.transaction(async () => {
@@ -408,6 +430,8 @@ async function writeWorkspace(action: (data: WorkspaceData) => void) {
           `${drive.company}: ${drive.status.toLowerCase().replaceAll('_', ' ')}`,
           drive.reviewNote || `${drive.role} updated. Review the drive details.`,
           'Drive',
+          undefined,
+          `/${recipient.role}/drives/${encodeURIComponent(drive.id)}`,
         );
       if (
         (old?.schedule && JSON.stringify(old.schedule) !== JSON.stringify(drive.schedule)) ||
@@ -432,25 +456,13 @@ async function writeWorkspace(action: (data: WorkspaceData) => void) {
         }
       }
       if (drive.status === 'ACTIVE' && old?.status !== 'ACTIVE') {
-        for (const a of await db.list<Account>('account', drive.campusId)) {
-          if (a.role !== 'student') continue;
-          const profile = await db.get<WorkspaceData>('workspace', a.id);
-          if (profile && checkEligibility(profile.student, drive).passed)
-            await notify(
-              db,
-              a,
-              `${drive.company} campus drive is open`,
-              `${drive.role}: apply before ${drive.deadline}.`,
-              'Campus Drive',
-              `active-${drive.id}-${a.id}`,
-            );
-        }
+        await notifyPlacementStudents(db, next);
       }
     }
     for (const n of data.notifications) {
       if (before.notifications.some((p) => p.id === n.id))
         await db.put('notification', n.id, n, actor.campusId, actor.id);
-      else await notify(db, target || actor, n.title, n.body, n.type, n.id);
+      else await notify(db, target || actor, n.title, n.body, n.type, n.id, n.href);
     }
     for (const t of data.interviewTemplates || [])
       if (!before.interviewTemplates?.some((p) => p.id === t.id))

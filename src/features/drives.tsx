@@ -165,7 +165,8 @@ export function DrivesPage(
         <div>
           <b>Campus approval comes first.</b>
           <p>
-            Students see eligible opportunities only when the placement cell activates the drive.
+            After activation, all college students receive the schedule and their eligibility
+            status, including reasons when they are not eligible.
           </p>
         </div>
       </div>
@@ -228,6 +229,11 @@ export function DrivesPage(
             >
               View {requestsOnly ? 'request' : 'drive'} <ArrowUpRight size={16} />
             </Link>
+            {role === 'campus' && d.status === 'SCHEDULING' && (
+              <Link className="button dark" href={`/campus/drives/${d.id}#placement-schedule`}>
+                <CalendarDays size={16} /> Schedule placement
+              </Link>
+            )}
           </motion.section>
         ))}
       </div>
@@ -1538,10 +1544,14 @@ function ScheduleProposal({
   const values = watch();
   const conflicts = scheduleConflicts(data.drives, drive.id, values);
   return (
-    <section className="panel schedule-proposal">
+    <section className="panel schedule-proposal" id="placement-schedule">
       <Badge>CAMPUS → RECRUITER</Badge>
       <h2>Propose the campus visit.</h2>
-      <p>Reserve physical resources and send a schedule for recruiter confirmation.</p>
+      <p>
+        Set the placement date, reporting time and venue, then send the schedule for recruiter
+        confirmation. After confirmation, finalize and activate the placement to notify eligible and
+        ineligible students with their corresponding requirements.
+      </p>
       <form
         className="form-stack"
         onSubmit={handleSubmit(async (s) => {

@@ -135,6 +135,27 @@ export function driveOpportunity(drive: Drive, existing?: Opportunity): Opportun
   };
 }
 
+export function placementNotice(student: Student, drive: Drive) {
+  const eligibility = checkEligibility(student, drive);
+  const schedule = drive.schedule
+    ? ` Campus visit: ${drive.schedule.date}, reporting at ${drive.schedule.reporting}; venue: ${drive.schedule.venue || 'See placement details'}.`
+    : '';
+  const reasons = eligibility.checks
+    .filter((check) => !check.passed)
+    .map((check) => `${check.name}: ${check.detail}`)
+    .join('; ');
+  return {
+    title: `${drive.company}: ${eligibility.passed ? 'Eligible for placement' : 'Not eligible for placement'}`,
+    body: `${drive.role}.${schedule} ${
+      eligibility.passed
+        ? `You meet the eligibility requirements. Apply before ${drive.deadline}.`
+        : `Unmet requirements: ${reasons}. Review the placement details and update missing profile information.`
+    }`,
+    type: 'Campus Drive',
+    href: `/student/opportunities/${encodeURIComponent(drive.opportunityId || drive.id)}`,
+  };
+}
+
 export function scheduleFinalized(drive: Drive) {
   const history = drive.audit || [];
   const proposal = history.findLastIndex((a) => a.status === 'AWAITING_RECRUITER_CONFIRMATION');

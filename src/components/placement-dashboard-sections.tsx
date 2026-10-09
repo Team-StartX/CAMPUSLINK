@@ -5,6 +5,7 @@ import { recruitmentService } from '@/services/recruitment.service';
 import { apiClient } from '@/services/api/client';
 import { useSession } from '@/store/session';
 import type { WorkspaceData } from '@/types';
+import { notificationHref } from '@/utils/notification-links';
 import { Badge } from './ui';
 import { ComparisonChart, DistributionChart, countCategories } from './analytics-charts';
 
@@ -120,14 +121,17 @@ export function OffersSummary({ overview, href }: { overview: RecruitmentOvervie
 }
 
 export function NotificationsSummary({ data, href }: { data: WorkspaceData; href: string }) {
+  const role = useSession((s) => s.user?.role);
   return (
     <section className="panel">
       <h2>Latest notifications</h2>
       {data.notifications.slice(0, 5).map((n) => (
         <p key={n.id}>
-          <b>{n.title}</b>
-          <br />
-          {n.body}
+          <Link href={role ? notificationHref(n, role) : href}>
+            <b>{n.title}</b>
+            <br />
+            {n.body}
+          </Link>
         </p>
       ))}
       {!data.notifications.length && <p>No new notifications.</p>}

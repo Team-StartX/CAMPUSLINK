@@ -30,7 +30,8 @@ import { usePlatform } from '@/hooks/use-platform';
 import { notificationService } from '@/services/platform.service';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { notificationHref } from '@/utils/notification-links';
 import { useEffect, useState } from 'react';
 
 import { ActionCenter } from '@/features/action-center';
@@ -249,14 +250,17 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
 }
 function Notifications({
   data,
+  role,
   refresh,
   notify,
 }: {
   data: WorkspaceData;
+  role: Role;
   refresh: () => void;
   notify: (s: string) => void;
 }) {
   const [filter, setFilter] = useState('All');
+  const router = useRouter();
   return (
     <>
       <PageHeader
@@ -290,8 +294,13 @@ function Notifications({
               key={n.id}
               className={n.read ? 'read' : ''}
               onClick={async () => {
-                await notificationService.markRead(n.id);
-                refresh();
+                try {
+                  if (!n.read) await notificationService.markRead(n.id);
+                  refresh();
+                } catch {
+                  notify('Could not mark this notification as read.');
+                }
+                router.push(notificationHref(n, role));
               }}
             >
               <span className="notification-icon lavender">

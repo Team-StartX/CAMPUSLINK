@@ -46,6 +46,10 @@ export function CampusEligibilityPreview({ drive }: { drive: Drive }) {
                   {eligibility.passed ? 'Eligible' : 'Not eligible'}
                 </Badge>
               </summary>
+              <p>
+                CGPA: {student.cgpa} · Skills:{' '}
+                {student.skills.map((skill) => skill.name).join(', ') || 'Not recorded'}
+              </p>
               <h3>Skill gaps & next steps</h3>
               {gaps.map((gap) => (
                 <p key={gap.name}>

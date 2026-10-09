@@ -236,6 +236,7 @@ export interface Notification {
   body: string;
   read: boolean;
   type: string;
+  href?: string;
 }
 export interface DocumentRecord {
   id: string;
