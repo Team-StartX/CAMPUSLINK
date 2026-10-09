@@ -4,6 +4,7 @@ import { deliverMail } from './mail';
 import { runReminders } from './reminders';
 import { deleteFile } from './storage';
 import { Database } from './db';
+import { startWorker, workerErrorDetails } from './workers';
 const database = new Database();
 async function main() {
   const { app, db } = await createApp(database);
@@ -17,32 +18,24 @@ async function main() {
     }
     console.log(`CampusLink API ready at http://localhost:${config.port}/api/v1`);
   });
-  let remindersRunning = false;
-  const timer = setInterval(() => {
-    if (remindersRunning) return;
-    remindersRunning = true;
-    void Promise.allSettled([
-      deliverMail(db).catch(() => console.error('Email worker failed')),
-      runReminders(db).catch(() => console.error('Reminder worker failed')),
-      (async () => {
-        for (const job of await db.query<{ id: string; value: string }>(
-          'SELECT record_id AS id,value FROM storage_cleanup_jobs',
-        )) {
-          try {
-            await deleteFile(JSON.parse(job.value).key);
-            await db.remove('storage-gc', job.id);
-          } catch {
-            console.error('Storage cleanup will retry');
-          }
+  const stopWorkers = [
+    startWorker('Email', () => deliverMail(db)),
+    startWorker('Reminder', () => runReminders(db)),
+    startWorker('Storage cleanup', async () => {
+      for (const job of await db.query<{ id: string; value: string }>(
+        'SELECT record_id AS id,value FROM storage_cleanup_jobs',
+      )) {
+        try {
+          await deleteFile(JSON.parse(job.value).key);
+          await db.remove('storage-gc', job.id);
+        } catch (error) {
+          console.error('Storage cleanup will retry', workerErrorDetails(error));
         }
-      })().catch(() => console.error('Storage cleanup worker failed')),
-    ]).finally(() => {
-      remindersRunning = false;
-    });
-  }, 30000);
-  timer.unref();
+      }
+    }),
+  ];
   const close = () => {
-    clearInterval(timer);
+    for (const stop of stopWorkers) stop();
     server.close(() => {
       void db.close().then(() => process.exit(0));
     });

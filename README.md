@@ -29,8 +29,10 @@ npm run server:build
 npm run build
 ```
 
-Start `npm run server:start` in one terminal and `npm start` in another, then open
-http://localhost:3000. The backend uses the database configured in `server/.env`.
+Run `npm start`, then open http://localhost:3000. This starts the local API, waits
+for its database connection, and starts the optimized website. It restarts the
+API if it exits unexpectedly. The backend uses the database configured in `server/.env`.
+To manage them separately, use `npm run server:start` and `npm run start:frontend`.
 Stop development servers before building. Rebuild after source changes, or use
 `npm run dev` while editing.
 

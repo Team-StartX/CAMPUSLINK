@@ -10,9 +10,13 @@ export async function runReminders(db: Database) {
   await db.transaction(async () => {
     const drives = await db.list<StoredDrive>('drive');
     const slots = await db.list<InterviewSlot>('interview-slot');
+    // Hydrate profiles in batches instead of repeating every workspace query per student.
+    const workspaces = new Map(
+      (await db.list<WorkspaceData>('workspace')).map((data) => [data.student.id, data]),
+    );
     for (const account of await db.list<Account>('account')) {
       if (account.role !== 'student' || !account.approved) continue;
-      const data = await db.get<WorkspaceData>('workspace', account.id);
+      const data = workspaces.get(account.id);
       if (!data) continue;
       for (const drive of drives.filter(
         (d) =>

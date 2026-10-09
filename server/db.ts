@@ -61,7 +61,9 @@ export class Database {
         connectionString,
         ssl,
         max: 4,
-        idleTimeoutMillis: 10000,
+        // Dashboard polling runs every 15 seconds. Keep connections between polls
+        // instead of repeating the hosted database's TLS/connection handshake.
+        idleTimeoutMillis: 60000,
         connectionTimeoutMillis: 8000,
       });
       // Idle connections can be closed by the hosted database or network. pg removes

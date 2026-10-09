@@ -35,7 +35,7 @@ function start(script, args = [], env = process.env) {
 async function healthy(origin) {
   try {
     const response = await fetch(`${origin}/api/v1/health`, {
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) return false;
     const data = await response.json();
@@ -59,7 +59,7 @@ async function main() {
         PORT: apiOrigin.port || (apiOrigin.protocol === 'https:' ? '443' : '80'),
         FRONTEND_URL: process.env.FRONTEND_URL || `http://localhost:${port}`,
       });
-      const deadline = Date.now() + 30000;
+      const deadline = Date.now() + 60000;
       while (!stopping && !(await healthy(apiOrigin.origin))) {
         if (Date.now() >= deadline)
           throw new Error(
