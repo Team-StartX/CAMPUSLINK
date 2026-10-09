@@ -1,47 +1,151 @@
 'use client';
-import { CampusAssessments, CampusRelationships, StudentCompanyPage } from '@/features/recruitment';
 import { AppShell } from '@/components/app-shell';
 import { GuestOnlyRoute } from '@/components/guest-only-route';
 import { Loader } from '@/components/loader';
 import { Landing, PublicPage } from '@/components/public';
-import { Badge, Button, EmptyState, PageHeader, Toast } from '@/components/ui';
-import { AssessmentSession, AssessmentsPage, ContestsPage } from '@/features/assessments';
-import { AuthPage } from '@/features/auth';
-import { StudentDashboard } from '@/features/student-dashboard';
-import { CampusDashboard } from '@/features/campus-dashboard';
-import { RecruiterDashboard } from '@/features/recruiter-dashboard';
-import {
-  CampusDiscovery,
-  CareerPointsPage,
-  DrivesPage,
-  PlacementCalendar,
-} from '@/features/drives';
-import { AIInterview, InterviewsPage, StaffInterviewsPage } from '@/features/interviews';
-import { ApplicationsPage, OffersPage, OpportunitiesPage } from '@/features/opportunities';
-import {
-  DocumentsPage,
-  LearningPage,
-  ProfilePage,
-  ReadinessPage,
-  SkillsPage,
-} from '@/features/profile';
-import { AnalyticsPage, CompanyPage, PeoplePage, RecruitersPage } from '@/features/team';
+import { Button, EmptyState, PageHeader, Toast } from '@/components/ui';
 import { usePlatform } from '@/hooks/use-platform';
-import { notificationService } from '@/services/platform.service';
-import { Bell, Check, CheckCheck } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { notificationHref } from '@/utils/notification-links';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { ActionCenter } from '@/features/action-center';
-import { AdminDashboard } from '@/features/admin-dashboard';
-import { CommunicationPractice } from '@/features/communication';
 import { useSession } from '@/store/session';
 import { WorkspaceData, Role } from '@/types';
 import { motion } from 'framer-motion';
 import { AnalysisPreferences, AuthLinkPage, BackendTools } from './backend-tools';
 import { PublicSessionProvider } from './public-session';
+import dynamic from 'next/dynamic';
+
+const CampusAssessments = dynamic(
+  () => import('@/features/recruitment').then((module) => module.CampusAssessments),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CampusRelationships = dynamic(
+  () => import('@/features/recruitment').then((module) => module.CampusRelationships),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const StudentCompanyPage = dynamic(
+  () => import('@/features/recruitment').then((module) => module.StudentCompanyPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const AssessmentSession = dynamic(
+  () => import('@/features/assessments').then((module) => module.AssessmentSession),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const AssessmentsPage = dynamic(
+  () => import('@/features/assessments').then((module) => module.AssessmentsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const ContestsPage = dynamic(
+  () => import('@/features/assessments').then((module) => module.ContestsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const AuthPage = dynamic(() => import('@/features/auth').then((module) => module.AuthPage), {
+  loading: () => <Loader label="Loading page…" />,
+});
+const StudentDashboard = dynamic(
+  () => import('@/features/student-dashboard').then((module) => module.StudentDashboard),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CampusDashboard = dynamic(
+  () => import('@/features/campus-dashboard').then((module) => module.CampusDashboard),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const RecruiterDashboard = dynamic(
+  () => import('@/features/recruiter-dashboard').then((module) => module.RecruiterDashboard),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CampusDiscovery = dynamic(
+  () => import('@/features/drives').then((module) => module.CampusDiscovery),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CareerPointsPage = dynamic(
+  () => import('@/features/drives').then((module) => module.CareerPointsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const DrivesPage = dynamic(() => import('@/features/drives').then((module) => module.DrivesPage), {
+  loading: () => <Loader label="Loading page…" />,
+});
+const PlacementCalendar = dynamic(
+  () => import('@/features/drives').then((module) => module.PlacementCalendar),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const AIInterview = dynamic(
+  () => import('@/features/interviews').then((module) => module.AIInterview),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const InterviewsPage = dynamic(
+  () => import('@/features/interviews').then((module) => module.InterviewsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const StaffInterviewsPage = dynamic(
+  () => import('@/features/interviews').then((module) => module.StaffInterviewsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const ApplicationsPage = dynamic(
+  () => import('@/features/opportunities').then((module) => module.ApplicationsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const OffersPage = dynamic(
+  () => import('@/features/opportunities').then((module) => module.OffersPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const OpportunitiesPage = dynamic(
+  () => import('@/features/opportunities').then((module) => module.OpportunitiesPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const DocumentsPage = dynamic(
+  () => import('@/features/profile').then((module) => module.DocumentsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const LearningPage = dynamic(
+  () => import('@/features/profile').then((module) => module.LearningPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const ProfilePage = dynamic(
+  () => import('@/features/profile').then((module) => module.ProfilePage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const ReadinessPage = dynamic(
+  () => import('@/features/profile').then((module) => module.ReadinessPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const SkillsPage = dynamic(() => import('@/features/profile').then((module) => module.SkillsPage), {
+  loading: () => <Loader label="Loading page…" />,
+});
+const AnalyticsPage = dynamic(
+  () => import('@/features/team').then((module) => module.AnalyticsPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CompanyPage = dynamic(() => import('@/features/team').then((module) => module.CompanyPage), {
+  loading: () => <Loader label="Loading page…" />,
+});
+const PeoplePage = dynamic(() => import('@/features/team').then((module) => module.PeoplePage), {
+  loading: () => <Loader label="Loading page…" />,
+});
+const RecruitersPage = dynamic(
+  () => import('@/features/team').then((module) => module.RecruitersPage),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const ActionCenter = dynamic(
+  () => import('@/features/action-center').then((module) => module.ActionCenter),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const AdminDashboard = dynamic(
+  () => import('@/features/admin-dashboard').then((module) => module.AdminDashboard),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+const CommunicationPractice = dynamic(
+  () => import('@/features/communication').then((module) => module.CommunicationPractice),
+  { loading: () => <Loader label="Loading page…" /> },
+);
+
+const Notifications = dynamic(
+  () => import('@/features/notifications').then((module) => module.Notifications),
+  { loading: () => <Loader label="Loading your inbox…" /> },
+);
+
 export function Platform() {
   const path = usePathname();
   if (path === '/admin' || path.startsWith('/admin/')) return <AdminDashboard />;
@@ -246,83 +350,6 @@ function Workspace({ role, section, id }: { role: Role; section: string; id?: st
       </motion.div>
       <Toast message={toast} />
     </AppShell>
-  );
-}
-function Notifications({
-  data,
-  role,
-  refresh,
-  notify,
-}: {
-  data: WorkspaceData;
-  role: Role;
-  refresh: () => void;
-  notify: (s: string) => void;
-}) {
-  const [filter, setFilter] = useState('All');
-  const router = useRouter();
-  return (
-    <>
-      <PageHeader
-        title="A little news for your next step."
-        description="Your applications, assessments, interviews, and campus updates."
-        action={
-          <Button
-            kind="outline"
-            onClick={async () => {
-              await notificationService.markRead();
-              refresh();
-              notify('All notifications marked as read.');
-            }}
-          >
-            <CheckCheck size={16} /> Mark all as read
-          </Button>
-        }
-      />
-      <div className="filter-pills">
-        {['All', 'Unread'].map((f) => (
-          <button key={f} className={filter === f ? 'selected' : ''} onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
-      </div>
-      <div className="panel notification-list">
-        {data.notifications
-          .filter((n) => filter === 'All' || !n.read)
-          .map((n) => (
-            <button
-              key={n.id}
-              className={n.read ? 'read' : ''}
-              onClick={async () => {
-                try {
-                  if (!n.read) await notificationService.markRead(n.id);
-                  refresh();
-                } catch {
-                  notify('Could not mark this notification as read.');
-                }
-                router.push(notificationHref(n, role));
-              }}
-            >
-              <span className="notification-icon lavender">
-                <Bell size={20} />
-              </span>
-              <div>
-                <Badge>{n.type}</Badge>
-                <h3>{n.title}</h3>
-                <p>{n.body}</p>
-              </div>
-              {!n.read && <span className="unread-dot" />}
-              <Check size={16} />
-            </button>
-          ))}
-        {!data.notifications.some((n) => filter === 'All' || !n.read) && (
-          <EmptyState
-            title="You’re all caught up."
-            description="We’ll keep your next steps here."
-          />
-        )}
-      </div>
-    </>
   );
 }
 function SettingsPage({

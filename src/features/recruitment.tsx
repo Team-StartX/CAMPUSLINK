@@ -10,6 +10,7 @@ import { documentService } from '@/services/platform.service';
 import type { Drive, Role, WorkspaceData } from '@/types';
 import type { CandidateResult, RecruitmentAssignment, Relationship } from '@/types/recruitment';
 import { ScheduleSummary } from './drives';
+import { isInterviewRound } from '@/utils/placement';
 const fieldLabel = (key: string) =>
   key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 const localDateInput = (value: string) => {
@@ -210,6 +211,7 @@ export function RecruitmentPanel({
   const [checked, setChecked] = useState<string[]>([]);
   const [assignment, setAssignment] = useState(false);
   const [interview, setInterview] = useState(false);
+  const [interviewAudience, setInterviewAudience] = useState('round');
   const [publish, setPublish] = useState(false);
   const query = useQuery({
     queryKey: ['recruitment', drive.id, role],
@@ -231,7 +233,9 @@ export function RecruitmentPanel({
   const overview = query.data;
   const round = drive.rounds?.find((r) => r.id === roundId);
   const roundSchedule = overview?.slots.find(
-    (s) => s.roundId === roundId && s.audience === 'round',
+    (s) =>
+      s.roundId === roundId &&
+      (interviewAudience === 'round' ? s.audience === 'round' : s.studentId === interviewAudience),
   );
   const current =
     overview?.candidates.filter(
@@ -277,6 +281,7 @@ export function RecruitmentPanel({
                     key={r.id}
                     onClick={() => {
                       setRoundId(r.id);
+                      setInterviewAudience('round');
                       setChecked([]);
                     }}
                   >
@@ -293,7 +298,7 @@ export function RecruitmentPanel({
                       Add / edit assignment
                     </Button>
                   )}
-                  {round.type?.includes('Interview') && (
+                  {isInterviewRound(round) && (
                     <Button kind="outline" onClick={() => setInterview(true)}>
                       Schedule interview round
                     </Button>
@@ -335,7 +340,7 @@ export function RecruitmentPanel({
                                 <td>{c.name}</td>
                                 <td colSpan={4}>
                                   <form
-                                    key={`${c.applicationId}:${result?.status}:${result?.score}:${result?.feedback}`}
+                                    key={`${c.applicationId}:${JSON.stringify(result)}`}
                                     className="form-row"
                                     onSubmit={(e) => {
                                       e.preventDefault();
@@ -351,6 +356,9 @@ export function RecruitmentPanel({
                                               ? Number(f.get('score'))
                                               : undefined,
                                             feedback: String(f.get('feedback')),
+                                            strengths: String(f.get('strengths') || ''),
+                                            gaps: String(f.get('gaps') || ''),
+                                            nextSteps: String(f.get('nextSteps') || ''),
                                           },
                                         ]),
                                       );
@@ -375,7 +383,10 @@ export function RecruitmentPanel({
                                       aria-label="Score"
                                       type="number"
                                       min={0}
-                                      max={round.maximumScore}
+                                      max={
+                                        round.maximumScore ??
+                                        (isInterviewRound(round) ? 100 : undefined)
+                                      }
                                       step="any"
                                       defaultValue={result?.score}
                                       placeholder="Score"
@@ -386,6 +397,28 @@ export function RecruitmentPanel({
                                       defaultValue={result?.feedback}
                                       placeholder="Feedback"
                                     />
+                                    {isInterviewRound(round) && (
+                                      <>
+                                        <input
+                                          name="strengths"
+                                          aria-label="Interview strengths"
+                                          placeholder="Strengths"
+                                          defaultValue={result?.strengths}
+                                        />
+                                        <input
+                                          name="gaps"
+                                          aria-label="Interview skill gaps"
+                                          placeholder="Problems / skills to improve"
+                                          defaultValue={result?.gaps}
+                                        />
+                                        <input
+                                          name="nextSteps"
+                                          aria-label="Interview next steps"
+                                          placeholder="Recommended next steps"
+                                          defaultValue={result?.nextSteps}
+                                        />
+                                      </>
+                                    )}
                                     <Button
                                       type="submit"
                                       disabled={
@@ -703,8 +736,8 @@ export function RecruitmentPanel({
       {interview && (
         <Modal title="Schedule interview round" onClose={() => setInterview(false)}>
           <p>
-            This schedule applies to all students participating in {round?.name || 'this round'}.
-            Students see it when they reach the round.
+            Schedule all participants in {round?.name || 'this round'}, or choose one student. An
+            individual appointment replaces the shared time for that student.
           </p>
           {!current.length && (
             <p>No students have reached this round yet. You can still schedule it in advance.</p>
@@ -722,7 +755,9 @@ export function RecruitmentPanel({
               void run(async () => {
                 await service.scheduleInterview(drive.id, {
                   roundId,
-                  audience: 'round',
+                  ...(interviewAudience === 'round'
+                    ? { audience: 'round' as const }
+                    : { studentId: interviewAudience }),
                   date: String(f.get('date')),
                   time: String(f.get('time')),
                   duration: Number(f.get('duration')),
@@ -738,10 +773,24 @@ export function RecruitmentPanel({
               });
             }}
           >
+            <FormField label="Interview audience">
+              <select
+                value={interviewAudience}
+                onChange={(event) => setInterviewAudience(event.target.value)}
+              >
+                <option value="round">All students in this round</option>
+                {current.map((candidate) => (
+                  <option key={candidate.studentId} value={candidate.studentId}>
+                    {candidate.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
             {['date', 'time', 'duration', 'venue', 'room', 'panel', 'meetingLink'].map((key) => (
               <FormField key={key} label={fieldLabel(key)}>
                 <input
                   name={key}
+                  key={`${interviewAudience}:${key}`}
                   defaultValue={
                     roundSchedule?.[
                       key as
@@ -782,7 +831,7 @@ export function RecruitmentPanel({
               </>
             )}
             <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Schedule for all students'}
+              {busy ? 'Saving…' : 'Save interview schedule'}
             </Button>
           </form>
         </Modal>

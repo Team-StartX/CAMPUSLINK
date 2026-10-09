@@ -37,7 +37,30 @@ export interface CandidateResult {
   status: 'Pending' | 'Qualified' | 'Rejected' | 'Absent' | 'Under Review';
   score?: number;
   feedback: string;
+  strengths?: string;
+  gaps?: string;
+  nextSteps?: string;
+  publishedAt?: string;
   published: boolean;
+}
+export interface StudentInterviewFeedback extends CandidateResult {
+  company: string;
+  role: string;
+  round: string;
+  risk: 'Low' | 'Moderate' | 'High' | 'Not assessed';
+}
+export interface ApplicantRanking {
+  applicationId: string;
+  studentId: string;
+  name: string;
+  driveId: string;
+  company: string;
+  role: string;
+  stage: string;
+  rank: number;
+  skillMatch: number;
+  matchedSkills: string[];
+  missingSkills: string[];
 }
 export interface RecruitmentAssignment {
   id: string;

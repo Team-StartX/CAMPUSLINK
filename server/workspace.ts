@@ -7,7 +7,13 @@ import { Database } from './db';
 import { Account } from './auth';
 import { requireCondition } from './errors';
 import { queueMail } from './mail';
-import { checkEligibility, placementNotice, studentVisible } from '../src/utils/placement';
+import {
+  checkEligibility,
+  placementNotice,
+  studentListed,
+  studentVisible,
+  isInterviewRound,
+} from '../src/utils/placement';
 import type { AdminAssessment, AdminContest } from '../src/types/admin';
 import type { InterviewSlot, CandidateResult } from '../src/types/recruitment';
 
@@ -117,7 +123,6 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     own,
     assessments,
     contests,
-    campusWorkspaces,
     storedDrives,
     roundResults,
     slots,
@@ -128,7 +133,6 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     target ? db.get<WorkspaceData>('workspace', target.id) : Promise.resolve(undefined),
     db.list<AdminAssessment>('admin-assessment'),
     db.list<AdminContest>('admin-contest'),
-    db.list<WorkspaceData>('workspace', actor.campusId),
     db.list<StoredDrive>('drive', actor.role === 'recruiter' ? undefined : actor.campusId),
     db.list<CandidateResult>(
       'candidate-round',
@@ -159,6 +163,10 @@ export async function readWorkspace(): Promise<WorkspaceData> {
         questionCount: questionIds.length,
       })),
   ];
+  // Only hydrate the campus cohort when published contests need participation counts.
+  const campusWorkspaces = contests.some(visible)
+    ? await db.list<WorkspaceData>('workspace', actor.campusId)
+    : [];
   data.contests = [
     ...contests.filter(visible).map(({ id, name, type, duration, points, difficulty, prompt }) => {
       const progress = own?.contests.find((c) => c.id === id);
@@ -182,7 +190,7 @@ export async function readWorkspace(): Promise<WorkspaceData> {
     actor.role === 'recruiter' ? d.recruiterId === actor.id : d.campusId === actor.campusId,
   );
   if (actor.role === 'student')
-    data.drives = data.drives.filter(studentVisible).map((d) => {
+    data.drives = data.drives.filter(studentListed).map((d) => {
       const publicDrive = { ...d } as Partial<StoredDrive>;
       delete publicDrive.recruiterId;
       return publicDrive as Drive;
@@ -197,12 +205,22 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       (i) => (i as typeof i & { recruiterId?: string }).recruiterId === actor.id,
     );
   }
-  const visibleDriveIds = new Set(data.drives.map((d) => d.id));
+  const visibleDriveIds = new Set(data.drives.filter(studentVisible).map((d) => d.id));
   for (const slot of slots) {
     const drive = data.drives.find((d) => d.id === slot.driveId);
     if (!drive || !visibleDriveIds.has(slot.driveId)) continue;
     const studentId = target?.id || actor.id;
     if (slot.audience === 'round') {
+      if (
+        slots.some(
+          (individual) =>
+            individual.driveId === slot.driveId &&
+            individual.roundId === slot.roundId &&
+            individual.studentId === studentId &&
+            individual.audience !== 'round',
+        )
+      )
+        continue;
       if (
         (target || actor.role === 'student') &&
         !roundResults.some(
@@ -233,6 +251,36 @@ export async function readWorkspace(): Promise<WorkspaceData> {
       : o,
   );
   data.notifications = notifications;
+  data.recruiterFeedback = roundResults
+    .filter(
+      (result) =>
+        result.studentId === data.student.id &&
+        result.published &&
+        data.drives.some(
+          (drive) =>
+            drive.id === result.driveId &&
+            isInterviewRound(drive.rounds?.find((round) => round.id === result.roundId)),
+        ),
+    )
+    .map((result) => {
+      const drive = data.drives.find((drive) => drive.id === result.driveId)!;
+      return {
+        ...result,
+        company: drive.company,
+        role: drive.role,
+        round: drive.rounds?.find((round) => round.id === result.roundId)?.name || 'Interview',
+        risk:
+          result.status === 'Rejected' || result.status === 'Absent'
+            ? ('High' as const)
+            : result.status === 'Qualified'
+              ? result.gaps?.trim()
+                ? ('Moderate' as const)
+                : ('Low' as const)
+              : result.status === 'Under Review'
+                ? ('Moderate' as const)
+                : ('Not assessed' as const),
+      };
+    });
   data.interviewTemplates = templates.filter((t) => {
     if (actor.role === 'recruiter') return t.recruiterId === actor.id;
     if (!t.campusIds?.includes(actor.campusId)) return false;
@@ -283,20 +331,33 @@ export async function notify(
   await db.put(
     'notification',
     id,
-    { id, title, body, type, read: false, ...(href ? { href } : {}) },
+    {
+      id,
+      title,
+      body,
+      type,
+      read: false,
+      createdAt: new Date().toISOString(),
+      ...(href ? { href } : {}),
+    },
     account.campusId,
     account.id,
   );
   await queueMail(db, account.email, title, body, `notice-${id}`);
 }
-export async function notifyPlacementStudents(db: Database, drive: StoredDrive) {
-  if (!studentVisible(drive)) return;
-  for (const account of await db.list<Account>('account', drive.campusId)) {
-    if (account.role !== 'student' || !account.approved) continue;
-    const profile = await db.get<WorkspaceData>('workspace', account.id);
+export async function notifyPlacementStudents(db: Database, drive: StoredDrive, added = false) {
+  if (added ? !studentListed(drive) : !studentVisible(drive)) return;
+  const [accounts, profiles] = await Promise.all([
+    db.list<Account>('account', drive.campusId),
+    db.list<WorkspaceData>('workspace', drive.campusId),
+  ]);
+  const students = new Map(profiles.map((profile) => [profile.student.id, profile.student]));
+  for (const account of accounts) {
+    if (account.role !== 'student') continue;
     const notice = placementNotice(
-      profile?.student || emptyWorkspace(account, drive.campus).student,
+      students.get(account.id) || emptyWorkspace(account, drive.campus).student,
       drive,
+      added,
     );
     await notify(
       db,
@@ -304,7 +365,7 @@ export async function notifyPlacementStudents(db: Database, drive: StoredDrive) 
       notice.title,
       notice.body,
       notice.type,
-      `active-${drive.id}-${account.id}`,
+      `${added ? 'new-job' : 'active'}-${drive.id}-${account.id}`,
       notice.href,
     );
   }
@@ -454,6 +515,9 @@ async function writeWorkspace(action: (data: WorkspaceData) => void) {
             'Drive',
           );
         }
+      }
+      if (drive.status === 'SUBMITTED' && old?.status !== 'SUBMITTED') {
+        await notifyPlacementStudents(db, next, true);
       }
       if (drive.status === 'ACTIVE' && old?.status !== 'ACTIVE') {
         await notifyPlacementStudents(db, next);

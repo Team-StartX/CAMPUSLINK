@@ -15,7 +15,7 @@ import {
 import { applicationService, matchingService, offerService } from '@/services/platform.service';
 import { WorkspaceData, Role } from '@/types';
 import type { MlAnnotation } from '@/types/ml';
-import { checkEligibility, driveOpportunity } from '@/utils/placement';
+import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
 import { normalizeSkill } from '@/utils/skills';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, Check, CircleCheck, Gift, Search, Sparkles } from 'lucide-react';
@@ -42,6 +42,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const job = data.opportunities.find((j) => j.id === id);
   const drive = data.drives.find((d) => d.id === job?.driveId);
   const eligibility = drive ? checkEligibility(data.student, drive) : job?.eligibility;
+  const applicationsPending = !!drive && !studentVisible(drive);
   const applicationsClosed =
     drive?.status !== 'ACTIVE' ||
     !drive.deadline ||
@@ -49,7 +50,11 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   const interestQuery = useQuery({
     queryKey: ['interest', drive?.id],
     queryFn: () => recruitmentService.overview(drive!.id),
-    enabled: !!drive && drive.workflowVersion === 2 && eligibility?.passed === true,
+    enabled:
+      !!drive &&
+      drive.workflowVersion === 2 &&
+      !applicationsPending &&
+      eligibility?.passed === true,
   });
   const interested = interestQuery.data?.interest === 'Interested';
   const showInterest = async (value: string) => {
@@ -69,7 +74,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
   >({
     queryKey: ['match', id],
     queryFn: () => matchingService.getMatchExplanation(id!),
-    enabled: !!job && eligibility?.passed === true,
+    enabled: !!job && !applicationsPending && eligibility?.passed === true,
   });
   if (id && !job)
     return (
@@ -101,7 +106,11 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
               onClick={() => setConfirm(true)}
             >
               {applicationsClosed && !applied ? (
-                'Applications closed'
+                applicationsPending ? (
+                  'Applications not open yet'
+                ) : (
+                  'Applications closed'
+                )
               ) : applied ? (
                 <>
                   <Check size={16} /> Applied
@@ -117,7 +126,18 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
         <div className="opportunity-detail-grid">
           <div>
             <section className="panel">
-              <Badge>ON-CAMPUS DRIVE · Campus approved & activated</Badge>
+              <Badge>
+                ON-CAMPUS DRIVE ·{' '}
+                {applicationsPending
+                  ? 'Approval & scheduling pending'
+                  : 'Campus approved & activated'}
+              </Badge>
+              {applicationsPending && (
+                <p>
+                  This new job is visible to all campus students. Applications will open after
+                  campus approval and activation.
+                </p>
+              )}
               <h3>{job.campus}</h3>
               <p>
                 {job.visitDate ? formatDate(job.visitDate) : 'Visit date pending'} · {job.venue} ·
@@ -272,7 +292,7 @@ export function OpportunitiesPage({ data, id, refresh, notify }: Props) {
             </section>
           </aside>
         </div>
-        {drive?.workflowVersion === 2 && eligibility?.passed && (
+        {drive?.workflowVersion === 2 && !applicationsPending && eligibility?.passed && (
           <RecruitmentPanel drive={drive} role="student" refresh={refresh} />
         )}
         {companyOpen && drive && (

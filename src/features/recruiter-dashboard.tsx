@@ -4,6 +4,7 @@ import type { WorkspaceData } from '@/types';
 import { Badge, PageHeader } from '@/components/ui';
 import { DriveActivitySummary } from './drives';
 import { SmartMatchingSummary } from '@/components/smart-matching-summary';
+import { ApplicantRankings } from '@/components/applicant-rankings';
 import {
   ApplicationsSummary,
   NotificationsSummary,
@@ -47,6 +48,7 @@ export function RecruiterDashboard({ data }: { data: WorkspaceData }) {
       <DriveActivitySummary data={data} role="recruiter" />
       {query.data && <RecruitmentCharts overview={query.data} />}
       {query.data && <SmartMatchingSummary overview={query.data} role="recruiter" />}
+      {query.data && <ApplicantRankings rows={query.data.applicantRankings || []} />}
       <div className="two-columns">
         {query.data && (
           <>

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { isInterviewRound } from '@/utils/placement';
 type Props = {
   data: WorkspaceData;
   role: Role;
@@ -39,7 +40,7 @@ export function StaffInterviewsPage({ data, role, refresh, notify }: Props) {
   const drives = data.drives.filter(
     (d) =>
       !['CANCELLED', 'REJECTED', 'DRAFT', 'COMPLETED'].includes(d.status) &&
-      d.rounds?.some((r) => r.type?.includes('Interview')),
+      d.rounds?.some(isInterviewRound),
   );
   const records = useQueries({
     queries: drives.map((drive) => ({
@@ -66,30 +67,27 @@ export function StaffInterviewsPage({ data, role, refresh, notify }: Props) {
             </p>
             {records[index].isLoading && <p>Loading round schedules…</p>}
             {records[index].error && <p role="alert">{records[index].error.message}</p>}
-            {drive.rounds
-              ?.filter((r) => r.type?.includes('Interview'))
-              .map((round) => {
-                const slots =
-                  records[index].data?.slots.filter((s) => s.roundId === round.id) || [];
-                return (
-                  <div key={round.id}>
-                    <h4>{round.name}</h4>
-                    {records[index].data && !slots.length && <p>No schedule set for this round.</p>}
-                    {slots.map((slot) => (
-                      <p key={slot.id}>
-                        {formatDate(slot.date)} · {slot.time} IST · {slot.duration} min
-                        <br />
-                        {slot.mode} · {slot.venue || 'Online meeting'}
-                        {slot.room && ` / ${slot.room}`} · Panel {slot.panel}
-                        <br />
-                        {slot.audience === 'round'
-                          ? 'All students participating in this round'
-                          : 'Previously assigned candidate slot'}
-                      </p>
-                    ))}
-                  </div>
-                );
-              })}
+            {drive.rounds?.filter(isInterviewRound).map((round) => {
+              const slots = records[index].data?.slots.filter((s) => s.roundId === round.id) || [];
+              return (
+                <div key={round.id}>
+                  <h4>{round.name}</h4>
+                  {records[index].data && !slots.length && <p>No schedule set for this round.</p>}
+                  {slots.map((slot) => (
+                    <p key={slot.id}>
+                      {formatDate(slot.date)} · {slot.time} IST · {slot.duration} min
+                      <br />
+                      {slot.mode} · {slot.venue || 'Online meeting'}
+                      {slot.room && ` / ${slot.room}`} · Panel {slot.panel}
+                      <br />
+                      {slot.audience === 'round'
+                        ? 'All students participating in this round'
+                        : 'Previously assigned candidate slot'}
+                    </p>
+                  ))}
+                </div>
+              );
+            })}
             <Link className="button outline" href={`/${role}/drives/${drive.id}`}>
               Manage rounds & schedules <ArrowUpRight size={15} />
             </Link>

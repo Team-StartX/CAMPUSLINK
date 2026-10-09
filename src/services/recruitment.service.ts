@@ -6,11 +6,13 @@ import type {
   Relationship,
   CandidateResult,
   InterviewSlot,
+  ApplicantRanking,
 } from '@/types/recruitment';
 export const recruitmentService = {
   dashboard: () =>
     rpc<{
       metrics: Record<string, number>;
+      applicantRankings: ApplicantRanking[];
       matching: {
         driveId: string;
         role: string;
@@ -54,7 +56,10 @@ export const recruitmentService = {
   saveResults: (
     id: string,
     roundId: string,
-    rows: Pick<CandidateResult, 'applicationId' | 'status' | 'score' | 'feedback'>[],
+    rows: Pick<
+      CandidateResult,
+      'applicationId' | 'status' | 'score' | 'feedback' | 'strengths' | 'gaps' | 'nextSteps'
+    >[],
   ) => rpc('recruitmentService', 'saveResults', [id, roundId, rows]),
   publishResults: (id: string, roundId: string) =>
     rpc('recruitmentService', 'publishResults', [id, roundId]),

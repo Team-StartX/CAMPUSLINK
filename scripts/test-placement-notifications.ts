@@ -106,8 +106,8 @@ async function main() {
     await db.transaction(() => notifyPlacementStudents(db, drive));
     assert.equal(
       (await db.list('notification')).length,
-      2,
-      'Notify approved students once, scoped to their college.',
+      3,
+      'Notify every student once, scoped to their college, regardless of eligibility or approval.',
     );
     const eligible = await db.list<Notification>('notification', 'college', 'eligible');
     const ineligible = await db.list<Notification>('notification', 'college', 'ineligible');
@@ -126,8 +126,69 @@ async function main() {
       'Ineligible students can open the placement and its reasons.',
     );
     assert.equal(workspace.notifications.length, 1);
+    await db.put(
+      'campus-recruiter',
+      `college:${recruiter.id}`,
+      {
+        id: `college:${recruiter.id}`,
+        campusId: 'college',
+        recruiterId: recruiter.id,
+        status: 'Accepted',
+      },
+      'college',
+      recruiter.id,
+    );
+    const created = (await runWorkspace(db, recruiter, undefined, () =>
+      dispatch('driveService', 'createDriveRequest', [
+        {
+          ...drive,
+          location: 'Bengaluru',
+          ctc: '8 LPA',
+          description: 'Build web applications with React and TypeScript.',
+          preferredDates: ['2026-11-01'],
+          rounds: [
+            {
+              id: 'interview',
+              name: 'Interview',
+              duration: 30,
+              capacity: 10,
+              requirements: '',
+              cleared: 0,
+            },
+          ],
+        },
+        false,
+      ]),
+    )) as { createdDriveId: string };
+    const added = (await db.get<StoredDrive>('drive', created.createdDriveId))!;
+    assert.equal(added.status, 'SUBMITTED');
+    await db.transaction(() => notifyPlacementStudents(db, added, true));
+    for (const student of students.filter((s) => s.campusId === 'college')) {
+      const notices = await db.list<Notification>('notification', 'college', student.id);
+      const announcement = notices.filter((n) => n.id === `new-job-${added.id}-${student.id}`);
+      assert.equal(announcement.length, 1, 'Job submission creates one announcement per student.');
+      assert.match(announcement[0].title, /New job added/);
+      assert.match(announcement[0].body, /Applications will open after campus approval/);
+    }
+    assert.equal((await db.list('notification', 'other-college', 'other')).length, 0);
+    for (const student of students.filter((s) => s.approved && s.campusId === 'college')) {
+      const preview = (await runWorkspace(db, student, undefined, () =>
+        dispatch('studentService', 'getDashboard', []),
+      )) as WorkspaceData;
+      assert.ok(
+        preview.opportunities.some((o) => o.id === added.id),
+        'Every student can preview the new job.',
+      );
+      await assert.rejects(
+        () =>
+          runWorkspace(db, student, undefined, () =>
+            dispatch('applicationService', 'apply', [added.id]),
+          ),
+        'Preview must not allow applications before activation.',
+      );
+    }
     console.log(
-      'Placement notifications passed: eligible and ineligible reasons, schedule, college scope, approval, visibility and deduplication.',
+      'Placement notifications passed: submission announcements, all campus students, eligibility reasons, draft privacy, activation gates and deduplication.',
     );
   } finally {
     await db.close();

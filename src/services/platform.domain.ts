@@ -5,7 +5,12 @@ import { contestAchievements, recordContestCompletion } from '@/utils/contest-ac
 import { parseRequirements } from '../../server/nlp';
 import type { WorkspaceData } from '@/types';
 import { DomainError } from '@/utils/domain-error';
-import { checkEligibility, driveOpportunity, studentVisible } from '@/utils/placement';
+import {
+  checkEligibility,
+  driveOpportunity,
+  studentListed,
+  studentVisible,
+} from '@/utils/placement';
 import { fit, readiness } from '@/utils/scoring';
 import { instituteStudentPatchSchema, type InstituteStudentPatch } from '@/utils/student-records';
 import { driveService } from './drive.domain';
@@ -61,7 +66,7 @@ export const studentService = {
           .reduce((sum, h) => sum + h.points, 0),
     };
     d.opportunities = d.drives
-      .filter(studentVisible)
+      .filter(studentListed)
       .map((drive) => ({
         ...driveOpportunity(
           drive,

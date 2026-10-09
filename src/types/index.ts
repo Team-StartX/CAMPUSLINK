@@ -231,6 +231,7 @@ export interface Drive {
   attended?: number;
 }
 export interface Notification {
+  createdAt?: string;
   id: string;
   title: string;
   body: string;
@@ -268,6 +269,7 @@ export interface InterviewTemplate {
   audience: string;
 }
 export interface WorkspaceData {
+  recruiterFeedback?: import('./recruitment').StudentInterviewFeedback[];
   instituteStudentUpdates?: Record<string, import('@/utils/student-records').InstituteStudentPatch>;
   communicationPractice?: import('@/utils/communication').CommunicationFeedback[];
   placementVersion?: number;

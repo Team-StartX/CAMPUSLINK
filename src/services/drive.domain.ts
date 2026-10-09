@@ -4,7 +4,7 @@ import { DomainError } from '@/utils/domain-error';
 import {
   checkEligibility,
   driveOpportunity,
-  studentVisible,
+  studentListed,
   scheduleFinalized,
 } from '@/utils/placement';
 import { fit } from '@/utils/scoring';
@@ -166,7 +166,7 @@ export const driveService = {
   getCampusOpportunities: async () => {
     const data = await mockAdapter.read();
     return data.drives
-      .filter(studentVisible)
+      .filter(studentListed)
       .map((d) => ({
         ...driveOpportunity(
           d,

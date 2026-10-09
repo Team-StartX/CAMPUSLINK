@@ -6,6 +6,7 @@ import {
 } from '@/components/analytics-charts';
 import Image from 'next/image';
 import { StudentMatchingSummary } from '@/components/smart-matching-summary';
+import { RecruiterFeedback } from '@/components/recruiter-feedback';
 import { ContestProgress } from '@/components/contest-progress';
 import { DashboardActivity } from '@/components/dashboard-activity';
 import { PreparationOverview } from '@/components/preparation-overview';
@@ -245,6 +246,7 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
         </div>
       )}
       <StudentMatchingSummary data={data} />
+      <RecruiterFeedback data={data} />
       <div className="dashboard-hero-grid">
         <ReadinessCard />
         <DashboardActivity history={data.history} />

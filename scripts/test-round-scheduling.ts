@@ -29,7 +29,6 @@ async function main() {
   const round = {
     id: 'interview',
     name: 'Technical Interview',
-    type: 'Technical Interview' as const,
     duration: 30,
     capacity: 20,
     requirements: '',
@@ -134,8 +133,106 @@ async function main() {
       /HTTPS/,
     );
     assert.equal((await db.list<InterviewSlot>('interview-slot')).length, 1);
+    // A named legacy interview can be scheduled for one student, overriding their shared slot.
+    const individual = {
+      ...input,
+      audience: undefined,
+      studentId: 'one',
+      time: '11:00',
+      panel: 'Individual panel',
+    };
+    await call(recruiter, 'scheduleInterview', [drive.id, individual]);
+    const ownSlot = await runWorkspace(db, students[0], undefined, readWorkspace);
+    assert.equal(ownSlot.interviews.length, 1);
+    assert.equal(ownSlot.interviews[0].time, '11:00');
+    const ownOverview = (await call(students[0], 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(ownOverview.slots.length, 1);
+    assert.equal(ownOverview.slots[0].studentId, 'one');
+    const otherOverview = (await call(students[1], 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(otherOverview.slots.length, 1);
+    assert.equal(otherOverview.slots[0].audience, 'round');
+    await db.put(
+      'drive',
+      drive.id,
+      { ...drive, status: 'IN_PROGRESS', skills: 'React, SQL' },
+      'campus',
+      recruiter.id,
+    );
+    for (const [index, student] of students.slice(0, 2).entries()) {
+      const profile = (await db.get<import('../src/types').WorkspaceData>(
+        'workspace',
+        student.id,
+      ))!;
+      profile.student.skills = (index ? ['React', 'SQL'] : ['React']).map((name) => ({
+        id: name,
+        name,
+        level: 'Intermediate',
+        verified: false,
+      }));
+      await db.put('workspace', student.id, profile, 'campus', student.id);
+    }
+    const ranked = (await call(recruiter, 'dashboard', [])) as {
+      applicantRankings: import('../src/types/recruitment').ApplicantRanking[];
+    };
+    const rankings = ranked.applicantRankings.filter((row) => row.driveId === drive.id);
+    assert.equal(rankings.length, 2, 'Only applicants are ranked.');
+    assert.equal(rankings[0].studentId, 'two');
+    assert.equal(rankings[0].skillMatch, 100);
+    assert.equal(rankings[1].skillMatch, 50);
+    assert.deepEqual(rankings[1].missingSkills, ['SQL']);
+    await assert.rejects(
+      () =>
+        call(recruiter, 'saveResults', [
+          drive.id,
+          round.id,
+          [{ applicationId: 'app-one', status: 'Qualified', score: 85, feedback: '' }],
+        ]),
+      /feedback/,
+    );
+    await call(recruiter, 'saveResults', [
+      drive.id,
+      round.id,
+      [
+        {
+          applicationId: 'app-one',
+          status: 'Qualified',
+          score: 85,
+          feedback: 'Strong implementation',
+          strengths: 'React',
+          gaps: '',
+          nextSteps: 'Prepare for the next round',
+        },
+        {
+          applicationId: 'app-two',
+          status: 'Rejected',
+          score: 40,
+          feedback: 'Needs more practical experience',
+          strengths: 'SQL basics',
+          gaps: 'Debugging',
+          nextSteps: 'Practise debugging exercises',
+        },
+      ],
+    ]);
+    assert.equal(
+      (await runWorkspace(db, students[0], undefined, readWorkspace)).recruiterFeedback?.length,
+      0,
+      'Draft feedback remains private.',
+    );
+    await call(recruiter, 'publishResults', [drive.id, round.id]);
+    for (const [index, student] of students.slice(0, 2).entries()) {
+      const profile = await runWorkspace(db, student, undefined, readWorkspace);
+      assert.equal(profile.recruiterFeedback?.length, 1);
+      assert.equal(profile.recruiterFeedback?.[0].studentId, student.id);
+      assert.equal(profile.recruiterFeedback?.[0].risk, index ? 'High' : 'Low');
+      assert.equal(profile.recruiterFeedback?.[0].gaps, index ? 'Debugging' : '');
+      assert.equal(profile.interviews[0].status, 'Completed');
+    }
+    assert.equal(
+      (await runWorkspace(db, students[2], undefined, readWorkspace)).recruiterFeedback?.length,
+      0,
+    );
     console.log(
-      'Shared round scheduling, student visibility, updates, conflicts, and permissions passed.',
+      'Interview scheduling, individual overrides, conflicts, applicant ranking, feedback publication, student isolation and risk summaries passed.',
     );
   } finally {
     await db.close();

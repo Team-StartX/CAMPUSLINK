@@ -1,5 +1,7 @@
 import { Drive, DriveStatus, Opportunity, Student } from '@/types';
 import { normalizeSkill, skillNames } from './skills';
+export const isInterviewRound = (round?: { type?: string; name: string }) =>
+  !!round && /interview/i.test(round.type || round.name);
 
 export const driveStatuses: DriveStatus[] = [
   'DRAFT',
@@ -38,6 +40,15 @@ export const studentVisible = (drive: Drive) =>
       drive.audit?.some((a) => a.status === 'CONFIRMED') &&
       drive.audit?.some((a) => a.status === 'ACTIVE'),
     ));
+// Submitted jobs can be previewed while campus approval and scheduling are pending.
+export const studentListed = (drive: Drive) =>
+  [
+    'SUBMITTED',
+    'UNDER_REVIEW',
+    'SCHEDULING',
+    'AWAITING_RECRUITER_CONFIRMATION',
+    'CONFIRMED',
+  ].includes(drive.status) || studentVisible(drive);
 const values = (s = '') =>
   s
     .split(',')
@@ -135,7 +146,7 @@ export function driveOpportunity(drive: Drive, existing?: Opportunity): Opportun
   };
 }
 
-export function placementNotice(student: Student, drive: Drive) {
+export function placementNotice(student: Student, drive: Drive, added = false) {
   const eligibility = checkEligibility(student, drive);
   const schedule = drive.schedule
     ? ` Campus visit: ${drive.schedule.date}, reporting at ${drive.schedule.reporting}; venue: ${drive.schedule.venue || 'See placement details'}.`
@@ -145,12 +156,14 @@ export function placementNotice(student: Student, drive: Drive) {
     .map((check) => `${check.name}: ${check.detail}`)
     .join('; ');
   return {
-    title: `${drive.company}: ${eligibility.passed ? 'Eligible for placement' : 'Not eligible for placement'}`,
+    title: `${drive.company}: ${added ? 'New job added' : eligibility.passed ? 'Eligible for placement' : 'Not eligible for placement'}`,
     body: `${drive.role}.${schedule} ${
       eligibility.passed
-        ? `You meet the eligibility requirements. Apply before ${drive.deadline}.`
+        ? added
+          ? 'You meet the current eligibility requirements. Applications will open after campus approval and activation.'
+          : `You meet the eligibility requirements. Apply before ${drive.deadline}.`
         : `Unmet requirements: ${reasons}. Review the placement details and update missing profile information.`
-    }`,
+    }${added && !eligibility.passed ? ' Applications will open after campus approval and activation.' : ''}`,
     type: 'Campus Drive',
     href: `/student/opportunities/${encodeURIComponent(drive.opportunityId || drive.id)}`,
   };

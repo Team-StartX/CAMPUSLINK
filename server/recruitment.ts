@@ -14,7 +14,8 @@ import type {
   CampusAssessment,
   RecruitmentOverview,
 } from '../src/types/recruitment';
-import { checkEligibility, studentVisible } from '../src/utils/placement';
+import { checkEligibility, isInterviewRound, studentVisible } from '../src/utils/placement';
+import { rankApplicants } from '../src/utils/applicant-ranking';
 import { fit } from '../src/utils/scoring';
 
 const text = z.string().trim().max(10000);
@@ -293,6 +294,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       offers: offers.slice(-8),
       results,
       matching,
+      applicantRankings: rankApplicants(pool, drives),
     };
   }
   if (method === 'relationships')
@@ -600,6 +602,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
     await db.list<{ driveId: string; studentId: string; value: string }>('interest', drive.campusId)
   ).filter((i) => i.driveId === drive.id);
   if (method === 'overview') {
+    const interviewSlots = await scoped<InterviewSlot>('interview-slot');
     const visibleCandidates =
       actor.role === 'student' ? candidates.filter((c) => c.studentId === actor.id) : candidates;
     const reached = new Set(results.filter((r) => r.studentId === actor.id).map((r) => r.roundId));
@@ -644,11 +647,18 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       ),
       assignments: assignments.filter((a) => actor.role !== 'student' || reached.has(a.roundId)),
       submissions,
-      slots: (await scoped<InterviewSlot>('interview-slot')).filter(
+      slots: interviewSlots.filter(
         (s) =>
           actor.role !== 'student' ||
           s.studentId === actor.id ||
-          (s.audience === 'round' && reached.has(s.roundId)),
+          (s.audience === 'round' &&
+            reached.has(s.roundId) &&
+            !interviewSlots.some(
+              (individual) =>
+                individual.roundId === s.roundId &&
+                individual.studentId === actor.id &&
+                individual.audience !== 'round',
+            )),
       ),
       counts: {
         total: students.length,
@@ -868,6 +878,9 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
             status: z.enum(['Pending', 'Qualified', 'Rejected', 'Absent', 'Under Review']),
             score: z.number().min(0).optional(),
             feedback: text,
+            strengths: text.optional(),
+            gaps: text.optional(),
+            nextSteps: text.optional(),
           }),
         )
         .min(1)
@@ -892,8 +905,21 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
           (r) => r.applicationId === row.applicationId && r.roundId === round.id,
         );
         row.score ??= previous?.score;
+        row.strengths ??= previous?.strengths;
+        row.gaps ??= previous?.gaps;
+        row.nextSteps ??= previous?.nextSteps;
+        row.feedback = row.feedback.trim() || previous?.feedback || '';
+        requireCondition(
+          !isInterviewRound(round) ||
+            !['Qualified', 'Rejected'].includes(row.status) ||
+            !!row.feedback.trim(),
+          400,
+          'Add interview feedback before deciding whether this student qualified.',
+        );
         const maximumScore =
-          round.maximumScore ?? assignments.find((a) => a.roundId === round.id)?.maximumMarks;
+          round.maximumScore ??
+          assignments.find((a) => a.roundId === round.id)?.maximumMarks ??
+          (isInterviewRound(round) ? 100 : undefined);
         requireCondition(
           row.score === undefined || (maximumScore !== undefined && row.score <= maximumScore),
           400,
@@ -908,7 +934,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
         );
         const result = {
           ...row,
-          id: `${row.applicationId}:${round.id}`,
+          id: previous?.id || `${row.applicationId}:${round.id}`,
           driveId: drive.id,
           studentId: candidate.studentId,
           roundId: round.id,
@@ -943,6 +969,17 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       'Resolve all participating candidates before publishing.',
     );
     const next = drive.rounds![drive.rounds!.findIndex((r) => r.id === round.id) + 1];
+    requireCondition(
+      !isInterviewRound(round) ||
+        participating.every((candidate) => {
+          const result = results.find(
+            (r) => r.applicationId === candidate.applicationId && r.roundId === round.id,
+          );
+          return result?.status === 'Absent' || !!result?.feedback.trim();
+        }),
+      400,
+      'Add interview feedback for every attended candidate before publishing.',
+    );
     for (const candidate of participating) {
       const result = results.find(
         (r) => r.applicationId === candidate.applicationId && r.roundId === round.id,
@@ -965,7 +1002,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
       await db.put(
         'candidate-round',
         result.id,
-        { ...result, published: true },
+        { ...result, published: true, publishedAt: new Date().toISOString() },
         drive.campusId,
         candidate.studentId,
       );
@@ -989,7 +1026,8 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
             ? 'Assignment available'
             : 'New recruitment round'
           : 'Round result published',
-        `${round.name}: ${result.status}. ${application.stage}`,
+        `${round.name}: ${result.status}. ${application.stage}. ${result.feedback}`,
+        `/student/dashboard`,
       );
     }
     await log(
@@ -1007,7 +1045,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
     const candidate = candidates.find((c) => c.studentId === input.studentId);
     requireCondition(
       round &&
-        round.type?.includes('Interview') &&
+        isInterviewRound(round) &&
         (shared ||
           (candidate?.currentRoundId === round.id &&
             !['Selected', 'Rejected', 'Absent'].includes(candidate.stage))),
@@ -1055,6 +1093,7 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
     const overlap = slots.some(
       (s) =>
         !replaced(s) &&
+        !(s.audience === 'round' && s.driveId === drive.id && s.roundId === round.id && !shared) &&
         !['CANCELLED', 'REJECTED', 'COMPLETED'].includes(
           allDrives.find((d) => d.id === s.driveId)?.status || '',
         ) &&

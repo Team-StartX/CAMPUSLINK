@@ -20,6 +20,20 @@ Open http://localhost:3000. This starts the API on port 8000 before the website,
 
 Without external database credentials, development uses SQLite, local private uploads and an email outbox. A configured `DATABASE_URL` selects PostgreSQL.
 
+## Faster local use
+
+For browsing and demos, build once so pages do not compile as you open them:
+
+```sh
+npm run server:build
+npm run build
+```
+
+Start `npm run server:start` in one terminal and `npm start` in another, then open
+http://localhost:3000. The backend uses the database configured in `server/.env`.
+Stop development servers before building. Rebuild after source changes, or use
+`npm run dev` while editing.
+
 ## Project structure
 
 For access from devices on the same Wi-Fi, add this PC's exact frontend origin to
@@ -83,7 +97,7 @@ Keep server credentials in `server/.env` or backend hosting settings. Never expo
 | PostgreSQL                   | `DATABASE_URL`; `DATABASE_CA_PATH` when a provider CA is required                             |
 | Private Supabase storage     | `STORAGE_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
 | Email delivery               | `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, a verified `EMAIL_FROM`                            |
-| Optional generative coaching | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL` (or OpenAI equivalents)                                        |
+| Optional generative coaching | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL` (or OpenAI equivalents)                |
 | Optional voice transcription | `SPEECH_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_TRANSCRIPTION_MODEL`                      |
 | Optional external ML         | `ML_API_URL`, `ML_API_TOKEN`                                                                  |
 

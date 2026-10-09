@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { Database } from '../server/db';
 import { Authentication, type Account } from '../server/auth';
-import { emptyWorkspace, type StoredDrive } from '../server/workspace';
+import { emptyWorkspace, readWorkspace, runWorkspace, type StoredDrive } from '../server/workspace';
 import { defaultDrive } from '../src/services/drive.defaults';
 import {
   alignmentId,
@@ -151,6 +151,21 @@ async function constraints(db = new Database('', ':memory:'), close = true) {
       application.id,
       'Independent applications hydrate the dashboard',
     );
+    // Empty contest catalogs must not hydrate every student's workspace on each page refresh.
+    const originalList = db.list.bind(db);
+    let cohortReads = 0;
+    db.list = (async (...args: Parameters<Database['list']>) => {
+      if (args[0] === 'workspace') cohortReads++;
+      return originalList(...args);
+    }) as Database['list'];
+    try {
+      const dashboard = await runWorkspace(db, student, undefined, readWorkspace);
+      assert.equal(cohortReads, 0, 'No cohort hydration without published contests');
+      assert.equal(dashboard.student.id, student.id);
+      assert.equal(dashboard.applications[0].id, application.id);
+    } finally {
+      db.list = originalList;
+    }
     await rejectWrite(db, () =>
       db.put(
         'account',
