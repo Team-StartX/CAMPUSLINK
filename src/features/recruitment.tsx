@@ -11,6 +11,8 @@ import type { Drive, Role, WorkspaceData } from '@/types';
 import type { CandidateResult, RecruitmentAssignment, Relationship } from '@/types/recruitment';
 import { ScheduleSummary } from './drives';
 import { isInterviewRound } from '@/utils/placement';
+import { CandidateEligibility } from '@/components/candidate-eligibility';
+import { InterviewScheduleFields } from '@/components/interview-schedule-fields';
 const fieldLabel = (key: string) =>
   key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 const localDateInput = (value: string) => {
@@ -207,6 +209,7 @@ export function RecruitmentPanel({
 }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [roundId, setRoundId] = useState(drive.rounds?.[0]?.id || '');
   const [checked, setChecked] = useState<string[]>([]);
   const [assignment, setAssignment] = useState(false);
@@ -218,6 +221,8 @@ export function RecruitmentPanel({
     queryFn: () => service.overview(drive.id),
   });
   const run = async (fn: () => Promise<unknown>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError('');
     try {
@@ -227,6 +232,7 @@ export function RecruitmentPanel({
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -483,56 +489,15 @@ export function RecruitmentPanel({
             </>
           )}
           {role !== 'student' && (
-            <>
-              <h3>Eligible students</h3>
-              {overview.eligibleCandidates?.map((c) => (
-                <p key={c.studentId}>
-                  {c.name} · {c.branch} <Badge>Eligible</Badge>
-                </p>
-              ))}
-            </>
-          )}
-          {role === 'campus' && !!overview.eligibilityReviews?.length && (
-            <>
-              <h3>Verify additional conditions</h3>
-              <p>{drive.additionalEligibility}</p>
-              {overview.eligibilityReviews.map((c) => (
-                <form
-                  className="form-row"
-                  key={c.studentId}
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    void run(() =>
-                      service.verifyEligibility(
-                        drive.id,
-                        c.studentId,
-                        f.get('approved') === 'yes',
-                        String(f.get('reason')),
-                      ),
-                    );
-                  }}
-                >
-                  <span>
-                    {c.name} · {c.approved ? 'Verified' : 'Needs review'}
-                  </span>
-                  <select name="approved">
-                    <option value="yes">Conditions met</option>
-                    <option value="no">Conditions not met</option>
-                  </select>
-                  <input
-                    name="reason"
-                    required
-                    minLength={5}
-                    aria-label="Verification reason"
-                    placeholder="Evidence / reason"
-                  />
-                  <Button type="submit" disabled={busy}>
-                    Save review
-                  </Button>
-                </form>
-              ))}
-            </>
+            <CandidateEligibility
+              overview={overview}
+              conditions={drive.additionalEligibility}
+              canReview={role === 'campus'}
+              busy={busy}
+              onReview={(studentId, approved, reason) =>
+                void run(() => service.verifyEligibility(drive.id, studentId, approved, reason))
+              }
+            />
           )}
           <h3>Published results</h3>
           {overview.results
@@ -668,6 +633,11 @@ export function RecruitmentPanel({
       )}
       {assignment && round && (
         <Modal title="Assignment for this round" onClose={() => setAssignment(false)}>
+          {error && (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          )}
           <form
             className="form-stack"
             onSubmit={(e) => {
@@ -786,50 +756,12 @@ export function RecruitmentPanel({
                 ))}
               </select>
             </FormField>
-            {['date', 'time', 'duration', 'venue', 'room', 'panel', 'meetingLink'].map((key) => (
-              <FormField key={key} label={fieldLabel(key)}>
-                <input
-                  name={key}
-                  key={`${interviewAudience}:${key}`}
-                  defaultValue={
-                    roundSchedule?.[
-                      key as
-                        'date' | 'time' | 'duration' | 'venue' | 'room' | 'panel' | 'meetingLink'
-                    ] ?? (key === 'duration' ? round?.duration || 60 : '')
-                  }
-                  required={['date', 'time', 'duration', 'panel'].includes(key)}
-                  type={
-                    key === 'date'
-                      ? 'date'
-                      : key === 'time'
-                        ? 'time'
-                        : key === 'duration'
-                          ? 'number'
-                          : 'text'
-                  }
-                  min={key === 'duration' ? 5 : undefined}
-                  max={key === 'duration' ? 480 : undefined}
-                />
-              </FormField>
-            ))}
-            <select
-              name="mode"
-              aria-label="Interview format"
-              defaultValue={roundSchedule?.mode || 'Offline'}
-            >
-              <option>Offline</option>
-              <option>Online</option>
-            </select>
-            {role === 'campus' && (
-              <>
-                <label>
-                  <input name="override" type="checkbox" /> Override conflict
-                </label>
-                <FormField label="Override reason">
-                  <input name="reason" />
-                </FormField>
-              </>
-            )}
+            <InterviewScheduleFields
+              key={roundId + ':' + interviewAudience}
+              schedule={roundSchedule}
+              duration={round?.duration || 60}
+              canOverride={role === 'campus'}
+            />
             <Button type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Save interview schedule'}
             </Button>
@@ -1107,6 +1039,11 @@ export function CampusAssessments({ role }: { role: Role }) {
       ))}
       {creating && (
         <Modal title="Create campus assessment" onClose={() => setCreating(false)}>
+          {error && (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          )}
           <form
             className="form-stack"
             onSubmit={(e) => {

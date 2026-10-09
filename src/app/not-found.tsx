@@ -4,7 +4,7 @@ export default function NotFound() {
     <main style={{ padding: 80 }}>
       <h1>A new direction is waiting.</h1>
       <p>This page could not be found.</p>
-      <Link href="/">Back to CampusLink</Link>
+      <Link href="/">Back to PlacedIn</Link>
     </main>
   );
 }

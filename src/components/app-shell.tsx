@@ -372,7 +372,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
           {user?.onboardingComplete === false ? <AccountOnboarding /> : children}
         </main>
         <footer className="app-footer">
-          <span>CampusLink · Made for what comes next.</span>
+          <span>PlacedIn · Made for what comes next.</span>
           <span>{'Connected workspace · Changes are saved on the server'}</span>
         </footer>
       </div>

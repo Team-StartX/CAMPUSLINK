@@ -189,8 +189,8 @@ export function CommunicationPractice() {
                 onChange={(event) => setSpeechConsent(event.target.checked)}
               />
               <span>
-                Allow CampusLink to send this recording to OpenAI for transcription. Audio is
-                uploaded when you stop recording. CampusLink does not save the audio recording.
+                Allow PlacedIn to send this recording to OpenAI for transcription. Audio is
+                uploaded when you stop recording. PlacedIn does not save the audio recording.
                 Review the transcript before saving practice feedback.
               </span>
             </label>

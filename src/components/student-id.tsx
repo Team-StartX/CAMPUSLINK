@@ -65,7 +65,7 @@ export function CareerID({
   return (
     <div className={`student-id-wrap ${showcase ? 'id-showcase' : ''}`}>
       <div className="id-lanyard" aria-hidden="true">
-        <span>CAMPUSLINK / NEXT GEN</span>
+        <span>PLACEDIN / NEXT GEN</span>
       </div>
       <div className="id-metal-clip" aria-hidden="true" />
       <motion.article
@@ -82,7 +82,7 @@ export function CareerID({
         <div className="badge-main">
           <header>
             <span className="badge-brand">
-              <GraduationCap size={23} /> campuslink
+              <GraduationCap size={23} /> placedin
             </span>
             <span>CAREER ID</span>
           </header>

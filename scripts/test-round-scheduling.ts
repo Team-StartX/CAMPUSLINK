@@ -3,6 +3,7 @@ import { Database } from '../server/db';
 import type { Account } from '../server/auth';
 import { emptyWorkspace, readWorkspace, runWorkspace, type StoredDrive } from '../server/workspace';
 import { recruitmentDispatch } from '../server/recruitment';
+import { dispatch } from '../server/services';
 import { defaultDrive } from '../src/services/drive.defaults';
 import type { InterviewSlot, RecruitmentOverview } from '../src/types/recruitment';
 
@@ -77,6 +78,93 @@ async function main() {
       Object.assign(workspace.student, { course: 'BTech', branch: 'CSE', year: '2027' });
       await db.put('workspace', actor.id, workspace, actor.campusId, actor.id);
     }
+    await db.put('drive', drive.id, drive, 'campus', drive.recruiterId);
+    const editProfile = (actor: Account, patch: unknown) =>
+      db.transaction(() =>
+        runWorkspace(db, actor, undefined, () =>
+          dispatch('studentService', 'updateStudent', [patch]),
+        ),
+      );
+    await editProfile(students[0], {
+      name: 'Updated student',
+      course: 'BTech',
+      branch: 'CSE',
+      year: '2027',
+      cgpa: 8.35,
+      activeBacklogs: 0,
+      bio: 'Updated profile',
+    });
+    const savedProfile = await runWorkspace(db, students[0], undefined, readWorkspace);
+    assert.equal(savedProfile.student.name, 'Updated student');
+    assert.equal(savedProfile.student.cgpa, 8.35);
+    assert.equal(savedProfile.student.campus, 'Test campus');
+    await assert.rejects(() =>
+      editProfile(students[0], {
+        name: 'Rejected edit',
+        email: 'other@example.test',
+        campus: 'Other campus',
+      }),
+    );
+    assert.equal(
+      (await runWorkspace(db, students[0], undefined, readWorkspace)).student.name,
+      'Updated student',
+    );
+    await db.transaction(() =>
+      runWorkspace(db, staff, undefined, () =>
+        dispatch('campusService', 'updateStudent', [
+          students[0].id,
+          { bio: 'Campus corrected record' },
+        ]),
+      ),
+    );
+    assert.equal(
+      (await runWorkspace(db, students[0], undefined, readWorkspace)).student.bio,
+      'Campus corrected record',
+    );
+    await assert.rejects(
+      () =>
+        call(staff, 'scheduleInterview', [drive.id, { ...input, mode: 'Online', meetingLink: '' }]),
+      /HTTPS meeting link/,
+    );
+    await assert.rejects(
+      () =>
+        call(staff, 'scheduleInterview', [drive.id, { ...input, override: true, reason: 'No' }]),
+      /reason/,
+    );
+    const eligibleOverview = (await call(staff, 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(eligibleOverview.eligibleCandidates?.length, 3);
+    assert.equal(eligibleOverview.ineligibleCandidates?.length, 0);
+    const privateOverview = (await call(students[0], 'overview', [
+      drive.id,
+    ])) as RecruitmentOverview;
+    assert.deepEqual(privateOverview.ineligibleCandidates, []);
+    await db.put('drive', drive.id, { ...drive, cgpa: 10 }, 'campus', drive.recruiterId);
+    const blockedOverview = (await call(staff, 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(blockedOverview.eligibleCandidates?.length, 0);
+    assert.equal(blockedOverview.ineligibleCandidates?.length, 3);
+    assert.ok(
+      blockedOverview.ineligibleCandidates?.every((student) =>
+        student.reasons.some((reason) => reason.startsWith('CGPA:')),
+      ),
+    );
+    await db.put(
+      'drive',
+      drive.id,
+      { ...drive, additionalEligibility: 'English communication' },
+      'campus',
+      drive.recruiterId,
+    );
+    const needsReview = (await call(staff, 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(needsReview.ineligibleCandidates?.length, 3);
+    await call(staff, 'verifyEligibility', [
+      drive.id,
+      students[0].id,
+      true,
+      'Communication reviewed',
+    ]);
+    const reviewed = (await call(staff, 'overview', [drive.id])) as RecruitmentOverview;
+    assert.equal(reviewed.eligibleCandidates?.length, 1);
+    assert.equal(reviewed.ineligibleCandidates?.length, 2);
     await db.put('drive', drive.id, drive, 'campus', drive.recruiterId);
     // A round can be scheduled before any students arrive.
     await call(staff, 'scheduleInterview', [drive.id, input]);

@@ -123,6 +123,7 @@ export function InterviewsPage({
 }) {
   const [tab, setTab] = useState(practiceOnly || id === 'mock' ? 'Mock interviews' : 'Upcoming');
   const [schedule, setSchedule] = useState(id === 'create');
+  const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState('');
   const item = data.interviews.find((i) => i.id === id);
   return (
@@ -295,6 +296,9 @@ export function InterviewsPage({
             onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
+              if (scheduling) return;
+              setScheduling(true);
+              setError('');
               try {
                 await interviewService.schedule({
                   company: String(f.get('company')),
@@ -309,6 +313,8 @@ export function InterviewsPage({
                 notify('Interview scheduled.');
               } catch (e) {
                 setError((e as Error).message);
+              } finally {
+                setScheduling(false);
               }
             }}
           >
@@ -343,7 +349,7 @@ export function InterviewsPage({
               </select>
             </FormField>
             {error && <p className="field-error">{error}</p>}
-            <Button type="submit">
+            <Button type="submit" loading={scheduling}>
               Schedule interview <Check size={16} />
             </Button>
           </form>
@@ -490,14 +496,19 @@ export function AIInterview({
             className="panel form-stack"
             onSubmit={async (e) => {
               e.preventDefault();
-              setAnswers((a) => [...a, answer]);
+              if (busy) return;
+              setPracticeError('');
               if (index < (data?.questions.length || 3) - 1) {
+                setAnswers((a) => [...a.slice(0, index), answer]);
                 setIndex((i) => i + 1);
                 setAnswer('');
               } else {
                 setBusy(true);
                 try {
-                  await interviewService.completePractice([...answers, answer], elapsed);
+                  await interviewService.completePractice(
+                    [...answers.slice(0, index), answer],
+                    elapsed,
+                  );
                   refresh();
                   notify('Practice complete! +75 XP');
                   setDone(true);
@@ -524,6 +535,7 @@ export function AIInterview({
                 rows={8}
                 required
                 minLength={20}
+                maxLength={5000}
                 placeholder="Explain your thinking with a specific example…"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
@@ -563,6 +575,7 @@ function InterviewTemplates({
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   return (
     <section className="template-section">
       <div className="section-header">
@@ -622,23 +635,38 @@ function InterviewTemplates({
                 .split('\n')
                 .map((q) => q.trim())
                 .filter(Boolean);
-              if (questions.length < 3) {
-                setError('Add at least three questions, one per line.');
+              if (
+                questions.length < 3 ||
+                questions.length > 20 ||
+                questions.some((q) => q.length < 5 || q.length > 1000)
+              ) {
+                setError('Add 3–20 questions, one per line, with 5–1,000 characters each.');
                 return;
               }
-              await interviewService.createTemplate({
-                name: String(f.get('name')),
-                targetRole: String(f.get('role')),
-                difficulty: String(f.get('difficulty')),
-                duration: Number(f.get('duration')),
-                skills: String(f.get('skills')),
-                topics: String(f.get('topics')),
-                questions,
-                audience: String(f.get('audience')),
-              });
-              refresh();
-              setOpen(false);
-              notify('Interview template published.');
+              if (saving) return;
+              setSaving(true);
+              setError('');
+              try {
+                await interviewService.createTemplate({
+                  name: String(f.get('name')),
+                  targetRole: String(f.get('role')),
+                  difficulty: String(f.get('difficulty')),
+                  duration: Number(f.get('duration')),
+                  skills: String(f.get('skills')),
+                  topics: String(f.get('topics')),
+                  questions,
+                  audience: String(f.get('audience')),
+                });
+                refresh();
+                setOpen(false);
+                notify('Interview template published.');
+              } catch (error) {
+                setError(
+                  error instanceof Error ? error.message : 'Unable to publish the template.',
+                );
+              } finally {
+                setSaving(false);
+              }
             }}
           >
             <FormField label="Mock interview name">
@@ -687,7 +715,7 @@ function InterviewTemplates({
               a backend service.
             </p>
             {error && <p className="field-error">{error}</p>}
-            <Button type="submit">
+            <Button type="submit" loading={saving}>
               Publish template <Check size={16} />
             </Button>
           </form>

@@ -6,8 +6,8 @@ export function requestErrorMessage(error: unknown): string {
     return 'The server is taking too long to respond. Please try again in a moment.';
   if (!error.response || error.response.status >= 500)
     return process.env.NODE_ENV === 'development'
-      ? 'We could not connect to CampusLink. Start the website and its API with npm run dev, then try again.'
-      : 'We could not connect to CampusLink. Please try again in a moment.';
+      ? 'We could not connect to PlacedIn. Start the website and its API with npm run dev, then try again.'
+      : 'We could not connect to PlacedIn. Please try again in a moment.';
   if (error.response.status === 429)
     return 'Too many attempts. Please wait a few minutes before trying again.';
   return 'Unable to complete this request. Please try again.';

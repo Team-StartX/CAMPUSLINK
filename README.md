@@ -1,6 +1,6 @@
-# CampusLink
+# PlacedIn
 
-CampusLink is a campus placement application with a Next.js frontend, an Express API and persistent database records. It provides student preparation, recruiter drives, campus placement workflows and an administrator dashboard.
+PlacedIn is a campus placement application with a Next.js frontend, an Express API and persistent database records. It provides student preparation, recruiter drives, campus placement workflows and an administrator dashboard.
 
 ## Local setup
 
@@ -249,4 +249,4 @@ GEMINI_API_KEY=your-key-from-google-ai-studio
 GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
-For the deployed app, add these three values to the **CampusLink Express backend** Render service's Environment settings and redeploy the updated backend and frontend. Restart the backend after local environment changes. Students enable Google Gemini coaching in Settings; consent is specific to the selected provider. Gemini supplies resume coaching and skill/interview practice feedback. PDF text extraction and the optional Python ML service remain separate. If generation fails, built-in guidance remains available. Speech transcription still uses its separate OpenAI configuration.
+For the deployed app, add these three values to the **PlacedIn Express backend** Render service's Environment settings and redeploy the updated backend and frontend. Restart the backend after local environment changes. Students enable Google Gemini coaching in Settings; consent is specific to the selected provider. Gemini supplies resume coaching and skill/interview practice feedback. PDF text extraction and the optional Python ML service remain separate. If generation fails, built-in guidance remains available. Speech transcription still uses its separate OpenAI configuration.

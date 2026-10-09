@@ -45,7 +45,7 @@ function StepPreview({ step }: { step: number }) {
   return (
     <div className={`procedure-demo demo-${step}`}>
       <div className="procedure-demo-top">
-        <span>campuslink / {stage.label}</span>
+        <span>placedin / {stage.label}</span>
       </div>
       <Icon size={48} />
       <h3>{stage.title}</h3>
@@ -85,7 +85,7 @@ export function PlacementProcedure() {
     <section className="procedure-section" ref={target} id="placement-procedure">
       <div className="procedure-layout content-width">
         <div className="procedure-intro">
-          <span className="campus-kicker">HOW CAMPUSLINK WORKS</span>
+          <span className="campus-kicker">HOW PLACEDIN WORKS</span>
           <h2>
             The standard
             <br />

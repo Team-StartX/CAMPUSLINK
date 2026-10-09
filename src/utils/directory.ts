@@ -69,7 +69,7 @@ export function searchBuiltInDirectory(
       id: `builtin:${kind}:${name}`,
       name,
       country: kind === 'universities' ? 'India' : undefined,
-      source: 'CampusLink',
+      source: 'PlacedIn',
     }));
 }
 

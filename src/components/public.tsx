@@ -30,7 +30,7 @@ export function Logo({
   dark = false,
   collapsible = false,
   onClick,
-  label = 'CampusLink home',
+  label = 'PlacedIn home',
 }: {
   dark?: boolean;
   collapsible?: boolean;
@@ -52,12 +52,12 @@ export function Logo({
       </span>
       {collapsible ? (
         <span className="logo-wordmark">
-          campus<span className="logo-name-light">link</span>
+          placed<span className="logo-name-light">in</span>
           <span className="logo-dot">®</span>
         </span>
       ) : (
         <>
-          campus<span>link</span>
+          placed<span>in</span>
           <span className="logo-dot">®</span>
         </>
       )}
@@ -253,7 +253,7 @@ export function PublicNav() {
         <div className="public-nav">
           <Logo
             collapsible
-            label={compact ? 'Expand navigation' : 'CampusLink home'}
+            label={compact ? 'Expand navigation' : 'PlacedIn home'}
             onClick={(event) => {
               if (compact) {
                 event.preventDefault();
@@ -526,7 +526,7 @@ export function Landing() {
           </div>
           {!user && (
             <PublicStartLink href="/register?role=campus" className="text-link">
-              Bring CampusLink to your campus <ArrowRight size={16} />
+              Bring PlacedIn to your campus <ArrowRight size={16} />
             </PublicStartLink>
           )}
           <span className="cta-star">✦</span>
@@ -556,12 +556,12 @@ export function PublicFooter() {
         </PublicStartLink>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 CampusLink. Made for what comes next.</span>
+        <span>© 2026 PlacedIn. Made for what comes next.</span>
         <span>Interface previews use illustrative data</span>
         <Link href="/about?section=privacy">Privacy & terms</Link>
       </div>
       <div className="footer-wordmark" aria-hidden="true">
-        {'CAMPUSLINK'.split('').map((letter, index) => (
+        {'PLACEDIN'.split('').map((letter, index) => (
           <span className={`footer-letter footer-letter-${index % 5}`} key={`${letter}-${index}`}>
             {letter}
           </span>
@@ -669,12 +669,12 @@ export function PublicPage({ slug }: { slug: string }) {
         <div className="public-page-cta">
           <h2>Ready to write your next chapter?</h2>
           <PublicStartLink className="button dark" href="/register">
-            Join CampusLink <ArrowUpRight size={17} />
+            Join PlacedIn <ArrowUpRight size={17} />
           </PublicStartLink>
         </div>
         {slug === 'about' && (
           <p className="muted">
-            Your account and placement records are stored by CampusLink. Authorized campus and
+            Your account and placement records are stored by PlacedIn. Authorized campus and
             recruiter teams access records relevant to their placement work. Optional external AI
             analysis follows your saved sharing preferences.
           </p>

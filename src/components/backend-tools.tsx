@@ -275,7 +275,7 @@ export function ConnectedAnalytics() {
               url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
               a = document.createElement('a');
             a.href = url;
-            a.download = 'campuslink-placement-report.csv';
+            a.download = 'placedin-placement-report.csv';
             a.click();
             URL.revokeObjectURL(url);
           }}
@@ -553,6 +553,7 @@ export function CareerIntelligence({ studentId }: { studentId: string }) {
 export function ConnectedCompany() {
   const client = useQueryClient(),
     [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
   const { data } = useQuery<{
     name: string;
     description: string;
@@ -574,9 +575,12 @@ export function ConnectedCompany() {
         key={JSON.stringify(data)}
         onSubmit={async (e) => {
           e.preventDefault();
+          if (saving) return;
+          const form = new FormData(e.currentTarget);
+          setSaving(true);
+          setMessage('');
           try {
             await authService.restore();
-            const form = new FormData(e.currentTarget);
             await apiClient.put(
               '/organization',
               Object.fromEntries(
@@ -589,6 +593,8 @@ export function ConnectedCompany() {
             setMessage('Company profile saved.');
           } catch (e) {
             setMessage((e as Error).message);
+          } finally {
+            setSaving(false);
           }
         }}
       >
@@ -603,14 +609,22 @@ export function ConnectedCompany() {
             />
           ) : (
             <FormField key={k} label={k}>
-              <input name={k} defaultValue={data[k]} maxLength={150} />
+              <input
+                name={k}
+                defaultValue={data[k]}
+                maxLength={k === 'size' ? 100 : 150}
+                type={k === 'website' || k === 'logo' ? 'url' : 'text'}
+                pattern={k === 'website' || k === 'logo' ? 'https://.*' : undefined}
+              />
             </FormField>
           ),
         )}
         <FormField label="About your company">
           <textarea name="description" defaultValue={data.description} maxLength={5000} rows={5} />
         </FormField>
-        <Button type="submit">Save profile</Button>
+        <Button type="submit" loading={saving}>
+          Save profile
+        </Button>
         <p role="status">{message}</p>
       </form>
     </section>

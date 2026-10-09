@@ -171,7 +171,7 @@ export function actionCalendar(items: WorkspaceAction[], stamp = new Date()): st
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//CampusLink//Action Center//EN',
+    'PRODID:-//PlacedIn//Action Center//EN',
     'CALSCALE:GREGORIAN',
     ...events,
     'END:VCALENDAR',

@@ -278,7 +278,7 @@ function AdminWorkspace({ section, user }: { section: string; user: User }) {
         <div className="admin-workspace-label">
           <ShieldCheck size={20} />
           <span>
-            Admin workspace<small>CampusLink control center</small>
+            Admin workspace<small>PlacedIn control center</small>
           </span>
         </div>
         <nav aria-label="Admin navigation">

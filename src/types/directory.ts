@@ -5,7 +5,7 @@ export interface DirectoryOption {
   country?: string;
   region?: string;
   website?: string;
-  source: 'Hipo' | 'Clearbit' | 'CampusLink';
+  source: 'Hipo' | 'Clearbit' | 'PlacedIn';
 }
 export interface DirectoryResponse {
   results: DirectoryOption[];

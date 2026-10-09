@@ -1,4 +1,4 @@
-// Original CampusLink character: a student at a laptop with simple form reactions.
+// Original PlacedIn character: a student at a laptop with simple form reactions.
 export function CharacterIllustration() {
   return (
     <svg

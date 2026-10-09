@@ -614,6 +614,33 @@ export async function recruitmentDispatch(method: string, args: unknown[]) {
         (actor.role !== 'student' || s.studentId === actor.id),
     );
     const overview: RecruitmentOverview = {
+      ineligibleCandidates:
+        actor.role === 'student' ||
+        ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'REJECTED'].includes(
+          drive.status,
+        )
+          ? []
+          : profiles
+              .filter((w) => students.some((a) => a.id === w.student.id))
+              .flatMap((w) => {
+                const eligibility = checkEligibility(w.student, drive);
+                return eligibility.passed
+                  ? []
+                  : [
+                      {
+                        studentId: w.student.id,
+                        name: w.student.name,
+                        branch: w.student.branch || '',
+                        reasons: eligibility.checks
+                          .filter((check) => !check.passed)
+                          .map((check) =>
+                            check.name === 'Additional recruiter conditions'
+                              ? 'Additional recruiter conditions have not been verified.'
+                              : `${check.name}: ${check.detail}`,
+                          ),
+                      },
+                    ];
+              }),
       eligibleCandidates:
         actor.role === 'student' ||
         ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'REJECTED'].includes(

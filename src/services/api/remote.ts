@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-// CampusLink always uses server authentication and persisted application records.
+// PlacedIn always uses server authentication and persisted application records.
 export const backendEnabled = true;
 let csrf = '';
 let target = '';

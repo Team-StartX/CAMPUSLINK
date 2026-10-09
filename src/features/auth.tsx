@@ -78,6 +78,8 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
   }, []);
   const [forgot, setForgot] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState('');
   const [remember, setRemember] = useState(false);
   const {
     register,
@@ -409,7 +411,7 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
             </Link>
           </p>
         </div>
-        <small className="auth-footer">© 2026 CampusLink · Made for what comes next.</small>
+        <small className="auth-footer">© 2026 PlacedIn · Made for what comes next.</small>
       </div>
       <AuthBrandPanel
         emailFocused={character.focused === 'name' || character.focused === 'email'}
@@ -431,12 +433,17 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
               className="form-stack"
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (resetBusy) return;
+                setResetBusy(true);
+                setResetError('');
                 try {
                   const values = new FormData(e.currentTarget);
                   await authService.requestReset(String(values.get('email')));
                   setResetSent(true);
                 } catch (e) {
-                  setError((e as Error).message);
+                  setResetError((e as Error).message);
+                } finally {
+                  setResetBusy(false);
                 }
               }}
             >
@@ -444,7 +451,14 @@ export function AuthPage({ registering = false }: { registering?: boolean }) {
               <FormField label="Email address">
                 <input name="email" type="email" required placeholder="you@example.com" />
               </FormField>
-              <Button type="submit">Request reset link</Button>
+              {resetError && (
+                <p role="alert" className="field-error">
+                  {resetError}
+                </p>
+              )}
+              <Button type="submit" loading={resetBusy}>
+                Request reset link
+              </Button>
             </form>
           )}
         </Modal>

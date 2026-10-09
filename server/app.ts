@@ -185,7 +185,7 @@ export async function createApp(db = new Database()) {
       await queueMail(
         db,
         account.email,
-        'Reset your CampusLink password',
+        'Reset your PlacedIn password',
         `${config.origin}/reset-password?token=${token}`,
       );
     }

@@ -451,7 +451,7 @@ export function StudentDashboard({ data, refresh }: { data: WorkspaceData; refre
       </div>
       <section className="dashboard-identity panel">
         <div>
-          <span className="eyebrow">YOUR CAMPUSLINK IDENTITY</span>
+          <span className="eyebrow">YOUR PLACEDIN IDENTITY</span>
           <h2>
             Your potential.
             <br />

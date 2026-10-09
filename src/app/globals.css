@@ -1679,7 +1679,7 @@ kbd {
   padding: 25px;
 }
 .modal {
-  width: 510px;
+  width: 660px;
   max-width: 100%;
   max-height: 90vh;
   overflow: auto;
@@ -1704,6 +1704,22 @@ kbd {
   font-size: 11px;
   font-weight: 500;
   flex: 1;
+  min-width: 0;
+}
+.modal .form-field input,
+.modal .form-field select,
+.modal .form-field textarea {
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  padding: 10px 12px;
+}
+.modal input[readonly] {
+  background: #f1f1eb;
+  color: #65685e;
+}
+.modal .form-stack {
+  gap: 15px;
 }
 .form-field > span {
   color: #545849;

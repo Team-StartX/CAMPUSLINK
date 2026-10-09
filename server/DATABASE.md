@@ -1,4 +1,4 @@
-# CampusLink database
+# PlacedIn database
 
 The authoritative schema is defined in `schema.ts`. `db.ts` applies migration
 `002-relational-entities`, the legacy write guard `003-legacy-write-guard`, and

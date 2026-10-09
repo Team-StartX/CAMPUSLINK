@@ -1583,13 +1583,11 @@ function ScheduleProposal({
             </FormField>
           ),
         )}
-        <input type="hidden" {...register('assessment')} />
-        <input type="hidden" {...register('interviews')} />
         <FormField label="Visit date">
           <input type="date" {...register('date')} />
         </FormField>
         <div className="three-columns">
-          {(['reporting', 'talk', 'end'] as const).map((key) => (
+          {(['reporting', 'talk', 'assessment', 'interviews', 'end'] as const).map((key) => (
             <FormField
               key={key}
               label={

@@ -508,6 +508,13 @@ export async function dispatch(service: string, method: string, input: unknown[]
     );
     const result = await platform.assessmentService.startAssessment(String(args[0]));
     result.questions = (await assessmentQuestions(db, String(args[0]))) || result.questions;
+    // Published assessments are merged into the dashboard at read time. Register
+    // the student's activity before its session references that activity.
+    await db.query(
+      `INSERT INTO student_activities(student_id,activity_id,name,activity_type,value) VALUES($1,$2,$3,$4,$5)
+       ON CONFLICT(student_id,activity_id) DO NOTHING`,
+      [actor.id, result.assessment.id, result.assessment.name, result.assessment.type, JSON.stringify(result.assessment)],
+    );
     const attemptId = randomUUID();
     await db.put(
       'assessment-session',

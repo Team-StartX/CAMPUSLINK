@@ -176,7 +176,7 @@ export function MomentumSection() {
 
 const faqs = [
   {
-    q: 'Who is CampusLink for?',
+    q: 'Who is PlacedIn for?',
     a: 'Students build their career profiles and prepare for placements. Recruiters discover candidates and manage hiring. Campus teams coordinate drives and track student progress.',
   },
   {

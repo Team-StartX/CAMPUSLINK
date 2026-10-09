@@ -408,6 +408,7 @@ export function ContestsPage({
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
   const [solved, setSolved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const join = async (contestId: string) => {
     await contestService.joinContest(contestId);
     refresh();
@@ -448,11 +449,16 @@ export function ContestsPage({
               className="form-stack"
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (submitting) return;
+                setSubmitting(true);
+                setError('');
                 try {
                   await contestService.submitContest(selected.id, answer);
                 } catch (e) {
                   setError((e as Error).message);
                   return;
+                } finally {
+                  setSubmitting(false);
                 }
                 setSolved(true);
                 refresh();
@@ -471,7 +477,7 @@ export function ContestsPage({
                 />
               </label>
               {error && <p className="field-error">{error}</p>}
-              <Button type="submit" disabled={solved || selected.completed}>
+              <Button type="submit" loading={submitting} disabled={solved || selected.completed}>
                 {solved || selected.completed ? 'Completed — nicely done!' : 'Submit solution'}
               </Button>
             </form>

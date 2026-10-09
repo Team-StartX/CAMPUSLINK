@@ -49,7 +49,7 @@ export function ActionCenter({
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = `campuslink-${role}-calendar.ics`;
+    link.download = `placedin-${role}-calendar.ics`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

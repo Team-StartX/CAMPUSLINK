@@ -16,7 +16,7 @@ async function main() {
       });
       return;
     }
-    console.log(`CampusLink API ready at http://localhost:${config.port}/api/v1`);
+    console.log(`PlacedIn API ready at http://localhost:${config.port}/api/v1`);
   });
   const stopWorkers = [
     startWorker('Email', () => deliverMail(db)),

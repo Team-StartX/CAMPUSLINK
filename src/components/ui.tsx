@@ -46,6 +46,10 @@ export function Modal({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const bodyOverflow = document.body.style.overflow;
@@ -53,7 +57,7 @@ export function Modal({
     const el = ref.current;
     el?.querySelector<HTMLElement>('button,input,select,textarea')?.focus();
     function key(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeRef.current();
       if (e.key === 'Tab') {
         const els = el?.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href]');
         if (!els?.length) return;
@@ -74,7 +78,7 @@ export function Modal({
       document.removeEventListener('keydown', key);
       previous?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div
       className="modal-backdrop"

@@ -31,14 +31,14 @@ function start(script, args, env, restart = false) {
   });
   children.add(child);
   child.on('error', () => {
-    console.error('CampusLink could not start. Check the build and connection settings.');
+    console.error('PlacedIn could not start. Check the build and connection settings.');
     stop(1);
   });
   child.on('exit', (code) => {
     children.delete(child);
     if (stopping) return;
     if (restart) {
-      console.error('The CampusLink API stopped. Restarting in 3 seconds…');
+      console.error('The PlacedIn API stopped. Restarting in 3 seconds…');
       restartTimer = setTimeout(() => start(script, args, env, true), 3000);
     } else stop(code || 0);
   });
@@ -66,7 +66,7 @@ async function main() {
     if (!(await healthy(origin.origin))) {
       if (!fs.existsSync(path.resolve('server/dist/index.cjs')))
         throw new Error('Build the API first with npm run server:build.');
-      console.log('Starting the CampusLink API and connecting to the database…');
+      console.log('Starting the PlacedIn API and connecting to the database…');
       start(
         path.resolve('server/dist/index.cjs'),
         [],
@@ -83,7 +83,7 @@ async function main() {
           throw new Error('The API could not connect. Check the database settings in server/.env.');
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
-    } else console.log('Using the running CampusLink API.');
+    } else console.log('Using the running PlacedIn API.');
   }
   if (!stopping)
     start(

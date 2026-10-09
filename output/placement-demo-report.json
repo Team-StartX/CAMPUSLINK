@@ -13,7 +13,7 @@
     "correct": 39,
     "eligibilityAccuracy": 1,
     "topOneRankingAccuracy": 1,
-    "elapsedMs": 307.61,
+    "elapsedMs": 292.33,
     "limitation": "Small scripted synthetic benchmark. Measures rule conformance and ranking examples, not real placement prediction accuracy. Includes database and workflow time; not a concurrency benchmark."
   },
   "readiness": {
@@ -499,7 +499,7 @@
   "outcome": {
     "status": "Joined",
     "kind": "PPO",
-    "notifications": 62,
+    "notifications": 125,
     "analytics": {
       "registered": 12,
       "ready": 7,
@@ -621,16 +621,6 @@
       ],
       "recruiters": [
         {
-          "name": "Demo recruiter-3",
-          "total": 3,
-          "placed": 0,
-          "conversion": 0,
-          "drives": 1,
-          "repeatHiring": false,
-          "average": 0,
-          "highest": 0
-        },
-        {
           "name": "Demo recruiter-2",
           "total": 3,
           "placed": 0,
@@ -649,6 +639,16 @@
           "repeatHiring": false,
           "average": 8,
           "highest": 8
+        },
+        {
+          "name": "Demo recruiter-3",
+          "total": 3,
+          "placed": 0,
+          "conversion": 0,
+          "drives": 1,
+          "repeatHiring": false,
+          "average": 0,
+          "highest": 0
         }
       ],
       "documents": {

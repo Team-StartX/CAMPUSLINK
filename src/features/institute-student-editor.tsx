@@ -17,7 +17,7 @@ export function InstituteStudentEditor({
   const [values, setValues] = useState({
     name: student.name,
     course: student.course,
-    branch: student.branch || '',
+    branch: student.branch || student.course.split('·')[1]?.trim() || '',
     year: student.year,
     cgpa: String(student.cgpa),
     activeBacklogs: String(student.activeBacklogs || 0),
@@ -37,6 +37,7 @@ export function InstituteStudentEditor({
         className="form-stack institute-student-form"
         onSubmit={async (event) => {
           event.preventDefault();
+          if (saving) return;
           setError('');
           const patch = instituteStudentPatchSchema.safeParse({
             ...values,

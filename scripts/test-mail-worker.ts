@@ -20,11 +20,15 @@ test('email delivery releases the write lock, prevents concurrent sends and retr
   const pending = new Promise<Response>((resolve) => {
     release = () => resolve(new Response('{}'));
   });
-  const requests = t.mock.method(globalThis, 'fetch', async (_url, options) => {
-    assert.equal((options?.headers as Record<string, string>)['Idempotency-Key'], 'first');
-    started();
-    return pending;
-  });
+  const requests = t.mock.method(
+    globalThis,
+    'fetch',
+    async (_url: unknown, options?: RequestInit) => {
+      assert.equal((options?.headers as Record<string, string>)['Idempotency-Key'], 'first');
+      started();
+      return pending;
+    },
+  );
   try {
     await db.migrate();
     await queueMail(db, 'student@example.test', 'Test', 'Test', 'first');
@@ -51,7 +55,7 @@ test('email delivery releases the write lock, prevents concurrent sends and retr
     failed.nextAt = 0;
     failed.deliveryToken = 'interrupted-worker';
     await db.put('mail', 'retry', failed);
-    requests.mock.mockImplementation(async (_url, options) => {
+    requests.mock.mockImplementation(async (_url: unknown, options?: RequestInit) => {
       assert.equal((options?.headers as Record<string, string>)['Idempotency-Key'], 'retry');
       return new Response('{}');
     });

@@ -111,6 +111,7 @@ export interface InterviewSlot {
 }
 export interface RecruitmentOverview {
   eligibleCandidates?: { studentId: string; name: string; branch: string }[];
+  ineligibleCandidates?: { studentId: string; name: string; branch: string; reasons: string[] }[];
   eligibilityReviews?: { studentId: string; name: string; approved: boolean }[];
   candidates: Candidate[];
   results: CandidateResult[];

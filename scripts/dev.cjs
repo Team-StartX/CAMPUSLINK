@@ -53,7 +53,7 @@ async function main() {
   const localApi = ['localhost', '127.0.0.1', '[::1]'].includes(apiOrigin.hostname);
   if (process.env.NEXT_PUBLIC_APP_ENV === 'api' && localApi && !/^https?:\/\//.test(publicApi)) {
     if (!(await healthy(apiOrigin.origin))) {
-      console.log('Starting the CampusLink API before the website…');
+      console.log('Starting the PlacedIn API before the website…');
       start(path.resolve('server/dev.cjs'), [], {
         ...process.env,
         PORT: apiOrigin.port || (apiOrigin.protocol === 'https:' ? '443' : '80'),
@@ -67,7 +67,7 @@ async function main() {
           );
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
-    } else console.log('Using the running CampusLink API.');
+    } else console.log('Using the running PlacedIn API.');
   }
   if (!stopping)
     start(require.resolve('next/dist/bin/next'), [

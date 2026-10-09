@@ -24,7 +24,7 @@ import './analytics-charts.css';
 import { Providers } from '@/components/providers';
 import { Platform } from '@/components/platform';
 export const metadata: Metadata = {
-  title: 'CampusLink — Your potential. Your next chapter.',
+  title: 'PlacedIn — Your potential. Your next chapter.',
   description:
     'Build verified skills, discover opportunities, and take the next step in your career. A connected campus placement ecosystem.',
 };

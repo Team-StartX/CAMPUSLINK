@@ -31,6 +31,7 @@ import {
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { CareerID } from './student-dashboard';
+import { useFormAction } from '@/hooks/use-form-action';
 type Common = {
   data: WorkspaceData;
   refresh: () => void;
@@ -38,13 +39,13 @@ type Common = {
   role?: Role;
 };
 export function ProfilePage({ data, refresh, notify }: Common) {
+  const { save, saving, error, clearError } = useFormAction();
   const [edit, setEdit] = useState(false);
   const [project, setProject] = useState(false);
   const [name, setName] = useState(data.student.name);
   const [bio, setBio] = useState(data.student.bio);
-  const [campus, setCampus] = useState(data.student.campus);
-  const [email, setEmail] = useState(data.student.email);
   const [course, setCourse] = useState(data.student.course);
+  const [branch, setBranch] = useState(data.student.branch || '');
   const [year, setYear] = useState(data.student.year);
   const [cgpa, setCgpa] = useState(data.student.cgpa);
   const [backlogs, setBacklogs] = useState(data.student.activeBacklogs || 0);
@@ -55,11 +56,29 @@ export function ProfilePage({ data, refresh, notify }: Common) {
         title="Your career story."
         description="A profile that shows what you can do, and where you want to go."
         action={
-          <Button kind="outline" onClick={() => setEdit(true)}>
+          <Button
+            kind="outline"
+            onClick={() => {
+              setName(data.student.name);
+              setBio(data.student.bio);
+              setCourse(data.student.course);
+              setBranch(data.student.branch || '');
+              setYear(data.student.year);
+              setCgpa(data.student.cgpa);
+              setBacklogs(data.student.activeBacklogs || 0);
+              clearError();
+              setEdit(true);
+            }}
+          >
             <Pencil size={15} /> Edit profile
           </Button>
         }
       />
+      {error && !edit && !project && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="profile-layout">
         <aside>
           <CareerID student={data.student} refresh={refresh} notify={notify} />
@@ -160,12 +179,15 @@ export function ProfilePage({ data, refresh, notify }: Common) {
                 <button
                   className="icon-button"
                   aria-label={`Remove ${p}`}
+                  disabled={saving}
                   onClick={async () => {
-                    await studentService.updateStudent({
-                      projects: data.student.projects.filter((_, n) => n !== i),
+                    await save(async () => {
+                      await studentService.updateStudent({
+                        projects: data.student.projects.filter((_, n) => n !== i),
+                      });
+                      refresh();
+                      notify('Project removed.');
                     });
-                    refresh();
-                    notify('Project removed.');
                   }}
                 >
                   <Trash2 size={16} />
@@ -212,45 +234,62 @@ export function ProfilePage({ data, refresh, notify }: Common) {
             className="form-stack"
             onSubmit={async (e) => {
               e.preventDefault();
-              await studentService.updateStudent({
-                name: name.trim(),
-                bio: bio.trim(),
-                campus: campus.trim(),
-                email,
-                course,
-                year,
-                cgpa,
-                branch: course.split('·')[1]?.trim() || data.student.branch,
-                activeBacklogs: backlogs,
+              await save(async () => {
+                await studentService.updateStudent({
+                  name: name.trim(),
+                  bio: bio.trim(),
+                  course,
+                  year,
+                  cgpa,
+                  branch: branch.trim(),
+                  activeBacklogs: backlogs,
+                });
+                refresh();
+                setEdit(false);
+                notify('Your profile has been updated.');
               });
-              refresh();
-              setEdit(false);
-              notify('Your profile has been updated.');
             }}
           >
             <FormField label="Full name">
-              <input required value={name} onChange={(e) => setName(e.target.value)} />
-            </FormField>
-            <FormField label="Email address">
               <input
-                type="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                minLength={2}
+                maxLength={120}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
             </FormField>
-            <FormField label="Campus">
-              <input required value={campus} onChange={(e) => setCampus(e.target.value)} />
+            <FormField label="Email address">
+              <input type="email" required value={data.student.email} readOnly />
             </FormField>
-            <FormField label="Course and branch">
-              <input required value={course} onChange={(e) => setCourse(e.target.value)} />
+            <FormField label="Campus">
+              <input value={data.student.campus} readOnly />
+            </FormField>
+            <p className="muted">
+              Email and campus are linked to your account. Contact your campus team to correct them.
+            </p>
+            <FormField label="Course">
+              <input
+                required
+                maxLength={150}
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+              />
+            </FormField>
+            <FormField label="Branch">
+              <input
+                required
+                maxLength={80}
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+              />
             </FormField>
             <div className="form-row">
               <FormField label="Graduation year">
                 <input
                   type="number"
-                  min={2026}
-                  max={2040}
+                  min={2000}
+                  max={2099}
                   required
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
@@ -261,7 +300,7 @@ export function ProfilePage({ data, refresh, notify }: Common) {
                   type="number"
                   min={0}
                   max={10}
-                  step={0.1}
+                  step={0.01}
                   required
                   value={cgpa}
                   onChange={(e) => setCgpa(Number(e.target.value))}
@@ -279,9 +318,19 @@ export function ProfilePage({ data, refresh, notify }: Common) {
               />
             </FormField>
             <FormField label="About you">
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} />
+              <textarea
+                maxLength={3000}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={4}
+              />
             </FormField>
-            <Button type="submit">
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" loading={saving}>
               Save changes <Check size={16} />
             </Button>
           </form>
@@ -294,29 +343,39 @@ export function ProfilePage({ data, refresh, notify }: Common) {
             onSubmit={async (e) => {
               e.preventDefault();
               const values = new FormData(e.currentTarget);
-              await studentService.updateStudent({
-                projects: [...data.student.projects, String(values.get('title')).trim()],
-                projectDescriptions: {
-                  ...data.student.projectDescriptions,
-                  [String(values.get('title')).trim()]: String(values.get('description')).trim(),
-                },
+              await save(async () => {
+                if (!String(values.get('title') || '').trim())
+                  throw new Error('Enter a project title.');
+                await studentService.updateStudent({
+                  projects: [...data.student.projects, String(values.get('title')).trim()],
+                  projectDescriptions: {
+                    ...data.student.projectDescriptions,
+                    [String(values.get('title')).trim()]: String(values.get('description')).trim(),
+                  },
+                });
+                refresh();
+                setProject(false);
+                notify('Project added to your story.');
               });
-              refresh();
-              setProject(false);
-              notify('Project added to your story.');
             }}
           >
             <FormField label="Project title">
-              <input name="title" required placeholder="What did you build?" />
+              <input name="title" required maxLength={500} placeholder="What did you build?" />
             </FormField>
             <FormField label="Description">
               <textarea
                 name="description"
+                maxLength={3000}
                 required
                 placeholder="The problem, your contribution, and the result."
               />
             </FormField>
-            <Button type="submit">
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" loading={saving}>
               Add project <Plus size={16} />
             </Button>
           </form>
@@ -963,6 +1022,7 @@ function ProfileRecords({
   notify: (s: string) => void;
 }) {
   const [editing, setEditing] = useState<number | null>(null);
+  const { save, saving, error, clearError } = useFormAction();
   const [value, setValue] = useState('');
   const records = data.student.records?.[category] || [];
   return (
@@ -972,6 +1032,7 @@ function ProfileRecords({
         <button
           className="text-button"
           onClick={() => {
+            clearError();
             setEditing(-1);
             setValue('');
           }}
@@ -987,6 +1048,7 @@ function ProfileRecords({
               className="icon-button"
               aria-label={`Edit ${category}`}
               onClick={() => {
+                clearError();
                 setEditing(i);
                 setValue(record);
               }}
@@ -996,15 +1058,18 @@ function ProfileRecords({
             <button
               className="icon-button"
               aria-label={`Remove ${category}`}
+              disabled={saving}
               onClick={async () => {
-                await studentService.updateStudent({
-                  records: {
-                    ...data.student.records,
-                    [category]: records.filter((_, index) => index !== i),
-                  },
+                await save(async () => {
+                  await studentService.updateStudent({
+                    records: {
+                      ...data.student.records,
+                      [category]: records.filter((_, index) => index !== i),
+                    },
+                  });
+                  refresh();
+                  notify(`${category} updated.`);
                 });
-                refresh();
-                notify(`${category} updated.`);
               }}
             >
               <Trash2 size={15} />
@@ -1016,6 +1081,11 @@ function ProfileRecords({
           Add {category.toLowerCase()} when you’re ready. Every detail helps tell your story.
         </p>
       )}
+      {error && editing === null && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
       {editing !== null && (
         <Modal
           title={`${editing === -1 ? 'Add' : 'Edit'} ${category.toLowerCase()}`}
@@ -1025,16 +1095,19 @@ function ProfileRecords({
             className="form-stack"
             onSubmit={async (e) => {
               e.preventDefault();
-              const next =
-                editing === -1
-                  ? [...records, value.trim()]
-                  : records.map((r, i) => (i === editing ? value.trim() : r));
-              await studentService.updateStudent({
-                records: { ...data.student.records, [category]: next },
+              await save(async () => {
+                if (!value.trim()) throw new Error('Enter the details before saving.');
+                const next =
+                  editing === -1
+                    ? [...records, value.trim()]
+                    : records.map((r, i) => (i === editing ? value.trim() : r));
+                await studentService.updateStudent({
+                  records: { ...data.student.records, [category]: next },
+                });
+                refresh();
+                setEditing(null);
+                notify(`${category} saved.`);
               });
-              refresh();
-              setEditing(null);
-              notify(`${category} saved.`);
             }}
           >
             <FormField label={category === 'Professional links' ? 'Label and URL' : 'Details'}>
@@ -1055,7 +1128,12 @@ function ProfileRecords({
                 }
               />
             </FormField>
-            <Button type="submit">
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" loading={saving}>
               Save to profile <Check size={16} />
             </Button>
           </form>
